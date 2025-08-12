@@ -431,6 +431,21 @@ class MNMath {
       // MNUtil.showHUD(`没有新内容需要移动到 ${defaultField} 字段！`);
       return;
     }
+    
+    // 特殊处理：检查要移动的内容是否全部是手写评论
+    if (moveIndexArr.length > 0) {
+      let allHandwriting = moveIndexArr.every(index => {
+        let commentType = note.MNComments[index].type;
+        return commentType === "drawingComment" || 
+               commentType === "imageCommentWithDrawing" || 
+               commentType === "mergedImageCommentWithDrawing";
+      });
+      
+      if (allHandwriting) {
+        MNUtil.log("🖊️ 要移动的内容只有手写评论，跳过自动移动");
+        return;
+      }
+    }
 
     // 在移动之前先提取 markdown 链接
     let marginNoteLinks = this.extractMarginNoteLinksFromComments(note, moveIndexArr);
@@ -639,16 +654,9 @@ class MNMath {
    * 转化为非摘录版本
    */
   static toNoExcerptVersion(note){
-    // 保存原始剪贴板
-    const originalClipboard = MNUtil.clipboardText;
-    MNUtil.log(`[toNoExcerptVersion] 开始，原剪贴板内容: ${originalClipboard ? originalClipboard.substring(0, 50) + "..." : "空"}`);
-    
     if (note.parentNote) {
       if (note.excerptText) { // 把摘录内容的检测放到 toNoExcerptVersion 的内部
         let parentNote = note.parentNote
-        
-        // 创建新兄弟卡片前检查剪贴板
-        MNUtil.log(`[toNoExcerptVersion] 创建新卡片前剪贴板: ${MNUtil.clipboardText === originalClipboard ? "未变化" : "已变化为: " + MNUtil.clipboardText}`);
         
         let config = {
           title: note.noteTitle,
@@ -659,37 +667,11 @@ class MNMath {
         // 创建新兄弟卡片，标题为旧卡片的标题
         let newNote = parentNote.createChildNote(config)
         
-        // 检查创建后剪贴板
-        const afterCreateClipboard = MNUtil.clipboardText;
-        MNUtil.log(`[toNoExcerptVersion] 创建新卡片后剪贴板: ${afterCreateClipboard}`);
-        MNUtil.log(`[toNoExcerptVersion] 新卡片ID: ${newNote.noteId}`);
-        
-        // 如果剪贴板被修改为新卡片ID，立即恢复
-        if (afterCreateClipboard === newNote.noteId) {
-          MNUtil.log(`[toNoExcerptVersion] ⚠️ 检测到剪贴板被设置为新卡片ID，立即恢复`);
-          MNUtil.clipboardText = originalClipboard;
-        }
-        
         note.noteTitle = ""
-        
-        // 合并前检查
-        MNUtil.log(`[toNoExcerptVersion] 合并前剪贴板: ${MNUtil.clipboardText === originalClipboard ? "未变化" : "已变化为: " + MNUtil.clipboardText}`);
         
         // 将旧卡片合并到新卡片中
         note.mergeInto(newNote)
-        
-        // 合并后检查
-        const afterMergeClipboard = MNUtil.clipboardText;
-        MNUtil.log(`[toNoExcerptVersion] 合并后剪贴板: ${afterMergeClipboard}`);
-        
-        // 最终恢复剪贴板
-        if (MNUtil.clipboardText !== originalClipboard) {
-          MNUtil.log(`[toNoExcerptVersion] ✅ 最终恢复剪贴板`);
-          MNUtil.clipboardText = originalClipboard;
-        }
-        
-        MNUtil.log(`[toNoExcerptVersion] 完成，返回新卡片ID: ${newNote.noteId}`);
-        // newNote.focusInMindMap(0.2)
+      
         return newNote; // 返回新卡片
       } else {
         return note;
@@ -2024,6 +2006,18 @@ class MNMath {
    * 【非摘录版本】初始状态合并模板卡片后自动移动卡片的内容
    */
   static mergeTemplateAndAutoMoveNoteContent(note) {
+    // 特殊处理：如果只有一条评论且是手写类型，直接合并模板不移动内容
+    if (note.MNComments.length === 1) {
+      let commentType = note.MNComments[0].type;
+      if (commentType === "drawingComment" || 
+          commentType === "imageCommentWithDrawing" || 
+          commentType === "mergedImageCommentWithDrawing") {
+        MNUtil.log("🖊️ 检测到单个手写评论，直接合并模板，不移动内容");
+        this.mergeTemplate(note);
+        return;
+      }
+    }
+    
     // 白名单：这些类型的卡片即使只有图片+链接也按正常方式处理
     const typeWhitelist = []; // 暂时为空，后续可以添加需要排除的卡片类型
     
@@ -2509,6 +2503,44 @@ class MNMath {
     }
 
     return noteType || undefined;
+  }
+
+  /**
+   * 判断卡片自身是否为知识点卡片（不向上查找）
+   * 只基于卡片自身的标题格式判断，不会查找父卡片
+   * 
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 如果卡片标题本身就是知识点格式返回 true，否则返回 false
+   */
+  static isKnowledgeNote(note) {
+    const title = note.noteTitle || note.title || "";
+    // 检查是否有知识点卡片的标题格式：【类型：xxx】或【类型 >> xxx】
+    const match = title.match(/^【(.{1,4})\s*(?:>>|：)\s*.*】/);
+    if (!match) return false;
+    
+    const type = match[1].trim();
+    // 检查类型是否在知识点类型列表中
+    for (let typeKey in this.types) {
+      if (this.types[typeKey].prefixName === type && 
+          this.knowledgeNoteTypes.includes(typeKey)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 判断卡片自身是否为归类卡片（不向上查找）
+   * 只基于卡片自身的标题格式判断，不会查找父卡片
+   * 
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 如果卡片标题本身就是归类格式返回 true，否则返回 false
+   */
+  static isClassificationNote(note) {
+    const title = note.noteTitle || note.title || "";
+    // 检查是否有归类卡片的标题格式："xxx"相关 或 "xxx"："xxx"相关
+    return /^“[^“]*”：“[^“]*”\s*相关.*$/.test(title) || 
+           /^“[^“]+”\s*相关.*$/.test(title);
   }
 
   /**
@@ -4083,6 +4115,12 @@ class MNMath {
     let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有内容";
     displayOptions.unshift(selectAllText);
     
+    // 添加范围选择选项
+    displayOptions.splice(1, 0, "📍 选择范围");
+    
+    // 添加反选选项
+    displayOptions.splice(2, 0, "🔄 反选");
+    
     // 添加分隔线和操作选项
     if (previousDialog) {
       displayOptions.push("⬅️ 返回上一层");
@@ -4115,6 +4153,26 @@ class MNMath {
               selectedIndices.add(item.index);
             });
           }
+          
+          // 递归显示更新后的对话框
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          
+        } else if (buttonIndex === 2) {
+          // 用户选择了范围选择
+          this.showRangeSelectDialog(note, commentOptions, selectedIndices, previousDialog);
+          
+        } else if (buttonIndex === 3) {
+          // 用户选择了反选
+          const newSelectedIndices = new Set();
+          commentOptions.forEach(item => {
+            if (!selectedIndices.has(item.index)) {
+              newSelectedIndices.add(item.index);
+            }
+          });
+          
+          // 清空原集合并添加反选的项
+          selectedIndices.clear();
+          newSelectedIndices.forEach(index => selectedIndices.add(index));
           
           // 递归显示更新后的对话框
           this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
@@ -4168,14 +4226,14 @@ class MNMath {
         } else {
           // 需要检查是否选择了返回选项
           const returnIndex = previousDialog ? displayOptions.indexOf("⬅️ 返回上一层") : -1;
-          if (previousDialog && buttonIndex === returnIndex + 1) {
+          if (previousDialog && buttonIndex - 1 === returnIndex) {
             // 用户选择了返回上一层
             previousDialog();
             return;
           }
           
           // 用户选择了某个评论，切换选中状态
-          let selectedComment = commentOptions[buttonIndex - 2]; // 因为加了全选选项，所以索引要减2
+          let selectedComment = commentOptions[buttonIndex - 4]; // 因为加了全选、范围选择和反选选项，所以索引要减4
           
           if (selectedIndices.has(selectedComment.index)) {
             selectedIndices.delete(selectedComment.index);
@@ -4188,6 +4246,162 @@ class MNMath {
         }
       }
     );
+  }
+
+  /**
+   * 显示范围选择对话框
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} commentOptions - 所有评论选项
+   * @param {Set} selectedIndices - 当前已选中的索引集合
+   * @param {Function} previousDialog - 返回上一层的函数
+   */
+  static showRangeSelectDialog(note, commentOptions, selectedIndices, previousDialog) {
+    // 检查是否有足够的评论进行范围选择
+    if (commentOptions.length < 2) {
+      MNUtil.showHUD("评论数量不足，至少需要2个评论才能进行范围选择");
+      this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+      return;
+    }
+    
+    // 第一阶段：选择起始位置
+    this.showStartPositionDialog(note, commentOptions, selectedIndices, previousDialog);
+  }
+
+  /**
+   * 显示起始位置选择对话框
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} commentOptions - 所有评论选项
+   * @param {Set} selectedIndices - 当前已选中的索引集合
+   * @param {Function} previousDialog - 返回上一层的函数
+   */
+  static showStartPositionDialog(note, commentOptions, selectedIndices, previousDialog) {
+    // 构建显示选项
+    let displayOptions = commentOptions.map((item) => {
+      return item.display;
+    });
+    
+    // 添加返回选项
+    displayOptions.push("⬅️ 返回多选");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "范围选择 - 第1步",
+      "请选择起始评论",
+      0,
+      "取消",
+      displayOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          // 取消，返回多选对话框
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          return;
+        }
+        
+        if (buttonIndex === displayOptions.length) {
+          // 返回多选
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          return;
+        }
+        
+        // 用户选择了起始位置
+        const startIndex = buttonIndex - 1;
+        const startComment = commentOptions[startIndex];
+        
+        // 进入第二阶段：选择结束位置
+        this.showEndPositionDialog(note, commentOptions, selectedIndices, startComment, previousDialog);
+      }
+    );
+  }
+
+  /**
+   * 显示结束位置选择对话框
+   * 
+   * @param {MNNote} note - 笔记对象
+   * @param {Array} commentOptions - 所有评论选项
+   * @param {Set} selectedIndices - 当前已选中的索引集合
+   * @param {Object} startComment - 起始评论对象
+   * @param {Function} previousDialog - 返回上一层的函数
+   */
+  static showEndPositionDialog(note, commentOptions, selectedIndices, startComment, previousDialog) {
+    // 构建显示选项，高亮起始位置和提供范围预览
+    let displayOptions = commentOptions.map((item) => {
+      let prefix = "";
+      if (item.index === startComment.index) {
+        prefix = "🟢 ";  // 起始位置标记
+      } else if (item.index < startComment.index) {
+        // 显示向上范围的大小
+        const rangeSize = startComment.index - item.index + 1;
+        prefix = `⬆️${rangeSize} `;
+      } else if (item.index > startComment.index) {
+        // 显示向下范围的大小
+        const rangeSize = item.index - startComment.index + 1;
+        prefix = `⬇️${rangeSize} `;
+      }
+      return `${prefix}${item.display}`;
+    });
+    
+    // 添加返回选项
+    displayOptions.push("⬅️ 返回第1步");
+    displayOptions.push("⬅️ 返回多选");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "范围选择 - 第2步",
+      `请选择结束评论\n已选择起始: #${startComment.index + 1}`,
+      0,
+      "取消",
+      displayOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          // 取消，返回多选对话框
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          return;
+        }
+        
+        if (buttonIndex === displayOptions.length) {
+          // 返回多选
+          this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+          return;
+        }
+        
+        if (buttonIndex === displayOptions.length - 1) {
+          // 返回第1步
+          this.showStartPositionDialog(note, commentOptions, selectedIndices, previousDialog);
+          return;
+        }
+        
+        // 用户选择了结束位置
+        const endIndex = buttonIndex - 1;
+        const endComment = commentOptions[endIndex];
+        
+        // 执行范围选择
+        this.selectCommentRange(selectedIndices, startComment.index, endComment.index);
+        
+        // 显示成功提示并返回多选对话框
+        const rangeSize = Math.abs(endComment.index - startComment.index) + 1;
+        MNUtil.showHUD(`已选择范围：#${Math.min(startComment.index, endComment.index) + 1} 到 #${Math.max(startComment.index, endComment.index) + 1}，共 ${rangeSize} 个评论`);
+        
+        this.showCommentMultiSelectDialog(note, commentOptions, selectedIndices, null, previousDialog);
+      }
+    );
+  }
+
+  /**
+   * 选择评论范围
+   * 
+   * @param {Set} selectedIndices - 已选中的索引集合
+   * @param {number} startIndex - 起始索引
+   * @param {number} endIndex - 结束索引
+   */
+  static selectCommentRange(selectedIndices, startIndex, endIndex) {
+    // 确保起始索引小于结束索引
+    const minIndex = Math.min(startIndex, endIndex);
+    const maxIndex = Math.max(startIndex, endIndex);
+    
+    // 将范围内的所有索引添加到选中集合
+    for (let i = minIndex; i <= maxIndex; i++) {
+      selectedIndices.add(i);
+    }
   }
 
   /**
@@ -4257,6 +4471,14 @@ class MNMath {
       
       "Z️⃣ 最后一条评论": () => {
         const moveCommentIndexArr = [note.comments.length - 1];
+        this.showActionSelectionDialog(note, moveCommentIndexArr, () => {
+          // 返回函数：重新显示主菜单
+          this.manageCommentsByPopup(note);
+        });
+      },
+      
+      "YZ 最后两条评论": () => {
+        const moveCommentIndexArr = [note.comments.length - 2, note.comments.length - 1];
         this.showActionSelectionDialog(note, moveCommentIndexArr, () => {
           // 返回函数：重新显示主菜单
           this.manageCommentsByPopup(note);
@@ -4533,20 +4755,35 @@ class MNMath {
   static showDeleteConfirmDialog(note, deleteCommentIndexArr, previousDialog = null) {
     // 构建要删除的评论列表
     let deleteList = [];
+    let isLinkComment = false;
+    let linkUrl = null;
+    
     deleteCommentIndexArr.forEach(index => {
       const comment = note.MNComments[index];
       if (comment) {
         const displayText = this.formatCommentForDisplay(comment, index, note);
         deleteList.push(`• ${displayText}`);
+        
+        // 检查是否为链接评论（仅当只选中一条时）
+        if (deleteCommentIndexArr.length === 1 && comment.type === "linkComment") {
+          isLinkComment = true;
+          linkUrl = comment.text;
+        }
       }
     });
     
     const message = `确定要删除以下 ${deleteCommentIndexArr.length} 项评论吗？\n\n${deleteList.join('\n')}`;
     
     // 构建选项数组
-    const options = ["🗑️ 确认删除"];
+    const options = [];
     if (previousDialog) {
-      options.unshift("⬅️ 返回上一层");
+      options.push("⬅️ 返回上一层");
+    }
+    options.push("🗑️ 确认删除");
+    
+    // 如果是单个链接评论，增加复制选项
+    if (isLinkComment) {
+      options.push("🗑️📋 确认并复制行内链接");
     }
     
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -4560,16 +4797,56 @@ class MNMath {
           return; // 取消
         }
         
-        // 如果有返回选项，处理返回
-        if (previousDialog && buttonIndex === 1) {
+        // 处理返回选项
+        if (previousDialog && options[buttonIndex - 1] === "⬅️ 返回上一层") {
           previousDialog();
           return;
         }
         
-        // 确认删除的索引根据是否有返回选项而不同
-        const confirmIndex = previousDialog ? 2 : 1;
-        if (buttonIndex === confirmIndex) {
+        // 处理确认删除
+        if (options[buttonIndex - 1] === "🗑️ 确认删除") {
           this.performDelete(note, deleteCommentIndexArr);
+          return;
+        }
+        
+        // 处理确认并复制行内链接
+        if (options[buttonIndex - 1] === "🗑️📋 确认并复制行内链接") {
+          // 先显示输入引用词的对话框
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            "复制 Markdown 类型链接",
+            "输入引用词",
+            2,
+            "取消",
+            ["确定"],
+            (inputAlert, inputButtonIndex) => {
+              if (inputButtonIndex === 1) {
+                // 获取链接指向的笔记
+                const linkedNote = MNNote.new(linkUrl);
+                let refContent = inputAlert.textFieldAtIndex(0).text;
+                
+                // 如果用户没有输入，尝试获取链接笔记的标题
+                if (!refContent && linkedNote) {
+                  // 尝试从链接的笔记获取标题
+                  const titleParts = MNMath.parseNoteTitle(linkedNote);
+                  refContent = titleParts.content || linkedNote.noteTitle || "链接";
+                  // 去除可能的 "; " 前缀
+                  if (refContent.startsWith("; ")) {
+                    refContent = refContent.substring(2).trim();
+                  }
+                } else if (!refContent) {
+                  refContent = "链接";
+                }
+                
+                // 生成 Markdown 链接
+                const mdLink = `[${refContent}](${linkUrl})`;
+                MNUtil.copy(mdLink);
+                MNUtil.showHUD(`已复制: ${mdLink}`);
+                
+                // 然后执行删除操作
+                this.performDelete(note, deleteCommentIndexArr);
+              }
+            }
+          );
         }
       }
     );
@@ -5543,14 +5820,16 @@ class MNMath {
                   lastNote = firstNote
                   
                   // 如果有更多部分，创建子卡片链
+                  let previousTitle = titlePartsArray[0]  // 记录上一个标题
                   for (let i = 1; i < titlePartsArray.length; i++) {
                     let childNote = MNNote.clone(this.types["归类"].templateNoteId)
-                    // 累积标题：第一部分 + 当前部分
-                    let accumulatedTitle = titlePartsArray[0] + titlePartsArray[i]
+                    // 累积标题：上一个标题 + 当前部分
+                    let accumulatedTitle = previousTitle + titlePartsArray[i]
                     childNote.noteTitle = "“" + accumulatedTitle + "”相关" + type
                     lastNote.addChild(childNote.note)
                     this.linkParentNote(childNote)
                     lastNote = childNote
+                    previousTitle = accumulatedTitle  // 更新上一个标题
                   }
                   
                   // 聚焦最后创建的卡片
@@ -6784,10 +7063,14 @@ class MNMath {
               isDefault: true
             }
           },
+          rootsOrder: ["default"],  // 新增：根目录顺序数组
           lastUsedRoot: "default",
           includeClassification: true,  // 默认包含归类卡片
           ignorePrefix: false,  // 默认搜索完整标题
           searchInKeywords: false,  // 默认不搜索关键词字段
+          onlyClassification: false,  // 默认不启用只搜索归类卡片
+          synonymGroups: [],  // 同义词组
+          exclusionGroups: [],  // 排除词组
           lastModified: Date.now()
         };
       }
@@ -6802,6 +7085,28 @@ class MNMath {
       if (config && config.searchInKeywords === undefined) {
         config.searchInKeywords = false;
       }
+      if (config && config.onlyClassification === undefined) {
+        config.onlyClassification = false;  // 默认不启用只搜索归类卡片
+      }
+      // 添加同义词组字段
+      if (config && !config.synonymGroups) {
+        config.synonymGroups = [];
+      }
+      // 添加排除词组字段
+      if (config && !config.exclusionGroups) {
+        config.exclusionGroups = [];
+      }
+      
+      // 数据迁移：如果旧版本没有 rootsOrder，自动生成
+      if (config && config.roots && !config.rootsOrder) {
+        config.rootsOrder = Object.keys(config.roots);
+        // 确保 default 在第一位
+        const defaultIndex = config.rootsOrder.indexOf("default");
+        if (defaultIndex > 0) {
+          config.rootsOrder.splice(defaultIndex, 1);
+          config.rootsOrder.unshift("default");
+        }
+      }
       
       return config;
     } catch (error) {
@@ -6815,10 +7120,14 @@ class MNMath {
             isDefault: true
           }
         },
+        rootsOrder: ["default"],  // 根目录顺序
         lastUsedRoot: "default",
         includeClassification: true,  // 默认包含归类卡片
         ignorePrefix: false,  // 默认搜索完整标题
         searchInKeywords: false,  // 默认不搜索关键词字段
+        onlyClassification: false,  // 默认不启用只搜索归类卡片
+        synonymGroups: [],  // 同义词组
+        exclusionGroups: [],  // 排除词组
         lastModified: Date.now()
       };
     }
@@ -6904,6 +7213,12 @@ class MNMath {
         isDefault: false
       };
       
+      // 添加到顺序数组末尾
+      if (!this.searchRootConfigs.rootsOrder) {
+        this.searchRootConfigs.rootsOrder = Object.keys(this.searchRootConfigs.roots);
+      }
+      this.searchRootConfigs.rootsOrder.push(key);
+      
       // 保存配置
       this.saveSearchConfig();
       
@@ -6912,6 +7227,821 @@ class MNMath {
     } catch (error) {
       MNUtil.log("添加搜索根目录失败: " + error.toString());
       MNUtil.showHUD("添加失败：" + error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * 删除搜索根目录
+   * @param {string} key - 根目录的键名
+   * @returns {boolean} 是否成功
+   */
+  static deleteSearchRoot(key) {
+    try {
+      this.initSearchConfig();
+      
+      // 不能删除默认根目录
+      if (key === "default") {
+        MNUtil.showHUD("不能删除默认根目录");
+        return false;
+      }
+      
+      // 删除根目录
+      if (this.searchRootConfigs.roots[key]) {
+        delete this.searchRootConfigs.roots[key];
+        
+        // 从顺序数组中移除
+        if (this.searchRootConfigs.rootsOrder) {
+          const index = this.searchRootConfigs.rootsOrder.indexOf(key);
+          if (index > -1) {
+            this.searchRootConfigs.rootsOrder.splice(index, 1);
+          }
+        }
+        
+        // 如果删除的是最后使用的根目录，重置为默认
+        if (this.searchRootConfigs.lastUsedRoot === key) {
+          this.searchRootConfigs.lastUsedRoot = "default";
+        }
+        
+        this.saveSearchConfig();
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      MNUtil.log("删除搜索根目录失败: " + error.toString());
+      return false;
+    }
+  }
+  
+  /**
+   * 编辑搜索根目录
+   * @param {string} key - 根目录的键名
+   * @param {string} newName - 新名称
+   * @param {string} newNoteId - 新的笔记ID（可选）
+   * @returns {boolean} 是否成功
+   */
+  static editSearchRoot(key, newName, newNoteId) {
+    try {
+      this.initSearchConfig();
+      
+      if (!this.searchRootConfigs.roots[key]) {
+        MNUtil.showHUD("根目录不存在");
+        return false;
+      }
+      
+      // 更新名称
+      if (newName) {
+        this.searchRootConfigs.roots[key].name = newName;
+      }
+      
+      // 更新笔记ID（如果提供）
+      if (newNoteId) {
+        // 处理 URL 格式
+        if (newNoteId.includes("marginnote")) {
+          newNoteId = newNoteId.toNoteId();
+        }
+        
+        // 验证卡片是否存在
+        const note = MNUtil.getNoteById(newNoteId);
+        if (!note) {
+          MNUtil.showHUD("新的卡片不存在");
+          return false;
+        }
+        
+        this.searchRootConfigs.roots[key].id = newNoteId;
+      }
+      
+      this.saveSearchConfig();
+      return true;
+    } catch (error) {
+      MNUtil.log("编辑搜索根目录失败: " + error.toString());
+      return false;
+    }
+  }
+  
+  /**
+   * 导出搜索配置（保留原方法以兼容）
+   * @returns {string|null} JSON字符串，失败返回null
+   */
+  static exportSearchConfig() {
+    try {
+      this.initSearchConfig();
+      
+      const config = {
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        roots: this.searchRootConfigs.roots,
+        rootsOrder: this.searchRootConfigs.rootsOrder,
+        lastUsedRoot: this.searchRootConfigs.lastUsedRoot,
+        settings: {
+          includeClassification: this.searchRootConfigs.includeClassification,
+          onlyClassification: this.searchRootConfigs.onlyClassification,
+          ignorePrefix: this.searchRootConfigs.ignorePrefix,
+          searchInKeywords: this.searchRootConfigs.searchInKeywords
+        },
+        synonymGroups: this.searchRootConfigs.synonymGroups || []
+      };
+      
+      const jsonStr = JSON.stringify(config, null, 2);
+      MNUtil.copy(jsonStr);
+      
+      return jsonStr;
+    } catch (error) {
+      MNUtil.log("导出搜索配置失败: " + error.toString());
+      return null;
+    }
+  }
+
+  /**
+   * 获取完整的搜索配置（包括同义词）
+   * @returns {Object} 配置对象
+   */
+  static getFullSearchConfig() {
+    this.initSearchConfig();
+    
+    return {
+      version: "1.0",
+      exportDate: new Date().toISOString(),
+      exportFrom: "MNMath",
+      searchConfig: {
+        roots: this.searchRootConfigs.roots,
+        rootsOrder: this.searchRootConfigs.rootsOrder,
+        lastUsedRoot: this.searchRootConfigs.lastUsedRoot,
+        includeClassification: this.searchRootConfigs.includeClassification,
+        onlyClassification: this.searchRootConfigs.onlyClassification,
+        ignorePrefix: this.searchRootConfigs.ignorePrefix,
+        searchInKeywords: this.searchRootConfigs.searchInKeywords
+      },
+      synonymGroups: this.searchRootConfigs.synonymGroups || []
+    };
+  }
+
+  /**
+   * 导出搜索配置到指定目标
+   * @param {string} type - 导出类型: "iCloud", "clipboard", "currentNote", "file"
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async exportSearchConfigTo(type) {
+    try {
+      const config = this.getFullSearchConfig();
+      const jsonStr = JSON.stringify(config, null, 2);
+      
+      switch (type) {
+        case "iCloud":
+          // 使用 iCloud 同步
+          const iCloudKey = "MNMath_SearchConfig";
+          MNUtil.setByiCloud(iCloudKey, jsonStr);
+          MNUtil.showHUD("✅ 已导出到 iCloud");
+          return true;
+          
+        case "clipboard":
+          MNUtil.copy(jsonStr);
+          MNUtil.showHUD("✅ 已导出到剪贴板");
+          return true;
+          
+        case "currentNote":
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 请先选择一个笔记");
+            return false;
+          }
+          
+          MNUtil.undoGrouping(() => {
+            focusNote.noteTitle = "MNMath_搜索配置";
+            focusNote.excerptText = "```json\n" + jsonStr + "\n```";
+            focusNote.excerptTextMarkdown = true;
+          });
+          MNUtil.showHUD("✅ 已导出到当前笔记");
+          return true;
+          
+        case "file":
+          // 导出到文件
+          const dateStr = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+          const fileName = `MNMath_SearchConfig_${dateStr}.json`;
+          const documentsPath = NSSearchPathForDirectoriesInDomains(9, 1, true).firstObject; // NSDocumentDirectory
+          
+          if (documentsPath) {
+            const filePath = documentsPath + "/" + fileName;
+            NSString.stringWithString(jsonStr).writeToFileAtomicallyEncodingError(
+              filePath, true, 4, null // NSUTF8StringEncoding = 4
+            );
+            
+            // 保存文件对话框
+            MNUtil.saveFile(filePath, ["public.json"]);
+            MNUtil.showHUD(`✅ 已导出到文件\n${fileName}`);
+            return true;
+          }
+          MNUtil.showHUD("❌ 文件导出失败");
+          return false;
+          
+        default:
+          MNUtil.showHUD("❌ 不支持的导出类型");
+          return false;
+      }
+    } catch (error) {
+      MNUtil.showHUD("❌ 导出失败：" + error.message);
+      MNUtil.log("导出搜索配置失败: " + error.toString());
+      return false;
+    }
+  }
+  
+  /**
+   * 导入搜索配置（保留原方法以兼容）
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async importSearchConfig() {
+    return this.importSearchConfigFrom("clipboard");
+  }
+
+  /**
+   * 从指定来源导入搜索配置
+   * @param {string} type - 导入类型: "iCloud", "clipboard", "currentNote", "file"
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async importSearchConfigFrom(type) {
+    try {
+      let jsonStr = null;
+      
+      switch (type) {
+        case "iCloud":
+          // 从 iCloud 导入
+          const iCloudKey = "MNMath_SearchConfig";
+          jsonStr = MNUtil.getByiCloud(iCloudKey);
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ iCloud 中没有配置");
+            return false;
+          }
+          break;
+          
+        case "clipboard":
+          jsonStr = MNUtil.clipboardText;
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 剪贴板为空");
+            return false;
+          }
+          break;
+          
+        case "currentNote":
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 请先选择一个笔记");
+            return false;
+          }
+          
+          // 从笔记内容中提取 JSON
+          const excerptText = focusNote.excerptText || "";
+          // 尝试提取 markdown 代码块中的 JSON
+          const codeBlockMatch = excerptText.match(/```json\s*([\s\S]*?)\s*```/);
+          if (codeBlockMatch) {
+            jsonStr = codeBlockMatch[1];
+          } else {
+            // 尝试直接解析
+            jsonStr = excerptText;
+          }
+          break;
+          
+        case "file":
+          // 从文件导入
+          const filePath = MNUtil.openFile(["public.json"]);
+          if (!filePath) {
+            MNUtil.showHUD("❌ 未选择文件");
+            return false;
+          }
+          
+          jsonStr = NSString.stringWithContentsOfFileEncodingError(filePath, 4, null); // NSUTF8StringEncoding = 4
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 无法读取文件");
+            return false;
+          }
+          break;
+          
+        default:
+          MNUtil.showHUD("❌ 不支持的导入类型");
+          return false;
+      }
+      
+      // 解析 JSON
+      let config;
+      try {
+        config = JSON.parse(jsonStr);
+      } catch (e) {
+        MNUtil.showHUD("❌ 内容不是有效的 JSON 格式");
+        return false;
+      }
+      
+      // 处理新版本格式（包含 searchConfig 和 synonymGroups）
+      let searchConfig, synonymGroups;
+      if (config.searchConfig) {
+        // 新格式
+        searchConfig = config.searchConfig;
+        synonymGroups = config.synonymGroups;
+      } else if (config.roots) {
+        // 旧格式
+        searchConfig = {
+          roots: config.roots,
+          rootsOrder: config.rootsOrder,
+          lastUsedRoot: config.lastUsedRoot,
+          ...config.settings
+        };
+        synonymGroups = config.synonymGroups;
+      } else {
+        MNUtil.showHUD("❌ 配置格式无效");
+        return false;
+      }
+      
+      // 询问导入方式
+      return new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "导入配置",
+          "选择导入方式：",
+          0,
+          "取消",
+          ["替换现有配置", "合并配置"],
+          (_, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(false);
+              return;
+            }
+            
+            this.initSearchConfig();
+            
+            if (buttonIndex === 1) {
+              // 替换模式
+              if (searchConfig.roots) {
+                this.searchRootConfigs.roots = searchConfig.roots;
+                this.searchRootConfigs.rootsOrder = searchConfig.rootsOrder || Object.keys(searchConfig.roots);
+                this.searchRootConfigs.lastUsedRoot = searchConfig.lastUsedRoot || "default";
+              }
+              
+              // 应用其他设置
+              if (searchConfig.includeClassification !== undefined) {
+                this.searchRootConfigs.includeClassification = searchConfig.includeClassification;
+              }
+              if (searchConfig.onlyClassification !== undefined) {
+                this.searchRootConfigs.onlyClassification = searchConfig.onlyClassification;
+              }
+              if (searchConfig.ignorePrefix !== undefined) {
+                this.searchRootConfigs.ignorePrefix = searchConfig.ignorePrefix;
+              }
+              if (searchConfig.searchInKeywords !== undefined) {
+                this.searchRootConfigs.searchInKeywords = searchConfig.searchInKeywords;
+              }
+              
+              // 替换同义词组
+              if (synonymGroups) {
+                this.searchRootConfigs.synonymGroups = synonymGroups;
+              }
+            } else if (buttonIndex === 2) {
+              // 合并模式
+              // 合并根目录
+              if (searchConfig.roots) {
+                Object.assign(this.searchRootConfigs.roots, searchConfig.roots);
+                
+                // 合并顺序数组
+                if (searchConfig.rootsOrder) {
+                  const existingKeys = new Set(this.searchRootConfigs.rootsOrder || []);
+                  for (const key of searchConfig.rootsOrder) {
+                    if (!existingKeys.has(key) && this.searchRootConfigs.roots[key]) {
+                      this.searchRootConfigs.rootsOrder.push(key);
+                    }
+                  }
+                }
+              }
+              
+              // 合并同义词组
+              if (synonymGroups && synonymGroups.length > 0) {
+                if (!this.searchRootConfigs.synonymGroups) {
+                  this.searchRootConfigs.synonymGroups = [];
+                }
+                // 避免重复
+                const existingIds = new Set(this.searchRootConfigs.synonymGroups.map(g => g.id));
+                for (const group of synonymGroups) {
+                  if (!existingIds.has(group.id)) {
+                    this.searchRootConfigs.synonymGroups.push(group);
+                  }
+                }
+              }
+            }
+            
+            this.saveSearchConfig();
+            MNUtil.showHUD("✅ 配置导入成功");
+            resolve(true);
+          }
+        );
+      });
+    } catch (error) {
+      MNUtil.log("导入搜索配置失败: " + error.toString());
+      MNUtil.showHUD("❌ 导入失败：" + error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * 显示导出配置选择对话框
+   * @returns {Promise<boolean>} 是否成功导出
+   */
+  static async showExportConfigDialog() {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "导出搜索配置",
+        "选择导出方式：",
+        0,
+        "取消",
+        [
+          "☁️ 导出到 iCloud",
+          "📋 导出到剪贴板",
+          "📝 导出到当前笔记",
+          "📁 导出到文件"
+        ],
+        async (_, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const types = ["iCloud", "clipboard", "currentNote", "file"];
+          const success = await this.exportSearchConfigTo(types[buttonIndex - 1]);
+          resolve(success);
+        }
+      );
+    });
+  }
+
+  /**
+   * 显示导入配置选择对话框
+   * @returns {Promise<boolean>} 是否成功导入
+   */
+  static async showImportConfigDialog() {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "导入搜索配置",
+        "选择导入来源：",
+        0,
+        "取消",
+        [
+          "☁️ 从 iCloud 导入",
+          "📋 从剪贴板导入",
+          "📝 从当前笔记导入",
+          "📁 从文件导入"
+        ],
+        async (_, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const types = ["iCloud", "clipboard", "currentNote", "file"];
+          const success = await this.importSearchConfigFrom(types[buttonIndex - 1]);
+          resolve(success);
+        }
+      );
+    });
+  }
+
+  /**
+   * 管理搜索根目录界面
+   * 提供根目录的管理功能
+   */
+  static async manageSearchRootsUI() {
+    try {
+      const options = [
+        "📁 管理根目录列表",
+        "🔄 调整根目录顺序",
+        "➕ 添加当前卡片为根目录"
+      ];
+      
+      const result = await MNUtil.userSelect(
+        "管理搜索根目录",
+        "选择操作：",
+        options
+      );
+      
+      if (result === null || result === 0) {
+        return false;
+      }
+      
+      switch (result) {
+        case 1: // 管理根目录列表
+          await this.showRootManagementDialog();
+          break;
+          
+        case 2: // 调整根目录顺序
+          await this.showRootOrderDialog();
+          break;
+          
+        case 3: // 添加当前卡片
+          const focusNote = MNNote.getFocusNote();
+          if (focusNote) {
+            const name = focusNote.noteTitle || "未命名";
+            const key = "root_" + Date.now();
+            this.addSearchRoot(key, name, focusNote.noteId);
+            MNUtil.showHUD(`✅ 已添加根目录：${name}`);
+          } else {
+            MNUtil.showHUD("❌ 请先选择一个卡片");
+          }
+          break;
+      }
+      
+      return true;
+    } catch (error) {
+      MNUtil.showHUD("❌ 操作失败：" + error.message);
+      return false;
+    }
+  }
+
+  /**
+   * 管理同义词组界面
+   * 提供同义词组的管理功能（保留原方法名兼容）
+   */
+  static async manageSynonymGroupsUI() {
+    return this.manageSynonymGroups();
+  }
+
+  /**
+   * 综合搜索配置管理界面（已废弃）
+   * 此方法已被拆分为独立的配置功能，不再使用
+   * @deprecated 使用 showSearchSettingsDialog、manageSearchRootsUI、manageSynonymGroups 等独立方法
+   */
+  /*
+  static async manageSearchConfig() {
+    // 此方法已废弃，功能已拆分为独立的配置管理方法
+    MNUtil.showHUD("此功能已拆分为独立的配置管理方法");
+    return false;
+  }
+  */
+
+  /**
+   * 显示搜索设置对话框
+   */
+  static async showSearchSettingsDialog() {
+    this.initSearchConfig();
+    
+    const settings = [
+      `${this.searchRootConfigs.includeClassification ? "☑️" : "☐︎"} 搜索归类卡片`,
+      `${this.searchRootConfigs.onlyClassification ? "☑️" : "☐︎"} 只搜索归类卡片`,
+      `${this.searchRootConfigs.ignorePrefix ? "☑️" : "☐︎"} 忽略前缀搜索`,
+      `${this.searchRootConfigs.searchInKeywords ? "☑️" : "☐︎"} 搜索关键词字段`
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "搜索设置",
+      "点击切换设置状态：",
+      settings
+    );
+    
+    if (result === null || result === 0) {
+      return false;
+    }
+    
+    switch (result) {
+      case 1:
+        this.searchRootConfigs.includeClassification = !this.searchRootConfigs.includeClassification;
+        break;
+      case 2:
+        this.searchRootConfigs.onlyClassification = !this.searchRootConfigs.onlyClassification;
+        break;
+      case 3:
+        this.searchRootConfigs.ignorePrefix = !this.searchRootConfigs.ignorePrefix;
+        break;
+      case 4:
+        this.searchRootConfigs.searchInKeywords = !this.searchRootConfigs.searchInKeywords;
+        break;
+    }
+    
+    this.saveSearchConfig();
+    MNUtil.showHUD("✅ 设置已更新");
+    
+    // 重新显示设置对话框
+    await this.showSearchSettingsDialog();
+    return true;
+  }
+
+  /**
+   * 显示根目录排序对话框
+   * @returns {Promise<boolean>} 是否修改了顺序
+   */
+  static async showRootOrderDialog() {
+    try {
+      this.initSearchConfig();
+      
+      // 确保有顺序数组
+      if (!this.searchRootConfigs.rootsOrder) {
+        this.searchRootConfigs.rootsOrder = Object.keys(this.searchRootConfigs.roots);
+      }
+      
+      const roots = this.searchRootConfigs.roots;
+      const currentOrder = this.searchRootConfigs.rootsOrder;
+      const newOrder = [];
+      const remainingKeys = new Set(currentOrder);
+      
+      MNUtil.showHUD("请依次点击根目录，设置新顺序");
+      
+      while (remainingKeys.size > 0) {
+        const options = [];
+        const keys = [];
+        
+        // 构建选项列表
+        for (const key of remainingKeys) {
+          if (roots[key]) {
+            options.push(roots[key].name);
+            keys.push(key);
+          }
+        }
+        
+        if (options.length === 0) break;
+        
+        // 显示选择对话框
+        const result = await new Promise((resolve) => {
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            `设置顺序 (${newOrder.length + 1}/${currentOrder.length})`,
+            `已选择：${newOrder.map(k => roots[k].name).join(" → ")}\n\n请选择下一个：`,
+            0,
+            "完成",
+            options,
+            (alert, buttonIndex) => {
+              if (buttonIndex === 0) {
+                resolve(null);
+              } else {
+                resolve(keys[buttonIndex - 1]);
+              }
+            }
+          );
+        });
+        
+        if (result === null) {
+          // 用户点击完成，将剩余的按原顺序添加
+          for (const key of currentOrder) {
+            if (remainingKeys.has(key)) {
+              newOrder.push(key);
+            }
+          }
+          break;
+        }
+        
+        // 添加选中的项
+        newOrder.push(result);
+        remainingKeys.delete(result);
+      }
+      
+      // 保存新顺序
+      this.searchRootConfigs.rootsOrder = newOrder;
+      this.saveSearchConfig();
+      
+      return true;
+    } catch (error) {
+      MNUtil.log("调整根目录顺序失败: " + error.toString());
+      MNUtil.showHUD("调整顺序失败：" + error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * 显示根目录管理对话框
+   * @returns {Promise<boolean>} 是否进行了修改
+   */
+  static async showRootManagementDialog() {
+    try {
+      this.initSearchConfig();
+      
+      // 获取所有根目录
+      const roots = this.searchRootConfigs.roots;
+      const rootsOrder = this.searchRootConfigs.rootsOrder || Object.keys(roots);
+      
+      // 构建选项列表
+      const options = [];
+      const keys = [];
+      
+      for (const key of rootsOrder) {
+        if (roots[key]) {
+          const root = roots[key];
+          const prefix = root.isDefault ? "📌 " : "";
+          options.push(prefix + root.name);
+          keys.push(key);
+        }
+      }
+      
+      if (options.length === 0) {
+        MNUtil.showHUD("没有可管理的根目录");
+        return false;
+      }
+      
+      // 显示选择对话框
+      const selectedKey = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "管理根目录",
+          "选择要管理的根目录：",
+          0,
+          "取消",
+          options,
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+            } else {
+              resolve(keys[buttonIndex - 1]);
+            }
+          }
+        );
+      });
+      
+      if (!selectedKey) return false;
+      
+      const selectedRoot = roots[selectedKey];
+      
+      // 显示操作选项
+      const action = await new Promise((resolve) => {
+        const buttons = ["编辑名称", "更改卡片"];
+        if (selectedKey !== "default") {
+          buttons.push("删除");
+        }
+        
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          selectedRoot.name,
+          `ID: ${selectedRoot.id}\n选择操作：`,
+          0,
+          "取消",
+          buttons,
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+            } else {
+              resolve(buttons[buttonIndex - 1]);
+            }
+          }
+        );
+      });
+      
+      if (!action) return false;
+      
+      let modified = false;
+      
+      switch (action) {
+        case "编辑名称":
+          const newName = await new Promise((resolve) => {
+            const alert = UIAlertView.alloc().init();
+            alert.title = "编辑名称";
+            alert.message = "输入新名称：";
+            alert.alertViewStyle = 2; // UIAlertViewStylePlainTextInput
+            alert.addButtonWithTitle("取消");
+            alert.addButtonWithTitle("确定");
+            const textField = alert.textFieldAtIndex(0);
+            textField.text = selectedRoot.name;
+            alert.showWithHandler((alertView, buttonIndex) => {
+              if (buttonIndex === 1) {
+                resolve(alertView.textFieldAtIndex(0).text.trim());
+              } else {
+                resolve(null);
+              }
+            });
+          });
+          
+          if (newName && newName !== selectedRoot.name) {
+            modified = this.editSearchRoot(selectedKey, newName);
+            if (modified) {
+              MNUtil.showHUD("✅ 已更新名称");
+            }
+          }
+          break;
+          
+        case "更改卡片":
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("请先选择一个卡片");
+            break;
+          }
+          
+          const confirmed = await MNUtil.confirm(
+            "更改根目录卡片",
+            `将根目录"${selectedRoot.name}"更改为当前选中的卡片？`
+          );
+          
+          if (confirmed) {
+            modified = this.editSearchRoot(selectedKey, null, focusNote.noteId);
+            if (modified) {
+              MNUtil.showHUD("✅ 已更改卡片");
+            }
+          }
+          break;
+          
+        case "删除":
+          const deleteConfirmed = await MNUtil.confirm(
+            "删除根目录",
+            `确定要删除"${selectedRoot.name}"吗？`
+          );
+          
+          if (deleteConfirmed) {
+            modified = this.deleteSearchRoot(selectedKey);
+            if (modified) {
+              MNUtil.showHUD("✅ 已删除");
+            }
+          }
+          break;
+      }
+      
+      return modified;
+    } catch (error) {
+      MNUtil.log("管理根目录失败: " + error.toString());
+      MNUtil.showHUD("操作失败：" + error.message);
       return false;
     }
   }
@@ -6947,6 +8077,785 @@ class MNMath {
   }
 
   /**
+   * 获取所有同义词组
+   */
+  static getSynonymGroups() {
+    this.initSearchConfig();
+    return this.searchRootConfigs.synonymGroups || [];
+  }
+
+  /**
+   * 智能解析同义词输入
+   * 支持多种分隔符，优先级如下：
+   * 1. 逗号分隔（中英文）
+   * 2. 分号分隔（中英文）
+   * 3. 两个或更多连续空格
+   * 4. 单空格分隔（仅当没有其他分隔符时）
+   * @param {string} input - 用户输入的词汇字符串
+   * @returns {Array<string>} 解析后的词汇数组
+   */
+  static parseWords(input) {
+    // 移除首尾空格
+    input = input.trim();
+    
+    // 优先级1：逗号分割
+    if (input.includes(',') || input.includes('，')) {
+      return input.split(/[,，]/).map(w => w.trim()).filter(w => w);
+    }
+    
+    // 优先级2：分号分割
+    if (input.includes(';') || input.includes('；')) {
+      return input.split(/[;；]/).map(w => w.trim()).filter(w => w);
+    }
+    
+    // 优先级3：两个或更多连续空格
+    if (/\s{2,}/.test(input)) {
+      return input.split(/\s{2,}/).map(w => w.trim()).filter(w => w);
+    }
+    
+    // 优先级4：单空格分割
+    return input.split(/\s+/).map(w => w.trim()).filter(w => w);
+  }
+
+  /**
+   * 添加同义词组
+   * @param {string} name - 组名
+   * @param {Array<string>} words - 词汇数组
+   * @param {boolean} partialReplacement - 是否启用局部替换（默认 false）
+   */
+  static addSynonymGroup(name, words, partialReplacement = false) {
+    this.initSearchConfig();
+    const group = {
+      id: "group_" + Date.now(),
+      name: name,
+      words: words,
+      enabled: true,
+      partialReplacement: partialReplacement,  // 新增字段
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    
+    if (!this.searchRootConfigs.synonymGroups) {
+      this.searchRootConfigs.synonymGroups = [];
+    }
+    
+    this.searchRootConfigs.synonymGroups.push(group);
+    this.saveSearchConfig();
+    return group;
+  }
+
+  /**
+   * 更新同义词组
+   * @param {string} id - 组ID
+   * @param {Object} updates - 更新内容
+   */
+  static updateSynonymGroup(id, updates) {
+    this.initSearchConfig();
+    const groups = this.searchRootConfigs.synonymGroups || [];
+    const group = groups.find(g => g.id === id);
+    
+    if (group) {
+      Object.assign(group, updates);
+      group.updatedAt = Date.now();
+      this.saveSearchConfig();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 删除同义词组
+   * @param {string} id - 组ID
+   */
+  static deleteSynonymGroup(id) {
+    this.initSearchConfig();
+    const groups = this.searchRootConfigs.synonymGroups || [];
+    const index = groups.findIndex(g => g.id === id);
+    
+    if (index !== -1) {
+      groups.splice(index, 1);
+      this.saveSearchConfig();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 转义正则表达式特殊字符
+   * @param {string} str - 要转义的字符串
+   * @returns {string} 转义后的字符串
+   */
+  static escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
+   * 判断空格处理规则
+   * @param {string} from - 原始词
+   * @param {string} to - 替换词
+   * @returns {string} 空格处理规则：'removeSpace' | 'addSpace' | 'direct'
+   */
+  static getSpacingRule(from, to) {
+    const isFromSymbol = /^[^\u4e00-\u9fa5a-zA-Z]+$/.test(from);  // 非中英文
+    const isToSymbol = /^[^\u4e00-\u9fa5a-zA-Z]+$/.test(to);
+    const isFromChinese = /[\u4e00-\u9fa5]/.test(from);
+    const isToChinese = /[\u4e00-\u9fa5]/.test(to);
+    const isFromEnglish = /[a-zA-Z]/.test(from);
+    const isToEnglish = /[a-zA-Z]/.test(to);
+    
+    // 符号和中文之间的转换
+    if (isFromSymbol && isToChinese) return 'removeSpace';
+    if (isFromChinese && isToSymbol) return 'keepOrAdd';
+    
+    // 中英文之间的转换
+    if (isFromChinese && isToEnglish) return 'addSpace';
+    if (isFromEnglish && isToChinese) return 'removeSpace';
+    
+    return 'direct';
+  }
+
+  /**
+   * 生成局部替换变体
+   * @param {string} keyword - 原始关键词
+   * @param {Object} group - 同义词组
+   * @returns {Array<string>} 生成的变体数组
+   */
+  static generatePartialReplacements(keyword, group) {
+    const variants = new Set();
+    
+    if (!group.partialReplacement || !group.words) return Array.from(variants);
+    
+    // 对组内每个词进行检查
+    for (const word of group.words) {
+      if (keyword.includes(word)) {
+        // 生成所有其他词的替换变体
+        for (const replacement of group.words) {
+          if (replacement === word) continue;  // 跳过自己
+          
+          let variant = keyword;
+          const spacingRule = this.getSpacingRule(word, replacement);
+          
+          switch (spacingRule) {
+            case 'removeSpace':
+              // 移除前后空格
+              const regex = new RegExp(`\\s*${this.escapeRegex(word)}\\s*`, 'g');
+              variant = variant.replace(regex, replacement);
+              break;
+              
+            case 'addSpace':
+              // 添加空格
+              variant = variant.replace(word, ` ${replacement} `);
+              variant = variant.replace(/\s+/g, ' ').trim();
+              break;
+              
+            case 'keepOrAdd':
+              // 如果原本有空格则保持，没有则添加
+              if (keyword.includes(` ${word} `)) {
+                variant = variant.replace(` ${word} `, ` ${replacement} `);
+              } else if (keyword.includes(`${word} `)) {
+                variant = variant.replace(`${word} `, `${replacement} `);
+              } else if (keyword.includes(` ${word}`)) {
+                variant = variant.replace(` ${word}`, ` ${replacement}`);
+              } else {
+                variant = variant.replace(word, ` ${replacement} `);
+                variant = variant.replace(/\s+/g, ' ').trim();
+              }
+              break;
+              
+            default:
+              // 直接替换
+              variant = variant.replace(word, replacement);
+          }
+          
+          if (variant !== keyword) {
+            variants.add(variant);
+          }
+        }
+      }
+    }
+    
+    return Array.from(variants);
+  }
+
+  /**
+   * 扩展关键词（核心功能）
+   * 根据同义词组扩展输入的关键词
+   * @param {Array<string>} keywords - 原始关键词数组
+   * @returns {Array<string>} 扩展后的关键词数组
+   */
+  /**
+   * 扩展关键词并返回分组结构（用于"与"逻辑搜索）
+   * @param {Array<string>} keywords - 原始关键词数组
+   * @returns {Array<Array<string>>} 分组的关键词数组，每组包含原始词及其同义词
+   */
+  static expandKeywordsWithSynonymsGrouped(keywords) {
+    const synonymGroups = this.getSynonymGroups();
+    const keywordGroups = [];
+    
+    for (const keyword of keywords) {
+      const keywordGroup = new Set();
+      // 先添加原始关键词
+      keywordGroup.add(keyword);
+      
+      // 查找包含该关键词的同义词组
+      for (const group of synonymGroups) {
+        if (!group.enabled) continue;
+        
+        // 1. 完整词匹配（原有功能）
+        const foundInGroup = group.words.some(word => 
+          word.toLowerCase() === keyword.toLowerCase()
+        );
+        
+        if (foundInGroup) {
+          // 添加组内所有词
+          group.words.forEach(word => keywordGroup.add(word));
+        }
+        
+        // 2. 局部替换（新功能）
+        if (group.partialReplacement) {
+          const partialVariants = this.generatePartialReplacements(keyword, group);
+          partialVariants.forEach(variant => keywordGroup.add(variant));
+        }
+      }
+      
+      keywordGroups.push(Array.from(keywordGroup));
+    }
+    
+    // 记录日志
+    const totalExpanded = keywordGroups.reduce((sum, group) => sum + group.length, 0);
+    if (totalExpanded > keywords.length) {
+      const details = keywordGroups.map((g, i) => {
+        if (g.length > 3) {
+          return `  ${keywords[i]} → [${g.slice(0, 3).join(", ")}...共${g.length}个]`;
+        } else {
+          return `  ${keywords[i]} → [${g.join(", ")}]`;
+        }
+      }).join("\n");
+      MNUtil.log(`关键词扩展详情：\n${details}`);
+    }
+    
+    return keywordGroups;
+  }
+
+  static expandKeywordsWithSynonyms(keywords) {
+    const synonymGroups = this.getSynonymGroups();
+    const expandedKeywords = new Set();
+    
+    for (const keyword of keywords) {
+      // 先添加原始关键词
+      expandedKeywords.add(keyword);
+      
+      // 查找包含该关键词的同义词组
+      for (const group of synonymGroups) {
+        if (!group.enabled) continue;
+        
+        // 检查关键词是否在组内
+        const foundInGroup = group.words.some(word => 
+          word.toLowerCase() === keyword.toLowerCase()
+        );
+        
+        if (foundInGroup) {
+          // 添加组内所有词
+          group.words.forEach(word => expandedKeywords.add(word));
+        }
+      }
+    }
+    
+    const result = Array.from(expandedKeywords);
+    
+    // 如果扩展了关键词，记录日志
+    if (result.length > keywords.length) {
+      MNUtil.log(`关键词扩展：${keywords.join(", ")} → ${result.join(", ")}`);
+    }
+    
+    return result;
+  }
+
+  /**
+   * 获取所有排除词组
+   */
+  static getExclusionGroups() {
+    this.initSearchConfig();
+    return this.searchRootConfigs.exclusionGroups || [];
+  }
+
+  /**
+   * 添加排除词组
+   * @param {string} name - 组名
+   * @param {Array<string>} triggerWords - 触发词数组
+   * @param {Array<string>} excludeWords - 排除词数组
+   */
+  static addExclusionGroup(name, triggerWords, excludeWords) {
+    this.initSearchConfig();
+    const group = {
+      id: "excl_" + Date.now(),
+      name: name,
+      triggerWords: triggerWords,
+      excludeWords: excludeWords,
+      enabled: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    
+    if (!this.searchRootConfigs.exclusionGroups) {
+      this.searchRootConfigs.exclusionGroups = [];
+    }
+    
+    this.searchRootConfigs.exclusionGroups.push(group);
+    this.saveSearchConfig();
+    return group;
+  }
+
+  /**
+   * 更新排除词组
+   * @param {string} id - 组ID
+   * @param {Object} updates - 更新内容
+   */
+  static updateExclusionGroup(id, updates) {
+    this.initSearchConfig();
+    const groups = this.searchRootConfigs.exclusionGroups || [];
+    const group = groups.find(g => g.id === id);
+    
+    if (group) {
+      Object.assign(group, updates);
+      group.updatedAt = Date.now();
+      this.saveSearchConfig();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 删除排除词组
+   * @param {string} id - 组ID
+   */
+  static deleteExclusionGroup(id) {
+    this.initSearchConfig();
+    const groups = this.searchRootConfigs.exclusionGroups || [];
+    const index = groups.findIndex(g => g.id === id);
+    
+    if (index !== -1) {
+      groups.splice(index, 1);
+      this.saveSearchConfig();
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 根据关键词获取激活的排除词列表和详细信息
+   * @param {Array<string>} keywords - 关键词数组
+   * @returns {Object} 包含排除词列表和详细信息的对象
+   */
+  static getActiveExclusions(keywords) {
+    const exclusions = new Set();
+    const activeTriggers = new Set();
+    const activeGroups = [];
+    const groups = this.getExclusionGroups();
+    
+    for (const keyword of keywords) {
+      for (const group of groups) {
+        if (!group.enabled) continue;
+        
+        // 检查是否匹配触发词（不区分大小写）
+        const matchedTrigger = group.triggerWords.find(trigger => 
+          trigger.toLowerCase() === keyword.toLowerCase()
+        );
+        
+        if (matchedTrigger) {
+          // 记录激活的触发词
+          activeTriggers.add(matchedTrigger);
+          
+          // 添加所有排除词
+          group.excludeWords.forEach(word => exclusions.add(word));
+          
+          // 记录激活的组（避免重复）
+          if (!activeGroups.find(g => g.id === group.id)) {
+            activeGroups.push({
+              id: group.id,
+              name: group.name,
+              triggerWords: group.triggerWords,
+              excludeWords: group.excludeWords
+            });
+          }
+          
+          MNUtil.log(`触发排除词组 "${group.name}": ${keyword} → 排除 [${group.excludeWords.join(", ")}]`);
+        }
+      }
+    }
+    
+    return {
+      excludeWords: Array.from(exclusions),
+      triggerWords: Array.from(activeTriggers),
+      groups: activeGroups
+    };
+  }
+
+  /**
+   * 导出同义词组配置
+   * @returns {string|null} JSON 字符串或 null
+   */
+  static exportSynonymGroups() {
+    try {
+      this.initSearchConfig();
+      const config = {
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        synonymGroups: this.getSynonymGroups(),
+        searchRootConfigs: {
+          includeClassification: this.searchRootConfigs.includeClassification,
+          ignorePrefix: this.searchRootConfigs.ignorePrefix,
+          searchInKeywords: this.searchRootConfigs.searchInKeywords
+        }
+      };
+      
+      const jsonStr = JSON.stringify(config, null, 2);
+      
+      // 复制到剪贴板
+      MNUtil.copy(jsonStr);
+      
+      // 保存到文件（可选）
+      const fileName = `synonym_groups_${Date.now()}.json`;
+      const documentsPath = NSFileManager.defaultManager().documentsPath;
+      if (documentsPath) {
+        const filePath = documentsPath + "/" + fileName;
+        try {
+          NSString.stringWithString(jsonStr).writeToFileAtomicallyEncodingError(
+            filePath, true, 4, null // NSUTF8StringEncoding = 4
+          );
+          MNUtil.showHUD(`✅ 已导出配置\n📋 已复制到剪贴板\n📁 文件：${fileName}`);
+        } catch (fileError) {
+          // 文件保存失败，但剪贴板成功
+          MNUtil.showHUD(`✅ 已导出配置\n📋 已复制到剪贴板`);
+        }
+      } else {
+        MNUtil.showHUD(`✅ 已导出配置\n📋 已复制到剪贴板`);
+      }
+      
+      return jsonStr;
+    } catch (error) {
+      MNUtil.showHUD("❌ 导出失败：" + error.message);
+      MNUtil.log("导出同义词组失败: " + error.toString());
+      return null;
+    }
+  }
+
+  /**
+   * 格式化 JSON 为 Markdown 代码块
+   * @param {string} jsonStr - JSON 字符串
+   * @returns {string} 格式化后的 Markdown 代码块
+   */
+  static formatJsonAsCodeBlock(jsonStr) {
+    return `\`\`\`json\n${jsonStr}\n\`\`\``;
+  }
+
+  /**
+   * 从 Markdown 代码块中提取 JSON
+   * @param {string} text - 包含代码块的文本
+   * @returns {string|null} 提取的 JSON 字符串，失败返回 null
+   */
+  static extractJsonFromCodeBlock(text) {
+    // 尝试提取 ```json ... ``` 格式的内容
+    const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (codeBlockMatch) {
+      return codeBlockMatch[1].trim();
+    }
+    
+    // 如果没有代码块格式，直接返回原文本（兼容旧格式）
+    return text;
+  }
+
+  /**
+   * 在笔记中查找同义词配置评论
+   * @param {MNNote} note - 笔记对象
+   * @returns {Object|null} 返回 {index: 评论索引, comment: 评论对象} 或 null
+   */
+  static findSynonymConfigComment(note) {
+    if (!note || !note.comments) return null;
+    
+    for (let i = 0; i < note.comments.length; i++) {
+      const comment = note.comments[i];
+      if (comment.type === "textComment" && comment.text.includes('"synonymGroups"')) {
+        return {
+          index: i,
+          comment: comment
+        };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 同义词配置导出到指定目标
+   * @param {string} target - 导出目标: 'icloud', 'clipboard', 'note', 'file'
+   * @returns {Promise<boolean>} 导出是否成功
+   */
+  static async exportSynonymConfigTo(target) {
+    try {
+      this.initSearchConfig();
+      const config = {
+        version: "1.0",
+        type: "synonymGroups",
+        exportDate: new Date().toISOString(),
+        synonymGroups: this.getSynonymGroups()
+      };
+      
+      const jsonStr = JSON.stringify(config, null, 2);
+      
+      switch (target) {
+        case 'icloud':
+          MNUtil.setByiCloud("MNMath_SynonymGroups_Config", jsonStr);
+          MNUtil.showHUD("✅ 已同步到 iCloud");
+          return true;
+          
+        case 'clipboard':
+          MNUtil.copy(jsonStr);
+          MNUtil.showHUD("✅ 已复制到剪贴板");
+          return true;
+          
+        case 'note':
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 请先选中一个笔记");
+            return false;
+          }
+          
+          // 格式化为 Markdown 代码块
+          const formattedJson = this.formatJsonAsCodeBlock(jsonStr);
+          
+          // 查找已有的同义词配置评论
+          const existingConfig = this.findSynonymConfigComment(focusNote);
+          
+          if (existingConfig) {
+            // 替换已有配置
+            focusNote.MNComments[existingConfig.index].text = formattedJson;
+            MNUtil.showHUD("✅ 已更新当前笔记中的配置");
+          } else {
+            // 添加新配置
+            focusNote.appendTextComment(formattedJson);
+            MNUtil.showHUD("✅ 已保存到当前笔记");
+          }
+          return true;
+          
+        case 'file':
+          const fileName = `synonym_groups_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+          const documentsPath = NSFileManager.defaultManager().documentsPath;
+          if (documentsPath) {
+            const filePath = documentsPath + "/" + fileName;
+            NSString.stringWithString(jsonStr).writeToFileAtomicallyEncodingError(
+              filePath, true, 4, null // NSUTF8StringEncoding = 4
+            );
+            MNUtil.showHUD(`✅ 已导出到文件\n📁 ${fileName}`);
+            return true;
+          } else {
+            throw new Error("无法访问文档目录");
+          }
+          
+        default:
+          throw new Error("未知的导出目标");
+      }
+    } catch (error) {
+      MNUtil.showHUD(`❌ 导出到 ${target} 失败：${error.message}`);
+      MNUtil.log(`导出同义词配置到 ${target} 失败: ${error.toString()}`);
+      return false;
+    }
+  }
+
+  /**
+   * 从指定来源导入同义词配置
+   * @param {string} source - 导入来源: 'icloud', 'clipboard', 'note', 'file'
+   * @returns {Promise<boolean>} 导入是否成功
+   */
+  static async importSynonymConfigFrom(source) {
+    try {
+      let jsonStr = null;
+      
+      switch (source) {
+        case 'icloud':
+          jsonStr = MNUtil.getByiCloud("MNMath_SynonymGroups_Config", null);
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ iCloud 中未找到同义词配置");
+            return false;
+          }
+          break;
+          
+        case 'clipboard':
+          jsonStr = MNUtil.clipboardText;
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 剪贴板为空");
+            return false;
+          }
+          break;
+          
+        case 'note':
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 请先选中包含配置的笔记");
+            return false;
+          }
+          
+          // 使用辅助方法查找同义词配置评论
+          const configComment = this.findSynonymConfigComment(focusNote);
+          if (!configComment) {
+            MNUtil.showHUD("❌ 当前笔记中未找到同义词配置");
+            return false;
+          }
+          
+          // 从评论中提取 JSON（支持代码块格式和纯文本格式）
+          jsonStr = this.extractJsonFromCodeBlock(configComment.comment.text);
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 无法解析笔记中的配置格式");
+            return false;
+          }
+          break;
+          
+        case 'file':
+          // 文件导入需要用户选择文件，这里先提示
+          MNUtil.showHUD("❌ 文件导入功能需要手动实现文件选择");
+          return false;
+          
+        default:
+          throw new Error("未知的导入来源");
+      }
+      
+      return await this.importSynonymGroups(jsonStr);
+    } catch (error) {
+      MNUtil.showHUD(`❌ 从 ${source} 导入失败：${error.message}`);
+      MNUtil.log(`从 ${source} 导入同义词配置失败: ${error.toString()}`);
+      return false;
+    }
+  }
+
+  /**
+   * 显示同义词导出选择对话框
+   */
+  static async showExportSynonymDialog() {
+    const options = [
+      "☁️ 同步到 iCloud",
+      "📋 复制到剪贴板", 
+      "📝 保存到当前笔记",
+      "📁 导出到文件"
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "导出同义词配置",
+      "选择导出方式：",
+      options
+    );
+    
+    if (result === null || result === 0) return;
+    
+    const targets = ['icloud', 'clipboard', 'note', 'file'];
+    await this.exportSynonymConfigTo(targets[result - 1]);
+  }
+
+  /**
+   * 显示同义词导入选择对话框
+   */
+  static async showImportSynonymDialog() {
+    const options = [
+      "☁️ 从 iCloud 同步",
+      "📋 从剪贴板导入",
+      "📝 从当前笔记导入"
+      // 暂时不包含文件导入
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "导入同义词配置",
+      "选择导入来源：",
+      options
+    );
+    
+    if (result === null || result === 0) return;
+    
+    const sources = ['icloud', 'clipboard', 'note'];
+    await this.importSynonymConfigFrom(sources[result - 1]);
+  }
+
+  /**
+   * 导入同义词组配置
+   * @param {string} jsonStr - JSON 字符串
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async importSynonymGroups(jsonStr) {
+    try {
+      const config = JSON.parse(jsonStr);
+      
+      // 验证数据格式
+      if (!config.version || !config.synonymGroups) {
+        throw new Error("无效的配置格式");
+      }
+      
+      // 询问导入方式
+      return new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "导入配置",
+          `将导入 ${config.synonymGroups.length} 个同义词组\n选择导入方式：`,
+          0,
+          "取消",
+          ["替换现有配置", "合并配置（保留现有）"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(false); // 取消
+              return;
+            }
+            
+            this.initSearchConfig();
+            
+            if (buttonIndex === 1) {
+              // 替换模式
+              this.searchRootConfigs.synonymGroups = config.synonymGroups;
+              if (config.searchRootConfigs) {
+                Object.assign(this.searchRootConfigs, config.searchRootConfigs);
+              }
+            } else if (buttonIndex === 2) {
+              // 合并模式
+              const existingIds = new Set(this.searchRootConfigs.synonymGroups.map(g => g.id));
+              for (const group of config.synonymGroups) {
+                if (!existingIds.has(group.id)) {
+                  // 生成新ID避免冲突
+                  group.id = "group_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+                  this.searchRootConfigs.synonymGroups.push(group);
+                }
+              }
+            }
+            
+            this.saveSearchConfig();
+            MNUtil.showHUD(`✅ 已导入 ${config.synonymGroups.length} 个同义词组`);
+            resolve(true);
+          }
+        );
+      });
+    } catch (error) {
+      MNUtil.showHUD("❌ 导入失败：" + error.message);
+      MNUtil.log("导入同义词组失败: " + error.toString());
+      return false;
+    }
+  }
+
+  /**
+   * 从剪贴板导入同义词组配置
+   * @returns {Promise<boolean>} 是否成功
+   */
+  static async importSynonymGroupsFromClipboard() {
+    const clipboardText = MNUtil.clipboardText;
+    if (!clipboardText) {
+      MNUtil.showHUD("❌ 剪贴板为空");
+      return false;
+    }
+    
+    // 检查是否是 JSON 格式
+    try {
+      JSON.parse(clipboardText);
+    } catch (error) {
+      MNUtil.showHUD("❌ 剪贴板内容不是有效的 JSON 格式");
+      return false;
+    }
+    
+    return await this.importSynonymGroups(clipboardText);
+  }
+
+  /**
    * 搜索笔记主函数
    * @param {Array<string>} keywords - 关键词数组
    * @param {string} rootNoteId - 根目录 ID
@@ -6954,6 +8863,23 @@ class MNMath {
    */
   static async searchNotesInDescendants(keywords, rootNoteId, selectedTypes = null) {
     try {
+      // 获取分组的扩展关键词（用于"与"逻辑搜索）
+      const expandedKeywordGroups = this.expandKeywordsWithSynonymsGrouped(keywords);
+      
+      // 计算总扩展词数用于显示
+      const totalExpandedCount = expandedKeywordGroups.reduce((sum, group) => sum + group.length, 0);
+      if (totalExpandedCount > keywords.length) {
+        MNUtil.showHUD(`🔄 关键词已扩展：${keywords.length}个词组，共${totalExpandedCount}个词`);
+        await MNUtil.delay(0.5);
+      }
+      
+      // 获取激活的排除词信息
+      const exclusionInfo = this.getActiveExclusions(keywords);
+      if (exclusionInfo.excludeWords.length > 0) {
+        MNUtil.showHUD(`🚫 将智能过滤包含排除词的结果`);
+        await MNUtil.delay(0.5);
+      }
+      
       // 获取根卡片
       const rootNote = MNNote.new(rootNoteId);
       if (!rootNote) {
@@ -6973,6 +8899,7 @@ class MNMath {
       
       // 获取配置中的归类卡片设置
       const includeClassification = this.searchRootConfigs ? this.searchRootConfigs.includeClassification : true;
+      const onlyClassification = this.searchRootConfigs ? this.searchRootConfigs.onlyClassification : false;
       // 获取配置中的忽略前缀设置
       const ignorePrefix = this.searchRootConfigs ? this.searchRootConfigs.ignorePrefix : false;
       
@@ -6995,13 +8922,19 @@ class MNMath {
         // 获取卡片类型
         const noteType = this.getNoteType(mnNote);
         
-        // 如果不包含归类卡片，检查是否为归类卡片
-        if (!includeClassification && noteType === "归类") {
+        // 处理归类卡片的过滤逻辑
+        if (onlyClassification) {
+          // 只搜索归类卡片模式
+          if (noteType !== "归类") {
+            continue;  // 跳过非归类卡片
+          }
+        } else if (!includeClassification && noteType === "归类") {
+          // 不包含归类卡片模式
           continue;  // 跳过归类卡片
         }
         
-        // 如果用户选择了特定类型，进行类型筛选
-        if (selectedTypes !== null && selectedTypes.size > 0) {
+        // 如果用户选择了特定类型，进行类型筛选（只搜索归类卡片时忽略类型筛选）
+        if (!onlyClassification && selectedTypes !== null && selectedTypes.size > 0) {
           if (!selectedTypes.has(noteType)) {
             continue;  // 跳过未选中类型的卡片
           }
@@ -7029,17 +8962,81 @@ class MNMath {
           }
         }
         
-        // 检查是否所有关键词都包含在搜索文本中
-        let allMatch = true;
-        for (const keyword of keywords) {
-          if (!searchText.includes(keyword)) {
-            allMatch = false;
-            break;
+        // 使用"与"逻辑：每个关键词组必须至少有一个匹配
+        // 例如：输入 "A//B"，A 及其同义词为一组，B 及其同义词为一组
+        // 搜索文本必须包含第一组中的至少一个词 且 包含第二组中的至少一个词
+        let allGroupsMatch = true;
+        
+        for (const keywordGroup of expandedKeywordGroups) {
+          let groupHasMatch = false;
+          
+          // 检查当前组中是否有任何关键词匹配
+          for (const keyword of keywordGroup) {
+            if (searchText.includes(keyword)) {
+              groupHasMatch = true;
+              break;  // 找到匹配就跳出当前组的循环
+            }
+          }
+          
+          // 如果当前组没有任何匹配，则整体不匹配
+          if (!groupHasMatch) {
+            allGroupsMatch = false;
+            break;  // 不需要检查其他组了
           }
         }
         
-        if (allMatch) {
-          results.push(mnNote);
+        // 只有所有组都有匹配时，才考虑将卡片加入结果
+        if (allGroupsMatch) {
+          // 智能排除检查
+          let shouldExclude = false;
+          
+          if (exclusionInfo.groups.length > 0) {
+            // 检查每个激活的排除词组
+            for (const group of exclusionInfo.groups) {
+              let hasExcludeWord = false;
+              let hasIndependentTriggerWord = false;
+              
+              // 1. 检查是否包含排除词
+              for (const excludeWord of group.excludeWords) {
+                if (searchText.includes(excludeWord)) {
+                  hasExcludeWord = true;
+                  break;
+                }
+              }
+              
+              if (hasExcludeWord) {
+                // 2. 创建一个临时文本，将所有排除词替换为特殊标记
+                let tempText = searchText;
+                for (const excludeWord of group.excludeWords) {
+                  // 使用全局替换，不区分大小写
+                  tempText = tempText.replace(new RegExp(excludeWord, 'gi'), '###EXCLUDED###');
+                }
+                
+                // 3. 检查触发词是否在移除排除词后仍然存在
+                for (const triggerWord of group.triggerWords) {
+                  if (tempText.includes(triggerWord)) {
+                    hasIndependentTriggerWord = true;
+                    MNUtil.log(`卡片 "${title}" 中触发词 "${triggerWord}" 独立存在`);
+                    break;
+                  }
+                }
+                
+                // 4. 决定是否排除
+                if (hasExcludeWord && !hasIndependentTriggerWord) {
+                  shouldExclude = true;
+                  MNUtil.log(`❌ 排除卡片: "${title}" (包含排除词 "${group.excludeWords.join(", ")}" 且触发词不独立存在)`);
+                  break;
+                } else if (hasExcludeWord && hasIndependentTriggerWord) {
+                  MNUtil.log(`✅ 保留卡片: "${title}" (虽包含排除词但触发词独立存在)`);
+                }
+              }
+            }
+          }
+          
+          // 只有不应该排除时才加入结果
+          if (!shouldExclude) {
+            results.push(mnNote);
+          }
         }
       }
       
@@ -7076,18 +9073,23 @@ class MNMath {
         // 显示归类卡片搜索状态
         const includeClassification = this.searchRootConfigs.includeClassification;
         message += `\n📑 搜索归类卡片：${includeClassification ? "☑️ 是" : "☐︎ 否"}`;
+        // 显示只搜索归类卡片状态
+        const onlyClassification = this.searchRootConfigs.onlyClassification;
+        message += `\n🎯 只搜索归类卡片：${onlyClassification ? "☑️ 是" : "☐︎ 否"}`;
         // 显示忽略前缀搜索状态
         const ignorePrefix = this.searchRootConfigs.ignorePrefix;
-        message += `\n🎯 忽略前缀搜索：${ignorePrefix ? "☑️ 是" : "☐︎ 否"}`;
+        message += `\n📝 忽略前缀搜索：${ignorePrefix ? "☑️ 是" : "☐︎ 否"}`;
         // 显示搜索关键词字段状态
         const searchInKeywords = this.searchRootConfigs.searchInKeywords;
         message += `\n🔖 搜索关键词字段：${searchInKeywords ? "☑️ 是" : "☐︎ 否"}`;
-        // 显示选中的类型
-        if (selectedTypes !== null && selectedTypes.size > 0) {
-          const typeNames = Array.from(selectedTypes).join("、");
-          message += `\n📋 搜索类型：${typeNames}`;
-        } else {
-          message += `\n📋 搜索类型：全部`;
+        // 显示选中的类型（只搜索归类卡片时不显示类型选择）
+        if (!onlyClassification) {
+          if (selectedTypes !== null && selectedTypes.size > 0) {
+            const typeNames = Array.from(selectedTypes).join("、");
+            message += `\n📋 搜索类型：${typeNames}`;
+          } else {
+            message += `\n📋 搜索类型：全部`;
+          }
         }
         message += `\n\n💡 提示：点击"添加根目录"可使用当前卡片或输入ID/URL`;
         
@@ -7098,11 +9100,23 @@ class MNMath {
             message,
             2, // 输入框样式
             "取消",
-            ["开始搜索", "下一个词", "切换根目录", "添加根目录", 
-             includeClassification ? "☑️ 搜索归类卡片" : "☐︎ 搜索归类卡片",
-             ignorePrefix ? "☑️ 忽略前缀搜索" : "☐︎ 忽略前缀搜索",
-             searchInKeywords ? "☑️ 搜索关键词字段" : "☐︎ 搜索关键词字段",
-             "📋 选择类型"],
+            // 构建按钮数组
+            (() => {
+              const buttons = [
+                "开始搜索", "下一个词", "切换根目录", "添加根目录",
+                includeClassification ? "☑️ 搜索归类卡片" : "☐︎ 搜索归类卡片",
+                onlyClassification ? "☑️ 只搜索归类卡片" : "☐︎ 只搜索归类卡片",
+                ignorePrefix ? "☑️ 忽略前缀搜索" : "☐︎ 忽略前缀搜索",
+                searchInKeywords ? "☑️ 搜索关键词字段" : "☐︎ 搜索关键词字段"
+              ];
+              // 只在未启用"只搜索归类卡片"时显示类型选择按钮
+              if (!onlyClassification) {
+                buttons.push("📋 选择类型");
+              }
+              // 添加更多功能按钮
+              buttons.push("⚙️ 更多功能");
+              return buttons;
+            })(),
             (alert, buttonIndex) => {
               if (buttonIndex === 0) {
                 // 取消
@@ -7148,16 +9162,29 @@ class MNMath {
                   resolve({ action: "toggleClassification" });
                   break;
                   
-                case 6: // 切换忽略前缀搜索开关
+                case 6: // 切换只搜索归类卡片开关
+                  resolve({ action: "toggleOnlyClassification" });
+                  break;
+                  
+                case 7: // 切换忽略前缀搜索开关
                   resolve({ action: "toggleIgnorePrefix" });
                   break;
                   
-                case 7: // 切换搜索关键词字段开关
+                case 8: // 切换搜索关键词字段开关
                   resolve({ action: "toggleSearchInKeywords" });
                   break;
                   
-                case 8: // 选择类型
-                  resolve({ action: "selectTypes" });
+                case 9: // 选择类型（只在未启用"只搜索归类卡片"时存在）
+                  if (!onlyClassification) {
+                    resolve({ action: "selectTypes" });
+                  } else {
+                    // 如果"只搜索归类卡片"启用，9 是"更多功能"
+                    resolve({ action: "moreFeatures" });
+                  }
+                  break;
+                  
+                case 10: // 更多功能（只在未启用"只搜索归类卡片"时存在）
+                  resolve({ action: "moreFeatures" });
                   break;
               }
             }
@@ -7218,8 +9245,25 @@ class MNMath {
           case "toggleClassification":
             // 切换归类卡片搜索开关
             this.searchRootConfigs.includeClassification = !this.searchRootConfigs.includeClassification;
+            // 如果禁用了包含归类卡片，同时也要禁用只搜索归类卡片
+            if (!this.searchRootConfigs.includeClassification) {
+              this.searchRootConfigs.onlyClassification = false;
+            }
             this.saveSearchConfig();
             MNUtil.showHUD(`归类卡片搜索：${this.searchRootConfigs.includeClassification ? "已启用" : "已禁用"}`);
+            break;
+            
+          case "toggleOnlyClassification":
+            // 切换只搜索归类卡片开关
+            this.searchRootConfigs.onlyClassification = !this.searchRootConfigs.onlyClassification;
+            // 如果启用了只搜索归类卡片，确保包含归类卡片也是启用的
+            if (this.searchRootConfigs.onlyClassification) {
+              this.searchRootConfigs.includeClassification = true;
+              // 同时清空类型选择
+              selectedTypes = null;
+            }
+            this.saveSearchConfig();
+            MNUtil.showHUD(`只搜索归类卡片：${this.searchRootConfigs.onlyClassification ? "已启用" : "已禁用"}`);
             break;
             
           case "toggleIgnorePrefix":
@@ -7243,6 +9287,21 @@ class MNMath {
               selectedTypes = newSelectedTypes;
             }
             break;
+            
+          case "moreFeatures":
+            // 显示更多功能菜单
+            const moreAction = await this.showMoreFeaturesMenu();
+            if (moreAction === "manageSynonyms") {
+              await this.manageSynonymGroups();
+            } else if (moreAction === "manageExclusions") {
+              await this.manageExclusionGroups();
+            } else if (moreAction === "manageRoots") {
+              await this.manageSearchRootsUI();
+            } else if (moreAction === "importExport") {
+              await this.showImportExportMenu();
+            }
+            break;
+            
         }
         
         // 如果是 search 或 cancel，会 return，其他情况继续循环
@@ -7367,10 +9426,17 @@ class MNMath {
       const rootOptions = ["📍 当前选中的卡片（临时）"];
       const rootKeys = ["__current__"];
       
-      for (const [key, root] of Object.entries(allRoots)) {
-        const marker = root.id === currentRootId ? " ✅" : "";
-        rootOptions.push(root.name + marker);
-        rootKeys.push(key);
+      // 使用 rootsOrder 数组的顺序，如果没有则使用 Object.keys
+      this.initSearchConfig();
+      const rootsOrder = this.searchRootConfigs.rootsOrder || Object.keys(allRoots);
+      
+      for (const key of rootsOrder) {
+        const root = allRoots[key];
+        if (root) {
+          const marker = root.id === currentRootId ? " ✅" : "";
+          rootOptions.push(root.name + marker);
+          rootKeys.push(key);
+        }
       }
       
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
@@ -7627,6 +9693,1308 @@ class MNMath {
       const lastChild = boardNote.childNotes[boardNote.childNotes.length - 1];
       lastChild.focusInFloatMindMap(0.5);
     }
+  }
+
+  /**
+   * 管理同义词组 - 主界面
+   */
+  static async manageSynonymGroups() {
+    try {
+      while (true) {
+        const groups = this.getSynonymGroups();
+        const options = [];
+        
+        // 显示现有同义词组
+        for (const group of groups) {
+          const status = group.enabled ? "✅" : "⭕";
+          const partialIcon = group.partialReplacement ? "🔄" : "";  // 局部替换标识
+          const wordsPreview = group.words.slice(0, 3).join(", ");
+          const moreText = group.words.length > 3 ? `... (共${group.words.length}个)` : "";
+          options.push(`${status} ${partialIcon} ${group.name}: ${wordsPreview}${moreText}`);
+        }
+        
+        // 添加操作选项
+        options.push("➕ 添加新同义词组");
+        options.push("──────────────");
+        options.push("📤 导出同义词配置");
+        options.push("📥 导入同义词配置");
+        
+        const result = await MNUtil.userSelect(
+          "同义词管理",
+          `共 ${groups.length} 个同义词组\n\n提示：点击同义词组可编辑`,
+          options
+        );
+        
+        if (result === null || result === 0) {
+          break; // 取消
+        }
+        
+        const selectedIndex = result - 1; // userSelect 返回的索引从1开始
+        
+        if (selectedIndex < groups.length) {
+          // 编辑现有组
+          await this.editSynonymGroup(groups[selectedIndex]);
+          continue; // 重新显示菜单，避免双弹窗
+        } else if (selectedIndex === groups.length) {
+          // 添加新组
+          await this.showAddSynonymDialog();
+        } else if (selectedIndex === groups.length + 1) {
+          // 分隔线，重新显示菜单
+          continue;
+        } else if (selectedIndex === groups.length + 2) {
+          // 导出配置
+          await this.showExportSynonymDialog();
+        } else if (selectedIndex === groups.length + 3) {
+          // 导入配置
+          await this.showImportSynonymDialog();
+        }
+      }
+    } catch (error) {
+      MNUtil.showHUD("管理同义词组失败：" + error.message);
+      MNUtil.log("管理同义词组错误: " + error.toString());
+    }
+  }
+
+
+  /**
+   * 添加同义词组（多层对话框方式）
+   */
+  static async showAddSynonymDialog() {
+    let continueAdding = true;
+    let addedCount = 0;
+    
+    while (continueAdding) {
+      // 第一步：输入组名
+      const groupName = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "添加同义词组",
+          "请输入同义词组名称：",
+          2, // 输入框样式
+          "取消",
+          ["下一步"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+              return;
+            }
+            
+            const name = alert.textFieldAtIndex(0).text.trim();
+            if (!name) {
+              MNUtil.showHUD("❌ 请输入组名");
+              resolve(null);
+              return;
+            }
+            
+            resolve(name);
+          }
+        );
+      });
+      
+      if (!groupName) {
+        break; // 用户取消
+      }
+      
+      // 第二步：输入词汇
+      const words = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "添加同义词",
+          `组名：${groupName}\n\n请输入同义词，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
+          2,
+          "取消",
+          ["下一步"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+              return;
+            }
+            
+            const wordsInput = alert.textFieldAtIndex(0).text;
+            if (!wordsInput) {
+              MNUtil.showHUD("❌ 请输入同义词");
+              resolve(null);
+              return;
+            }
+            
+            // 使用智能解析
+            const parsedWords = this.parseWords(wordsInput);
+            
+            if (parsedWords.length < 2) {
+              MNUtil.showHUD("❌ 至少需要2个同义词");
+              resolve(null);
+              return;
+            }
+            
+            resolve(parsedWords);
+          }
+        );
+      });
+      
+      if (!words) {
+        continue; // 返回重新输入
+      }
+      
+      // 第三步：选择是否开启局部替换
+      const enablePartial = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "选择模式",
+          `组名：${groupName}\n词汇：${words.join(", ")}\n\n是否开启局部替换？\n• 开启：在长词中也会匹配（如"柯西"会匹配"柯西-施瓦茨"）\n• 关闭：只匹配完整的词`,
+          0,
+          "取消",
+          ["添加（普通）", "添加（开启局部替换）"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+              return;
+            }
+            
+            resolve(buttonIndex === 2); // 第二个按钮为开启局部替换
+          }
+        );
+      });
+      
+      if (enablePartial === null) {
+        continue; // 返回重新输入
+      }
+      
+      // 添加同义词组
+      const result = this.addSynonymGroup(groupName, words, enablePartial);
+      if (result) {
+        addedCount++;
+        const modeText = enablePartial ? "（局部替换）" : "（普通）";
+        MNUtil.showHUD(`✅ 已添加：${groupName}${modeText}`);
+      }
+      
+      // 第四步：询问是否继续添加
+      continueAdding = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "继续添加？",
+          `已成功添加 ${addedCount} 个同义词组\n\n是否继续添加？`,
+          0,
+          "完成",
+          ["继续添加"],
+          (alert, buttonIndex) => {
+            resolve(buttonIndex === 1);
+          }
+        );
+      });
+    }
+    
+    if (addedCount > 0) {
+      MNUtil.showHUD(`✅ 共添加 ${addedCount} 个同义词组`);
+    }
+  }
+
+  /**
+   * 编辑同义词组
+   */
+  static async editSynonymGroup(group) {
+    try {
+      const options = [
+        group.enabled ? "🔴 禁用此组" : "🟢 启用此组",
+        group.partialReplacement ? "🔄 关闭局部替换" : "🔄 开启局部替换",  // 新增
+        "✏️ 编辑词汇",
+        "📝 重命名组",
+        "🗑 删除此组",
+        "📋 复制词汇列表",
+        "──────────────",
+        "🔍 测试局部替换效果"  // 新增
+      ];
+      
+      const wordsPreview = group.words.join(", ");
+      const partialStatus = group.partialReplacement ? "已开启" : "已关闭";
+      const message = `词汇：${wordsPreview}\n状态：${group.enabled ? "已启用" : "已禁用"}\n局部替换：${partialStatus}\n创建时间：${new Date(group.createdAt).toLocaleDateString()}`;
+      
+      const result = await MNUtil.userSelect(group.name, message, options);
+      
+      if (result === null || result === 0) {
+        return; // 取消
+      }
+      
+      switch (result) {
+        case 1: // 启用/禁用
+          group.enabled = !group.enabled;
+          group.updatedAt = Date.now();
+          this.saveSearchConfig();
+          MNUtil.showHUD(group.enabled ? "✅ 已启用" : "⭕ 已禁用");
+          break;
+          
+        case 2: // 开启/关闭局部替换
+          group.partialReplacement = !group.partialReplacement;
+          group.updatedAt = Date.now();
+          this.saveSearchConfig();
+          MNUtil.showHUD(group.partialReplacement ? "🔄 已开启局部替换" : "已关闭局部替换");
+          break;
+          
+        case 3: // 编辑词汇
+          await this.editSynonymWords(group);
+          break;
+          
+        case 4: // 重命名
+          await this.renameSynonymGroup(group);
+          break;
+          
+        case 5: // 删除
+          const confirmDelete = await this.confirmAction(
+            "确认删除",
+            `确定要删除"${group.name}"吗？\n此操作不可恢复。`
+          );
+          if (confirmDelete) {
+            this.deleteSynonymGroup(group.id);
+            MNUtil.showHUD("✅ 已删除");
+          }
+          break;
+          
+        case 6: // 复制词汇
+          MNUtil.copy(group.words.join(", "));
+          MNUtil.showHUD("📋 已复制到剪贴板");
+          break;
+          
+        case 7: // 分隔线
+          break;
+          
+        case 8: // 测试局部替换
+          await this.testPartialReplacement(group);
+          break;
+      }
+    } catch (error) {
+      MNUtil.showHUD("编辑同义词组失败：" + error.message);
+    }
+  }
+
+  /**
+   * 编辑同义词 - 调用多选界面
+   */
+  static async editSynonymWords(group) {
+    // 调用新的多选编辑界面
+    await this.editSynonymWordsWithMultiSelect(group);
+  }
+
+  /**
+   * 使用多选界面编辑同义词
+   * @param {Object} group - 同义词组对象
+   */
+  static async editSynonymWordsWithMultiSelect(group) {
+    const selectedWords = new Set(group.words); // 默认全选现有词汇
+    let newWordsInput = "";
+    
+    // 递归显示多选对话框
+    const showMultiSelectDialog = () => {
+      // 构建显示选项
+      let displayOptions = group.words.map(word => {
+        let prefix = selectedWords.has(word) ? "✅ " : "";
+        return prefix + word;
+      });
+      
+      // 添加控制选项
+      let allSelected = selectedWords.size === group.words.length;
+      let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有词汇";
+      displayOptions.unshift(selectAllText);
+      displayOptions.unshift("🔄 反选");
+      displayOptions.unshift("➕ 添加新词汇");
+      displayOptions.push("──────────────");
+      displayOptions.push("✅ 确认保存");
+      
+      const selectedArray = Array.from(selectedWords);
+      const newWordsArray = newWordsInput ? this.parseWords(newWordsInput) : [];
+      const totalWords = [...selectedArray, ...newWordsArray];
+      
+      const message = `已选中 ${selectedWords.size}/${group.words.length} 个现有词汇\n` +
+                     (newWordsInput ? `新增：${newWordsArray.join(", ")}\n` : "") +
+                     `总计：${totalWords.length} 个词汇`;
+      
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        `编辑词汇 - ${group.name}`,
+        message,
+        0,
+        "取消",
+        displayOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            // 用户取消
+            return;
+          }
+          
+          if (buttonIndex === 1) {
+            // 添加新词汇
+            this.showAddNewWordsDialog((input) => {
+              if (input) {
+                newWordsInput = input;
+              }
+              showMultiSelectDialog();
+            });
+            
+          } else if (buttonIndex === 2) {
+            // 反选
+            const newSelectedWords = new Set();
+            group.words.forEach(word => {
+              if (!selectedWords.has(word)) {
+                newSelectedWords.add(word);
+              }
+            });
+            selectedWords.clear();
+            newSelectedWords.forEach(word => selectedWords.add(word));
+            showMultiSelectDialog();
+            
+          } else if (buttonIndex === 3) {
+            // 全选/取消全选
+            if (allSelected) {
+              selectedWords.clear();
+            } else {
+              group.words.forEach(word => selectedWords.add(word));
+            }
+            showMultiSelectDialog();
+            
+          } else if (buttonIndex === displayOptions.length) {
+            // 确认保存
+            const selectedArray = Array.from(selectedWords);
+            const newWordsArray = newWordsInput ? this.parseWords(newWordsInput) : [];
+            const finalWords = [...selectedArray, ...newWordsArray];
+            
+            if (finalWords.length >= 2) {
+              group.words = finalWords;
+              group.updatedAt = Date.now();
+              this.saveSearchConfig();
+              MNUtil.showHUD(`✅ 已更新词汇（${finalWords.length}个词）`);
+            } else {
+              MNUtil.showHUD("❌ 至少需要2个同义词");
+              showMultiSelectDialog();
+            }
+            
+          } else if (buttonIndex === displayOptions.length - 1) {
+            // 分隔线，重新显示
+            showMultiSelectDialog();
+            
+          } else {
+            // 用户选择了某个词汇，切换选中状态
+            const wordIndex = buttonIndex - 4; // 减去前面的控制选项
+            const word = group.words[wordIndex];
+            
+            if (selectedWords.has(word)) {
+              selectedWords.delete(word);
+            } else {
+              selectedWords.add(word);
+            }
+            
+            showMultiSelectDialog();
+          }
+        }
+      );
+    };
+    
+    showMultiSelectDialog();
+  }
+
+  /**
+   * 显示添加新词汇的输入对话框
+   */
+  static async showAddNewWordsDialog(callback) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "添加新词汇",
+      "输入新词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）",
+      2,
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          callback(null);
+          return;
+        }
+        
+        const input = alert.textFieldAtIndex(0).text;
+        if (input && input.trim()) {
+          callback(input);
+        } else {
+          callback(null);
+        }
+      }
+    );
+  }
+
+  /**
+   * 测试局部替换功能
+   */
+  static async testPartialReplacement(group) {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "测试局部替换",
+        `组"${group.name}"包含：${group.words.join(", ")}\n\n请输入测试文本：`,
+        2,
+        "返回",
+        ["测试"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const testText = alert.textFieldAtIndex(0).text;
+          if (!testText) {
+            MNUtil.showHUD("请输入测试文本");
+            resolve(false);
+            return;
+          }
+          
+          // 生成变体
+          const variants = this.generatePartialReplacements(testText, group);
+          
+          if (variants.length > 0) {
+            const resultText = `原文：${testText}\n\n生成的变体（${variants.length}个）：\n${variants.map((v, i) => `${i+1}. ${v}`).join('\n')}`;
+            
+            // 显示结果
+            UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+              "替换结果",
+              resultText,
+              0,
+              "确定",
+              ["复制所有变体"],
+              (alert2, buttonIndex2) => {
+                if (buttonIndex2 === 1) {
+                  MNUtil.copy(variants.join("\n"));
+                  MNUtil.showHUD("📋 已复制到剪贴板");
+                }
+                resolve(true);
+              }
+            );
+          } else {
+            MNUtil.showHUD("未找到可替换的内容");
+            resolve(false);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * 重命名同义词组
+   */
+  static async renameSynonymGroup(group) {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "重命名",
+        `当前名称：${group.name}\n\n请输入新名称：`,
+        2,
+        "取消",
+        ["确定"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const newName = alert.textFieldAtIndex(0).text.trim();
+          if (newName && newName !== group.name) {
+            group.name = newName;
+            group.updatedAt = Date.now();
+            this.saveSearchConfig();
+            MNUtil.showHUD("✅ 已重命名");
+            resolve(true);
+          }
+        }
+      );
+      // 注意：MarginNote 的 JSB 框架不支持 setTimeout
+      // 无法预填充输入框，用户需要手动输入新值
+    });
+  }
+
+  /**
+   * 显示更多功能菜单
+   */
+  static async showMoreFeaturesMenu() {
+    const options = [
+      "🔄 管理同义词组",
+      "🚫 管理排除词组",
+      "📁 管理根目录",
+      "📤📥 导入导出配置"
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "更多搜索功能",
+      "选择要管理的功能：",
+      options
+    );
+    
+    if (result === null || result === 0) return null;
+    
+    switch (result) {
+      case 1:
+        return "manageSynonyms";
+      case 2:
+        return "manageExclusions";
+      case 3:
+        return "manageRoots";
+      case 4:
+        return "importExport";
+    }
+    return null;
+  }
+
+  /**
+   * 显示导入导出菜单
+   */
+  static async showImportExportMenu() {
+    const options = [
+      "📤 导出完整配置",
+      "📥 导入完整配置",
+      "──────────────",
+      "🔄 导出同义词组",
+      "🔄 导入同义词组",
+      "🚫 导出排除词组",
+      "🚫 导入排除词组"
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "导入导出配置",
+      "选择操作：",
+      options
+    );
+    
+    if (result === null || result === 0) return;
+    
+    switch (result) {
+      case 1: // 导出完整配置
+        await this.exportFullSearchConfig();
+        break;
+      case 2: // 导入完整配置
+        await this.importFullSearchConfig();
+        break;
+      case 3: // 分隔线
+        break;
+      case 4: // 导出同义词
+        await this.showExportSynonymDialog();
+        break;
+      case 5: // 导入同义词
+        await this.showImportSynonymDialog();
+        break;
+      case 6: // 导出排除词
+        await this.showExportExclusionDialog();
+        break;
+      case 7: // 导入排除词
+        await this.showImportExclusionDialog();
+        break;
+    }
+  }
+
+  /**
+   * 导出完整搜索配置
+   */
+  static async exportFullSearchConfig() {
+    try {
+      this.initSearchConfig();
+      const config = {
+        version: "2.0",
+        type: "fullSearchConfig",
+        exportDate: new Date().toISOString(),
+        searchConfig: {
+          roots: this.searchRootConfigs.roots,
+          rootsOrder: this.searchRootConfigs.rootsOrder,
+          lastUsedRoot: this.searchRootConfigs.lastUsedRoot,
+          includeClassification: this.searchRootConfigs.includeClassification,
+          ignorePrefix: this.searchRootConfigs.ignorePrefix,
+          searchInKeywords: this.searchRootConfigs.searchInKeywords,
+          onlyClassification: this.searchRootConfigs.onlyClassification
+        },
+        synonymGroups: this.searchRootConfigs.synonymGroups || [],
+        exclusionGroups: this.searchRootConfigs.exclusionGroups || []
+      };
+      
+      const jsonStr = JSON.stringify(config, null, 2);
+      
+      const target = await MNUtil.userSelect(
+        "导出完整配置",
+        "选择导出方式：",
+        ["☁️ 同步到 iCloud", "📋 复制到剪贴板", "📝 保存到当前笔记"]
+      );
+      
+      if (target === null || target === 0) return;
+      
+      switch (target) {
+        case 1: // iCloud
+          MNUtil.setByiCloud("MNMath_FullSearchConfig", jsonStr);
+          MNUtil.showHUD("☁️ 已同步到 iCloud");
+          break;
+        case 2: // 剪贴板
+          MNUtil.copy(jsonStr);
+          MNUtil.showHUD("📋 已复制到剪贴板");
+          break;
+        case 3: // 当前笔记
+          const focusNote = MNNote.getFocusNote();
+          if (focusNote) {
+            const formattedJson = this.formatJsonAsCodeBlock(jsonStr);
+            focusNote.appendTextComment(formattedJson);
+            MNUtil.showHUD("📝 已保存到当前笔记");
+          } else {
+            MNUtil.showHUD("❌ 未选中笔记");
+          }
+          break;
+      }
+    } catch (error) {
+      MNUtil.showHUD("❌ 导出失败：" + error.message);
+    }
+  }
+
+  /**
+   * 导入完整搜索配置
+   */
+  static async importFullSearchConfig() {
+    try {
+      const source = await MNUtil.userSelect(
+        "导入完整配置",
+        "选择导入来源：",
+        ["☁️ 从 iCloud 同步", "📋 从剪贴板导入", "📝 从当前笔记导入"]
+      );
+      
+      if (source === null || source === 0) return;
+      
+      let jsonStr = null;
+      
+      switch (source) {
+        case 1: // iCloud
+          jsonStr = MNUtil.getByiCloud("MNMath_FullSearchConfig", null);
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ iCloud 中未找到配置");
+            return;
+          }
+          break;
+        case 2: // 剪贴板
+          jsonStr = MNUtil.clipboardText;
+          break;
+        case 3: // 当前笔记
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 未选中笔记");
+            return;
+          }
+          // 查找包含完整配置的评论
+          for (const comment of focusNote.comments) {
+            if (comment.type === "textComment" && comment.text.includes('"fullSearchConfig"')) {
+              jsonStr = this.extractJsonFromCodeBlock(comment.text);
+              break;
+            }
+          }
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 当前笔记中未找到配置");
+            return;
+          }
+          break;
+      }
+      
+      const config = JSON.parse(jsonStr);
+      if (!config.searchConfig) {
+        throw new Error("无效的配置格式");
+      }
+      
+      const importMode = await MNUtil.userSelect(
+        "导入方式",
+        "选择导入方式：",
+        ["替换现有配置", "合并配置"]
+      );
+      
+      if (importMode === null || importMode === 0) return;
+      
+      this.initSearchConfig();
+      
+      if (importMode === 1) {
+        // 替换
+        Object.assign(this.searchRootConfigs, config.searchConfig);
+        this.searchRootConfigs.synonymGroups = config.synonymGroups || [];
+        this.searchRootConfigs.exclusionGroups = config.exclusionGroups || [];
+      } else {
+        // 合并
+        // 合并根目录
+        if (config.searchConfig.roots) {
+          Object.assign(this.searchRootConfigs.roots, config.searchConfig.roots);
+        }
+        // 合并同义词组
+        if (config.synonymGroups && config.synonymGroups.length > 0) {
+          if (!this.searchRootConfigs.synonymGroups) {
+            this.searchRootConfigs.synonymGroups = [];
+          }
+          const existingIds = new Set(this.searchRootConfigs.synonymGroups.map(g => g.id));
+          for (const group of config.synonymGroups) {
+            if (!existingIds.has(group.id)) {
+              this.searchRootConfigs.synonymGroups.push(group);
+            }
+          }
+        }
+        // 合并排除词组
+        if (config.exclusionGroups && config.exclusionGroups.length > 0) {
+          if (!this.searchRootConfigs.exclusionGroups) {
+            this.searchRootConfigs.exclusionGroups = [];
+          }
+          const existingIds = new Set(this.searchRootConfigs.exclusionGroups.map(g => g.id));
+          for (const group of config.exclusionGroups) {
+            if (!existingIds.has(group.id)) {
+              this.searchRootConfigs.exclusionGroups.push(group);
+            }
+          }
+        }
+      }
+      
+      this.saveSearchConfig();
+      MNUtil.showHUD("✅ 配置导入成功");
+    } catch (error) {
+      MNUtil.showHUD("❌ 导入失败：" + error.message);
+    }
+  }
+
+  /**
+   * 管理排除词组 - 主界面
+   */
+  static async manageExclusionGroups() {
+    try {
+      while (true) {
+        const groups = this.getExclusionGroups();
+        const options = [];
+        
+        // 显示现有排除词组
+        for (const group of groups) {
+          const status = group.enabled ? "✅" : "⭕";
+          const triggersPreview = group.triggerWords.slice(0, 2).join(", ");
+          const excludesPreview = group.excludeWords.slice(0, 2).join(", ");
+          const moreText = group.triggerWords.length > 2 ? "..." : "";
+          options.push(`${status} ${group.name}: ${triggersPreview}${moreText} → 排除: ${excludesPreview}`);
+        }
+        
+        // 添加操作选项
+        options.push("➕ 添加新排除词组");
+        options.push("──────────────");
+        options.push("📤 导出排除词配置");
+        options.push("📥 导入排除词配置");
+        
+        const result = await MNUtil.userSelect(
+          "排除词管理",
+          `共 ${groups.length} 个排除词组\n\n提示：搜索时将自动过滤包含排除词的结果`,
+          options
+        );
+        
+        if (result === null || result === 0) {
+          break; // 取消
+        }
+        
+        const selectedIndex = result - 1;
+        
+        if (selectedIndex < groups.length) {
+          // 编辑现有组
+          await this.editExclusionGroup(groups[selectedIndex]);
+          continue; // 重新显示菜单，避免双弹窗
+        } else if (selectedIndex === groups.length) {
+          // 添加新组
+          await this.showAddExclusionGroupDialog();
+        } else if (selectedIndex === groups.length + 1) {
+          // 分隔线
+          continue;
+        } else if (selectedIndex === groups.length + 2) {
+          // 导出配置
+          await this.showExportExclusionDialog();
+        } else if (selectedIndex === groups.length + 3) {
+          // 导入配置
+          await this.showImportExclusionDialog();
+        }
+      }
+    } catch (error) {
+      MNUtil.showHUD("管理排除词组失败：" + error.message);
+      MNUtil.log("管理排除词组错误: " + error.toString());
+    }
+  }
+
+  /**
+   * 添加排除词组对话框
+   */
+  static async showAddExclusionGroupDialog() {
+    return new Promise((resolve) => {
+      // 第一步：输入组名
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "添加排除词组",
+        "请输入排除词组名称：",
+        2,
+        "取消",
+        ["下一步"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const groupName = alert.textFieldAtIndex(0).text.trim();
+          if (!groupName) {
+            MNUtil.showHUD("❌ 请输入组名");
+            resolve(false);
+            return;
+          }
+          
+          // 第二步：输入触发词
+          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+            "设置触发词",
+            `组名：${groupName}\n\n请输入触发词（搜索这些词时将激活排除规则）：\n支持逗号、分号或空格分隔`,
+            2,
+            "取消",
+            ["下一步"],
+            (alert2, buttonIndex2) => {
+              if (buttonIndex2 === 0) {
+                resolve(false);
+                return;
+              }
+              
+              const triggerInput = alert2.textFieldAtIndex(0).text;
+              if (!triggerInput) {
+                MNUtil.showHUD("❌ 请输入触发词");
+                resolve(false);
+                return;
+              }
+              
+              const triggerWords = this.parseWords(triggerInput);
+              if (triggerWords.length === 0) {
+                MNUtil.showHUD("❌ 至少需要一个触发词");
+                resolve(false);
+                return;
+              }
+              
+              // 第三步：输入排除词
+              UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+                "设置排除词",
+                `组名：${groupName}\n触发词：${triggerWords.join(", ")}\n\n请输入排除词（包含这些词的结果将被过滤）：`,
+                2,
+                "取消",
+                ["确定"],
+                (alert3, buttonIndex3) => {
+                  if (buttonIndex3 === 0) {
+                    resolve(false);
+                    return;
+                  }
+                  
+                  const excludeInput = alert3.textFieldAtIndex(0).text;
+                  if (!excludeInput) {
+                    MNUtil.showHUD("❌ 请输入排除词");
+                    resolve(false);
+                    return;
+                  }
+                  
+                  const excludeWords = this.parseWords(excludeInput);
+                  if (excludeWords.length === 0) {
+                    MNUtil.showHUD("❌ 至少需要一个排除词");
+                    resolve(false);
+                    return;
+                  }
+                  
+                  // 添加组
+                  this.addExclusionGroup(groupName, triggerWords, excludeWords);
+                  MNUtil.showHUD(`✅ 已添加排除词组：${groupName}`);
+                  resolve(true);
+                }
+              );
+            }
+          );
+        }
+      );
+    });
+  }
+
+  /**
+   * 编辑排除词组
+   */
+  static async editExclusionGroup(group) {
+    try {
+      const options = [
+        group.enabled ? "🔴 禁用此组" : "🟢 启用此组",
+        "✏️ 编辑触发词",
+        "✏️ 编辑排除词",
+        "📝 重命名组",
+        "🗑 删除此组",
+        "📋 复制配置"
+      ];
+      
+      const result = await MNUtil.userSelect(
+        group.name,
+        `触发词：${group.triggerWords.join(", ")}\n排除词：${group.excludeWords.join(", ")}`,
+        options
+      );
+      
+      if (result === null || result === 0) return;
+      
+      switch (result) {
+        case 1: // 切换启用状态
+          this.updateExclusionGroup(group.id, { enabled: !group.enabled });
+          MNUtil.showHUD(group.enabled ? "⭕ 已禁用" : "✅ 已启用");
+          break;
+        case 2: // 编辑触发词
+          await this.editExclusionTriggerWords(group);
+          break;
+        case 3: // 编辑排除词
+          await this.editExclusionExcludeWords(group);
+          break;
+        case 4: // 重命名
+          await this.renameExclusionGroup(group);
+          break;
+        case 5: // 删除
+          const confirmed = await this.confirmAction("确认删除", `确定删除排除词组"${group.name}"吗？`);
+          if (confirmed) {
+            this.deleteExclusionGroup(group.id);
+            MNUtil.showHUD("🗑 已删除");
+          }
+          break;
+        case 6: // 复制配置
+          const config = {
+            name: group.name,
+            triggerWords: group.triggerWords,
+            excludeWords: group.excludeWords
+          };
+          MNUtil.copy(JSON.stringify(config, null, 2));
+          MNUtil.showHUD("📋 已复制到剪贴板");
+          break;
+      }
+    } catch (error) {
+      MNUtil.showHUD("编辑排除词组失败：" + error.message);
+    }
+  }
+
+  /**
+   * 编辑触发词 - 调用多选界面
+   */
+  static async editExclusionTriggerWords(group) {
+    await this.editExclusionWordsWithMultiSelect(group, 'trigger');
+  }
+
+  /**
+   * 编辑排除词 - 调用多选界面
+   */
+  static async editExclusionExcludeWords(group) {
+    await this.editExclusionWordsWithMultiSelect(group, 'exclude');
+  }
+
+  /**
+   * 使用多选界面编辑排除词组的词汇
+   * @param {Object} group - 排除词组对象
+   * @param {string} type - 'trigger' 或 'exclude'
+   */
+  static async editExclusionWordsWithMultiSelect(group, type) {
+    const isTrigger = type === 'trigger';
+    const currentWords = isTrigger ? group.triggerWords : group.excludeWords;
+    const selectedWords = new Set(currentWords); // 默认全选现有词汇
+    let newWordsInput = "";
+    
+    // 递归显示多选对话框
+    const showMultiSelectDialog = () => {
+      // 构建显示选项
+      let displayOptions = currentWords.map(word => {
+        let prefix = selectedWords.has(word) ? "✅ " : "";
+        return prefix + word;
+      });
+      
+      // 添加控制选项
+      let allSelected = selectedWords.size === currentWords.length;
+      let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有词汇";
+      displayOptions.unshift(selectAllText);
+      displayOptions.unshift("🔄 反选");
+      displayOptions.unshift("➕ 添加新词汇");
+      displayOptions.push("──────────────");
+      displayOptions.push("✅ 确认保存");
+      
+      const selectedArray = Array.from(selectedWords);
+      const newWordsArray = newWordsInput ? this.parseWords(newWordsInput) : [];
+      const totalWords = [...selectedArray, ...newWordsArray];
+      
+      const title = isTrigger ? `编辑触发词 - ${group.name}` : `编辑排除词 - ${group.name}`;
+      const message = `已选中 ${selectedWords.size}/${currentWords.length} 个现有词汇\n` +
+                     (newWordsInput ? `新增：${newWordsArray.join(", ")}\n` : "") +
+                     `总计：${totalWords.length} 个词汇`;
+      
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        title,
+        message,
+        0,
+        "取消",
+        displayOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            // 用户取消
+            return;
+          }
+          
+          if (buttonIndex === 1) {
+            // 添加新词汇
+            const dialogTitle = isTrigger ? "添加新触发词" : "添加新排除词";
+            this.showAddNewWordsDialogForExclusion(dialogTitle, (input) => {
+              if (input) {
+                newWordsInput = input;
+              }
+              showMultiSelectDialog();
+            });
+            
+          } else if (buttonIndex === 2) {
+            // 反选
+            const newSelectedWords = new Set();
+            currentWords.forEach(word => {
+              if (!selectedWords.has(word)) {
+                newSelectedWords.add(word);
+              }
+            });
+            selectedWords.clear();
+            newSelectedWords.forEach(word => selectedWords.add(word));
+            showMultiSelectDialog();
+            
+          } else if (buttonIndex === 3) {
+            // 全选/取消全选
+            if (allSelected) {
+              selectedWords.clear();
+            } else {
+              currentWords.forEach(word => selectedWords.add(word));
+            }
+            showMultiSelectDialog();
+            
+          } else if (buttonIndex === displayOptions.length) {
+            // 确认保存
+            const selectedArray = Array.from(selectedWords);
+            const newWordsArray = newWordsInput ? this.parseWords(newWordsInput) : [];
+            const finalWords = [...selectedArray, ...newWordsArray];
+            
+            if (finalWords.length > 0) {
+              const updateField = isTrigger ? { triggerWords: finalWords } : { excludeWords: finalWords };
+              this.updateExclusionGroup(group.id, updateField);
+              const wordType = isTrigger ? "触发词" : "排除词";
+              MNUtil.showHUD(`✅ 已更新${wordType}（${finalWords.length}个）`);
+            } else {
+              const wordType = isTrigger ? "触发词" : "排除词";
+              MNUtil.showHUD(`❌ 至少需要一个${wordType}`);
+              showMultiSelectDialog();
+            }
+            
+          } else if (buttonIndex === displayOptions.length - 1) {
+            // 分隔线，重新显示
+            showMultiSelectDialog();
+            
+          } else {
+            // 用户选择了某个词汇，切换选中状态
+            const wordIndex = buttonIndex - 4; // 减去前面的控制选项
+            const word = currentWords[wordIndex];
+            
+            if (selectedWords.has(word)) {
+              selectedWords.delete(word);
+            } else {
+              selectedWords.add(word);
+            }
+            
+            showMultiSelectDialog();
+          }
+        }
+      );
+    };
+    
+    showMultiSelectDialog();
+  }
+
+  /**
+   * 显示添加新词汇的输入对话框（排除词组用）
+   */
+  static async showAddNewWordsDialogForExclusion(title, callback) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      title,
+      "输入新词汇，支持以下分隔方式：\n• 逗号：word1, word2\n• 分号：词汇1; 词汇2\n• 双空格：词汇1  词汇2\n• 单空格：词1 词2（仅当无其他分隔符时）",
+      2,
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          callback(null);
+          return;
+        }
+        
+        const input = alert.textFieldAtIndex(0).text;
+        if (input && input.trim()) {
+          callback(input);
+        } else {
+          callback(null);
+        }
+      }
+    );
+  }
+
+  /**
+   * 重命名排除词组
+   */
+  static async renameExclusionGroup(group) {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "重命名",
+        `当前名称：${group.name}\n\n请输入新名称：`,
+        2,
+        "取消",
+        ["确定"],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(false);
+            return;
+          }
+          
+          const newName = alert.textFieldAtIndex(0).text.trim();
+          if (newName && newName !== group.name) {
+            this.updateExclusionGroup(group.id, { name: newName });
+            MNUtil.showHUD("✅ 已重命名");
+            resolve(true);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * 导出排除词组配置
+   */
+  static async showExportExclusionDialog() {
+    const options = [
+      "☁️ 同步到 iCloud",
+      "📋 复制到剪贴板",
+      "📝 保存到当前笔记"
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "导出排除词配置",
+      "选择导出方式：",
+      options
+    );
+    
+    if (result === null || result === 0) return;
+    
+    try {
+      const config = {
+        version: "1.0",
+        type: "exclusionGroups",
+        exportDate: new Date().toISOString(),
+        exclusionGroups: this.getExclusionGroups()
+      };
+      const jsonStr = JSON.stringify(config, null, 2);
+      
+      switch (result) {
+        case 1: // iCloud
+          MNUtil.setByiCloud("MNMath_ExclusionGroups_Config", jsonStr);
+          MNUtil.showHUD("☁️ 已同步到 iCloud");
+          break;
+        case 2: // 剪贴板
+          MNUtil.copy(jsonStr);
+          MNUtil.showHUD("📋 已复制到剪贴板");
+          break;
+        case 3: // 当前笔记
+          const focusNote = MNNote.getFocusNote();
+          if (focusNote) {
+            const formattedJson = this.formatJsonAsCodeBlock(jsonStr);
+            focusNote.appendTextComment(formattedJson);
+            MNUtil.showHUD("📝  已保存到当前笔记");
+          } else {
+            MNUtil.showHUD("❌ 未选中笔记");
+          }
+          break;
+      }
+    } catch (error) {
+      MNUtil.showHUD("❌ 导出失败：" + error.message);
+    }
+  }
+
+  /**
+   * 导入排除词组配置
+   */
+  static async showImportExclusionDialog() {
+    const options = [
+      "☁️ 从 iCloud 同步",
+      "📋 从剪贴板导入",
+      "📝 从当前笔记导入"
+    ];
+    
+    const result = await MNUtil.userSelect(
+      "导入排除词配置",
+      "选择导入来源：",
+      options
+    );
+    
+    if (result === null || result === 0) return;
+    
+    try {
+      let jsonStr = null;
+      
+      switch (result) {
+        case 1: // iCloud
+          jsonStr = MNUtil.getByiCloud("MNMath_ExclusionGroups_Config", null);
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ iCloud 中未找到排除词配置");
+            return;
+          }
+          break;
+        case 2: // 剪贴板
+          jsonStr = MNUtil.clipboardText;
+          break;
+        case 3: // 当前笔记
+          const focusNote = MNNote.getFocusNote();
+          if (!focusNote) {
+            MNUtil.showHUD("❌ 未选中笔记");
+            return;
+          }
+          // 查找包含排除词配置的评论
+          for (const comment of focusNote.comments) {
+            if (comment.type === "textComment" && comment.text.includes('"exclusionGroups"')) {
+              jsonStr = this.extractJsonFromCodeBlock(comment.text);
+              break;
+            }
+          }
+          if (!jsonStr) {
+            MNUtil.showHUD("❌ 当前笔记中未找到排除词配置");
+            return;
+          }
+          break;
+      }
+      
+      const config = JSON.parse(jsonStr);
+      if (!config.exclusionGroups) {
+        throw new Error("无效的配置格式");
+      }
+      
+      // 选择导入方式
+      const importMode = await MNUtil.userSelect(
+        "导入方式",
+        `将导入 ${config.exclusionGroups.length} 个排除词组`,
+        ["替换现有配置", "合并配置"]
+      );
+      
+      if (importMode === null || importMode === 0) return;
+      
+      this.initSearchConfig();
+      
+      if (importMode === 1) {
+        // 替换
+        this.searchRootConfigs.exclusionGroups = config.exclusionGroups;
+      } else {
+        // 合并
+        if (!this.searchRootConfigs.exclusionGroups) {
+          this.searchRootConfigs.exclusionGroups = [];
+        }
+        const existingIds = new Set(this.searchRootConfigs.exclusionGroups.map(g => g.id));
+        for (const group of config.exclusionGroups) {
+          if (!existingIds.has(group.id)) {
+            this.searchRootConfigs.exclusionGroups.push(group);
+          }
+        }
+      }
+      
+      this.saveSearchConfig();
+      MNUtil.showHUD(`✅ 已导入 ${config.exclusionGroups.length} 个排除词组`);
+    } catch (error) {
+      MNUtil.showHUD("❌ 导入失败：" + error.message);
+    }
+  }
+
+  /**
+   * 确认操作对话框
+   */
+  static async confirmAction(title, message) {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        title,
+        message,
+        0,
+        "取消",
+        ["确定"],
+        (alert, buttonIndex) => {
+          resolve(buttonIndex === 1);
+        }
+      );
+    });
   }
 }
 
@@ -7979,6 +11347,349 @@ class HtmlMarkdownUtils {
   }
 
   /**
+   * 批量调整所有 HtmlMarkdown 评论的层级
+   * 
+   * @param {MNNote} note - 要处理的卡片
+   * @param {string} direction - 调整方向："up" 表示层级上移（level2->level1），"down" 表示层级下移（level1->level2）
+   * @returns {number} 返回调整的评论数量
+   */
+  static adjustAllHtmlMDLevels(note, direction = "up") {
+    const comments = note.MNComments;
+    let adjustedCount = 0;
+    
+    if (!comments || comments.length === 0) {
+      MNUtil.showHUD("当前卡片没有评论");
+      return 0;
+    }
+    
+    // 遍历所有评论
+    comments.forEach((comment, index) => {
+      if (!comment || !comment.text) return;
+      
+      // 处理可能的 "- " 前缀
+      let hasLeadingDash = false;
+      let cleanText = comment.text;
+      if (cleanText.startsWith("- ")) {
+        hasLeadingDash = true;
+        cleanText = cleanText.substring(2);
+      }
+      
+      // 检查是否是 HtmlMarkdown 评论且是层级类型
+      if (this.isHtmlMDComment(cleanText)) {
+        const type = this.getSpanType(cleanText);
+        const content = this.getSpanTextContent(cleanText);
+        
+        if (this.isLevelType(type)) {
+          let newType;
+          
+          if (direction === "up") {
+            // 层级上移（数字变小）
+            newType = this.getSpanLastLevelType(type);
+          } else if (direction === "down") {
+            // 层级下移（数字变大）
+            newType = this.getSpanNextLevelType(type);
+          } else {
+            return;
+          }
+          
+          // 只有当类型真的改变时才更新
+          if (newType && newType !== type) {
+            const newHtmlText = this.createHtmlMarkdownText(content, newType);
+            comment.text = hasLeadingDash ? "- " + newHtmlText : newHtmlText;
+            adjustedCount++;
+          }
+        }
+      }
+    });
+    
+    if (adjustedCount > 0) {
+      MNUtil.showHUD(`已调整 ${adjustedCount} 个层级评论`);
+    } else {
+      MNUtil.showHUD("没有可调整的层级评论");
+    }
+    
+    return adjustedCount;
+  }
+
+  /**
+   * 根据指定的最高级别调整所有层级
+   * 
+   * @param {MNNote} note - 要处理的卡片
+   * @param {string} targetHighestLevel - 目标最高级别（如 "goal", "level1", "level2" 等）
+   * @returns {number} 返回调整的评论数量
+   */
+  static adjustHtmlMDLevelsByHighest(note, targetHighestLevel) {
+    const comments = note.MNComments;
+    if (!comments || comments.length === 0) {
+      MNUtil.showHUD("当前卡片没有评论");
+      return 0;
+    }
+    
+    // 定义层级顺序（从高到低）
+    const levelOrder = ['goal', 'level1', 'level2', 'level3', 'level4', 'level5'];
+    const targetIndex = levelOrder.indexOf(targetHighestLevel);
+    
+    if (targetIndex === -1) {
+      MNUtil.showHUD("无效的目标层级");
+      return 0;
+    }
+    
+    // 第一遍扫描：找出当前最高层级
+    let currentHighestLevel = null;
+    let currentHighestIndex = levelOrder.length;
+    
+    // 收集所有层级类型的评论信息
+    const levelComments = [];
+    
+    comments.forEach((comment, index) => {
+      if (!comment || !comment.text) return;
+      
+      let cleanText = comment.text;
+      let hasLeadingDash = false;
+      
+      if (cleanText.startsWith("- ")) {
+        hasLeadingDash = true;
+        cleanText = cleanText.substring(2);
+      }
+      
+      if (this.isHtmlMDComment(cleanText)) {
+        const type = this.getSpanType(cleanText);
+        
+        if (this.isLevelType(type)) {
+          const levelIndex = levelOrder.indexOf(type);
+          if (levelIndex !== -1) {
+            levelComments.push({
+              comment: comment,
+              index: index,
+              type: type,
+              levelIndex: levelIndex,
+              content: this.getSpanTextContent(cleanText),
+              hasLeadingDash: hasLeadingDash
+            });
+            
+            // 更新当前最高层级
+            if (levelIndex < currentHighestIndex) {
+              currentHighestIndex = levelIndex;
+              currentHighestLevel = type;
+            }
+          }
+        }
+      }
+    });
+    
+    if (levelComments.length === 0) {
+      MNUtil.showHUD("没有找到层级类型的评论");
+      return 0;
+    }
+    
+    // 计算偏移量
+    const offset = targetIndex - currentHighestIndex;
+    
+    if (offset === 0) {
+      MNUtil.showHUD(`最高层级已经是 ${targetHighestLevel}`);
+      return 0;
+    }
+    
+    // 第二遍：根据偏移量调整所有层级
+    let adjustedCount = 0;
+    
+    levelComments.forEach(item => {
+      const newLevelIndex = Math.max(0, Math.min(levelOrder.length - 1, item.levelIndex + offset));
+      const newType = levelOrder[newLevelIndex];
+      
+      if (newType !== item.type) {
+        const newHtmlText = this.createHtmlMarkdownText(item.content, newType);
+        item.comment.text = item.hasLeadingDash ? "- " + newHtmlText : newHtmlText;
+        adjustedCount++;
+      }
+    });
+    
+    if (adjustedCount > 0) {
+      const direction = offset > 0 ? "下移" : "上移";
+      MNUtil.showHUD(`已将最高层级调整为 ${targetHighestLevel}，共${direction} ${Math.abs(offset)} 级，调整了 ${adjustedCount} 个评论`);
+    }
+    
+    return adjustedCount;
+  }
+
+  /**
+   * 批量调整所有 HtmlMarkdown 评论的层级
+   * 
+   * @param {MNNote} note - 要处理的卡片
+   * @param {string} direction - 调整方向："up"（上移）或"down"（下移）
+   * @returns {number} 调整的评论数量
+   */
+  static adjustAllHtmlMDLevels(note, direction = "down") {
+    if (!note || !note.MNComments) return 0;
+    
+    let adjustedCount = 0;
+    let comments = note.MNComments;
+    
+    MNUtil.undoGrouping(() => {
+      comments.forEach((comment, index) => {
+        if (!comment || !comment.text) return;
+        
+        // 处理可能的前导 "- "
+        let text = comment.text;
+        let hasLeadingDash = false;
+        if (text.startsWith("- ")) {
+          hasLeadingDash = true;
+          text = text.substring(2);
+        }
+        
+        // 检查是否是 HtmlMarkdown 评论
+        if (!HtmlMarkdownUtils.isHtmlMDComment(text)) return;
+        
+        let type = HtmlMarkdownUtils.getSpanType(text);
+        let content = HtmlMarkdownUtils.getSpanTextContent(text);
+        
+        // 检查是否是层级类型
+        if (!HtmlMarkdownUtils.isLevelType(type)) return;
+        
+        // 根据方向获取新的层级类型
+        let newType;
+        if (direction === "up") {
+          newType = HtmlMarkdownUtils.getSpanLastLevelType(type);
+        } else {
+          newType = HtmlMarkdownUtils.getSpanNextLevelType(type);
+        }
+        
+        // 如果层级没有变化（已到边界），跳过
+        if (newType === type) return;
+        
+        // 创建新的 HtmlMarkdown 文本
+        let newHtmlText = HtmlMarkdownUtils.createHtmlMarkdownText(content, newType);
+        
+        // 保持前导破折号
+        if (hasLeadingDash) {
+          newHtmlText = "- " + newHtmlText;
+        }
+        
+        // 更新评论
+        comment.text = newHtmlText;
+        adjustedCount++;
+      });
+    });
+    
+    return adjustedCount;
+  }
+
+  /**
+   * 根据指定的最高级别调整所有层级
+   * 
+   * @param {MNNote} note - 要处理的卡片
+   * @param {string} targetHighestLevel - 目标最高级别（如 "goal", "level1", "level2" 等）
+   * @returns {Object} 返回调整结果 {adjustedCount: 数量, originalHighest: 原最高级, targetHighest: 目标最高级}
+   */
+  static adjustHtmlMDLevelsByHighest(note, targetHighestLevel) {
+    if (!note || !note.MNComments) {
+      return { adjustedCount: 0, originalHighest: null, targetHighest: targetHighestLevel };
+    }
+    
+    // 定义层级顺序映射（数字越小层级越高）
+    const levelOrder = {
+      'goal': 0,
+      'level1': 1,
+      'level2': 2,
+      'level3': 3,
+      'level4': 4,
+      'level5': 5
+    };
+    
+    // 验证目标层级是否有效
+    if (!(targetHighestLevel in levelOrder)) {
+      MNUtil.showHUD(`无效的目标层级: ${targetHighestLevel}`);
+      return { adjustedCount: 0, originalHighest: null, targetHighest: targetHighestLevel };
+    }
+    
+    // 收集所有层级类型的 HtmlMarkdown 评论
+    let levelComments = [];
+    let comments = note.MNComments;
+    
+    comments.forEach((comment, index) => {
+      if (!comment || !comment.text) return;
+      
+      // 处理前导 "- "
+      let text = comment.text;
+      let hasLeadingDash = false;
+      if (text.startsWith("- ")) {
+        hasLeadingDash = true;
+        text = text.substring(2);
+      }
+      
+      if (!HtmlMarkdownUtils.isHtmlMDComment(text)) return;
+      
+      let type = HtmlMarkdownUtils.getSpanType(text);
+      let content = HtmlMarkdownUtils.getSpanTextContent(text);
+      
+      if (!HtmlMarkdownUtils.isLevelType(type)) return;
+      
+      levelComments.push({
+        index: index,
+        comment: comment,
+        type: type,
+        content: content,
+        hasLeadingDash: hasLeadingDash,
+        order: levelOrder[type]
+      });
+    });
+    
+    if (levelComments.length === 0) {
+      MNUtil.showHUD("没有找到层级类型的 HtmlMarkdown 评论");
+      return { adjustedCount: 0, originalHighest: null, targetHighest: targetHighestLevel };
+    }
+    
+    // 找出当前最高层级（order 值最小的）
+    let currentHighestOrder = Math.min(...levelComments.map(item => item.order));
+    let currentHighestLevel = Object.keys(levelOrder).find(key => levelOrder[key] === currentHighestOrder);
+    
+    // 计算需要调整的偏移量
+    let targetOrder = levelOrder[targetHighestLevel];
+    let offset = targetOrder - currentHighestOrder;
+    
+    if (offset === 0) {
+      MNUtil.showHUD(`当前最高级已经是 ${targetHighestLevel}`);
+      return { adjustedCount: 0, originalHighest: currentHighestLevel, targetHighest: targetHighestLevel };
+    }
+    
+    // 批量调整所有层级
+    let adjustedCount = 0;
+    
+    MNUtil.undoGrouping(() => {
+      levelComments.forEach(item => {
+        let newOrder = item.order + offset;
+        
+        // 确保不超出边界
+        if (newOrder < 0) newOrder = 0;
+        if (newOrder > 5) newOrder = 5;
+        
+        // 找到对应的新层级类型
+        let newType = Object.keys(levelOrder).find(key => levelOrder[key] === newOrder);
+        
+        if (newType && newType !== item.type) {
+          // 创建新的 HtmlMarkdown 文本
+          let newHtmlText = HtmlMarkdownUtils.createHtmlMarkdownText(item.content, newType);
+          
+          // 保持前导破折号
+          if (item.hasLeadingDash) {
+            newHtmlText = "- " + newHtmlText;
+          }
+          
+          // 更新评论
+          item.comment.text = newHtmlText;
+          adjustedCount++;
+        }
+      });
+    });
+    
+    return {
+      adjustedCount: adjustedCount,
+      originalHighest: currentHighestLevel,
+      targetHighest: targetHighestLevel
+    };
+  }
+
+  /**
    * 增加上一级评论
    */
   static addLastLevelHtmlMDComment(note, text, type) {
@@ -8085,6 +11796,53 @@ class HtmlMarkdownUtils {
       if (!allDescendants || allDescendants.length === 0) {
           MNUtil.showHUD("没有可合并的后代笔记。", 2);
           return;
+      }
+
+      // 过滤掉知识点卡片和归类卡片的分支
+      // 首先找出所有需要排除的分支根节点（直接子节点）
+      const excludedBranchRoots = new Set();
+      
+      // 检查直接子节点
+      if (rootFocusNote.childNotes && rootFocusNote.childNotes.length > 0) {
+          rootFocusNote.childNotes.forEach(childNote => {
+              // 判断子卡片是否是归类卡片或知识点卡片（仅检查卡片自身，不向上查找）
+              if (MNMath.isClassificationNote(childNote) || MNMath.isKnowledgeNote(childNote)) {
+                  excludedBranchRoots.add(childNote.noteId);
+              }
+          });
+      }
+      
+      // 如果有需要排除的分支，过滤掉这些分支的所有节点
+      if (excludedBranchRoots.size > 0) {
+          const filteredDescendants = [];
+          const filteredTreeIndex = [];
+          
+          for (let i = 0; i < allDescendants.length; i++) {
+              const node = allDescendants[i];
+              const nodeTreeIndex = treeIndex[i];
+              
+              // treeIndex[0] 是直接子节点在 childNotes 中的索引
+              if (nodeTreeIndex.length > 0) {
+                  const directChildIndex = nodeTreeIndex[0];
+                  const directChild = rootFocusNote.childNotes[directChildIndex];
+                  
+                  // 如果这个节点不属于被排除的分支，则保留
+                  if (directChild && !excludedBranchRoots.has(directChild.noteId)) {
+                      filteredDescendants.push(node);
+                      filteredTreeIndex.push(nodeTreeIndex);
+                  }
+              }
+          }
+          
+          // 更新为过滤后的数组
+          allDescendants = filteredDescendants;
+          treeIndex = filteredTreeIndex;
+          
+          // 如果过滤后没有节点了，提示并返回
+          if (allDescendants.length === 0) {
+              MNUtil.showHUD("所有子卡片都是知识点或归类卡片，无法合并。", 2);
+              return;
+          }
       }
 
       const nodesWithInfo = allDescendants.map((node, i) => ({

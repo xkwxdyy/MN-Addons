@@ -1,0 +1,1685 @@
+/**
+ * Custom hook for managing all task-related operations and state.
+ * Extracted from mntask-board.tsx for better separation of concerns.
+ */
+
+import { useState, useEffect, useRef } from "react"
+import type { Task, PerspectiveFilter } from "@/types/task"
+import { SAMPLE_TASKS, SAMPLE_PENDING_TASKS } from "@/constants"
+import { toast } from "sonner"
+import { apiStorage } from "@/services/apiStorage"
+
+// Parse task title with tags
+const parseTaskTitleWithTags = (input: string): { title: string; tags: string[] } => {
+  const tagRegex = /#(?:"([^"]+)"|'([^']+)'|"([^"]+)"|'([^']+)'|【([^】]+)】|（([^）]+)）|([^\s#]+))/g
+  const tags: string[] = []
+  let match
+  let title = input
+
+  while ((match = tagRegex.exec(input)) !== null) {
+    const tag = match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || match[7]
+    if (tag && tag.trim()) {
+      tags.push(tag.trim())
+    }
+  }
+
+  title = input.replace(tagRegex, "").trim()
+  return { title, tags }
+}
+
+// Parse indented task list
+const parseIndentedTaskList = (text: string): { title: string; tags: string[]; indentation: number }[] => {
+  const lines = text.split("\n").filter((line) => line.trim() !== "")
+  return lines.map((line) => {
+    const indentationMatch = line.match(/^(\s*)/)
+    const indentation = indentationMatch ? Math.floor(indentationMatch[1].length / 2) : 0
+    const titleWithTags = line.trim()
+    const { title, tags } = parseTaskTitleWithTags(titleWithTags)
+    return { title, tags, indentation }
+  })
+}
+
+export function useTaskManager() {
+  const [focusTasks, setFocusTasks] = useState<Task[]>([])
+  const [pendingTasks, setPendingTasks] = useState<Task[]>([])
+  const [inboxTasks, setInboxTasks] = useState<Task[]>([])
+  const [allTasks, setAllTasks] = useState<Task[]>([])
+  const [recycleBin, setRecycleBin] = useState<Task[]>([])
+  const [selectedPendingTasks, setSelectedPendingTasks] = useState<string[]>([])
+  const [selectedInboxTasks, setSelectedInboxTasks] = useState<string[]>([])
+  const [selectedRecycleBinTasks, setSelectedRecycleBinTasks] = useState<string[]>([])
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [newTaskTitle, setNewTaskTitle] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Load focusTasks from API on mount
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const data = await apiStorage.loadData()
+        
+        // If no data exists, use sample data
+        if (data.focusTasks.length === 0 && data.pendingTasks.length === 0 && data.allTasks.length === 0) {
+          setFocusTasks(SAMPLE_TASKS)
+          setPendingTasks(SAMPLE_PENDING_TASKS)
+          setInboxTasks([])
+          setRecycleBin([])
+          setAllTasks([...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS])
+          
+          // Save sample data
+          await apiStorage.saveData({
+            focusTasks: SAMPLE_TASKS,
+            pendingTasks: SAMPLE_PENDING_TASKS,
+            inboxTasks: [],
+            allTasks: [...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS],
+            recycleBin: [],
+            perspectives: []
+          })
+        } else {
+          setFocusTasks(data.focusTasks.map((task: any, index: number) => ({
+            ...task,
+            order: task.order ?? index,
+            type: task.type || "action",
+            tags: task.tags || [],
+          })))
+          setPendingTasks(data.pendingTasks)
+          setInboxTasks(data.inboxTasks || [])
+          setRecycleBin(data.recycleBin || [])
+          // Critical fix: restore allTasks from saved data
+          setAllTasks(data.allTasks || [])
+        }
+      } catch (error) {
+        console.error('Failed to load data:', error)
+        toast.error('Failed to load data. Using default data.')
+        setFocusTasks(SAMPLE_TASKS)
+        setPendingTasks(SAMPLE_PENDING_TASKS)
+        setInboxTasks([])
+        setRecycleBin([])
+        setAllTasks([...SAMPLE_TASKS, ...SAMPLE_PENDING_TASKS])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadData()
+  }, [])
+
+  // Save focusTasks to API (debounced)
+  useEffect(() => {
+    if (isLoading) return // Don't save while loading
+    
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    // Set new timeout for debounced save
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Use the actual allTasks state to ensure library-only tasks are saved
+        // Note: allTasks is not in the dependency array to avoid circular updates
+        await apiStorage.updateData({
+          focusTasks,
+          pendingTasks,
+          inboxTasks,
+          allTasks: allTasks,
+          recycleBin
+        })
+      } catch (error) {
+        console.error('Failed to save tasks:', error)
+      }
+    }, 500) // Debounce for 500ms
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [focusTasks, pendingTasks, inboxTasks, recycleBin, allTasks, isLoading])
+
+  // Save immediately before page unload to prevent data loss
+  useEffect(() => {
+    // Check if we're in the browser
+    if (typeof window === 'undefined') return
+    
+    const handleBeforeUnload = () => {
+      // If there's a pending save, clear it and save immediately
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
+      }
+      
+      // Perform synchronous save (best effort)
+      // Note: This uses the current state values from the closure
+      try {
+        // Using synchronous XHR as async operations may not complete
+        const data = {
+          focusTasks,
+          pendingTasks,
+          inboxTasks,
+          allTasks,
+          recycleBin
+        }
+        
+        // Create a synchronous request (not ideal but necessary for beforeunload)
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', '/api/backup', false) // false makes it synchronous
+        xhr.setRequestHeader('Content-Type', 'application/json')
+        xhr.send(JSON.stringify(data))
+      } catch (error) {
+        console.error('Failed to save on unload:', error)
+      }
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [focusTasks, pendingTasks, inboxTasks, allTasks, recycleBin])
+
+  // Sync allTasks state when component focusTasks change
+  // This is separate from saving to avoid circular dependency
+  useEffect(() => {
+    if (isLoading) return // Don't update while loading
+    
+    setAllTasks(prevAllTasks => {
+      // Create a Map to track all tasks by ID
+      const taskMap = new Map<string, Task>()
+      
+      // First, preserve tasks that exist in allTasks but aren't in any active list
+      // These are tasks in the "library" (not in focus, pending, or inbox)
+      prevAllTasks.forEach(task => {
+        // Check if task is not in any of the active lists
+        const isInFocus = focusTasks.some(t => t.id === task.id)
+        const isInPending = pendingTasks.some(t => t.id === task.id)
+        const isInInbox = inboxTasks.some(t => t.id === task.id)
+        
+        if (!isInFocus && !isInPending && !isInInbox) {
+          // This task is in the library, preserve it
+          taskMap.set(task.id, { ...task, isFocusTask: false, isInPending: false, isInInbox: false })
+        }
+      })
+      
+      // Then add/update tasks from the active lists
+      focusTasks.forEach(task => {
+        taskMap.set(task.id, { ...task, isFocusTask: true, isInPending: false, isInInbox: false })
+      })
+      
+      pendingTasks.forEach(task => {
+        taskMap.set(task.id, { ...task, isFocusTask: false, isInPending: true, isInInbox: false })
+      })
+      
+      inboxTasks.forEach(task => {
+        taskMap.set(task.id, { ...task, isFocusTask: false, isInPending: false, isInInbox: true })
+      })
+      
+      // Return the merged result
+      return Array.from(taskMap.values())
+    })
+  }, [focusTasks, pendingTasks, inboxTasks, isLoading])
+
+  // Helper functions
+  const getAllTasksList = (): Task[] => {
+    return allTasks
+  }
+
+  const getAllTags = (): string[] => {
+    const allTagsSet = new Set<string>()
+    allTasks.forEach((task) => {
+      task.tags?.forEach((tag) => {
+        allTagsSet.add(tag)
+      })
+    })
+    return Array.from(allTagsSet).sort()
+  }
+
+  const isDescendantOf = (potentialParentId: string, taskId: string, allTasksList: Task[]): boolean => {
+    const task = allTasksList.find((t) => t.id === taskId)
+    if (!task || !task.parentId) return false
+    if (task.parentId === potentialParentId) return true
+    return isDescendantOf(potentialParentId, task.parentId, allTasksList)
+  }
+
+  const getAvailableParentTasks = (currentTaskId?: string): Task[] => {
+    const allTasksList = getAllTasksList()
+    return allTasksList.filter(
+      (task) =>
+        task.type === "project" &&
+        task.id !== currentTaskId &&
+        !isDescendantOf(task.id, currentTaskId || "", allTasksList),
+    )
+  }
+
+  const getChildTasks = (parentId: string): Task[] => {
+    const allTasksList = getAllTasksList()
+    return allTasksList.filter((task) => task.parentId === parentId)
+  }
+
+  const generateTaskPath = (task: Task, allTasksList: Task[]): string => {
+    if (!task.parentId) {
+      return task.category || ""
+    }
+
+    const parentTask = allTasksList.find((t) => t.id === task.parentId)
+    if (!parentTask) {
+      return task.category || ""
+    }
+
+    const parentPath = generateTaskPath(parentTask, allTasksList)
+    return parentPath ? `${parentPath} >> ${parentTask.title}` : parentTask.title
+  }
+
+  // Task operations
+  const togglePriorityFocus = (taskId: string) => {
+    setFocusTasks(
+      focusTasks.map((task) => {
+        if (task.id === taskId) {
+          if (task.isFocusTask) {
+            const newIsPriorityFocus = !task.isPriorityFocus
+            return {
+              ...task,
+              isPriorityFocus: newIsPriorityFocus,
+              order: newIsPriorityFocus ? -1 : task.order,
+            }
+          }
+          return task
+        } else {
+          return {
+            ...task,
+            isPriorityFocus: false,
+            order: task.order === -1 ? 0 : task.order,
+          }
+        }
+      }),
+    )
+  }
+
+  // Helper function to handle inbox task status changes
+  const handleInboxTaskStatusChange = (taskId: string, updates: Partial<Task>) => {
+    const inboxTask = inboxTasks.find(t => t.id === taskId)
+    if (!inboxTask) return false
+    
+    // Check if status is being changed from default 'todo' to any other status
+    if (updates.status && updates.status !== 'todo') {
+      // Determine where the task should be moved to
+      // If task already has isFocusTask flag, move to focus, otherwise to pending
+      const destination = inboxTask.isFocusTask ? 'focus' : 'pending'
+      
+      // Update task and move it
+      const updatedTask = { 
+        ...inboxTask, 
+        ...updates,
+        isInInbox: false,
+        isFocusTask: destination === 'focus',
+        isInPending: destination === 'pending'
+      }
+      
+      // Remove from inbox
+      setInboxTasks(prev => prev.filter(t => t.id !== taskId))
+      
+      // Add to target list
+      if (destination === 'focus') {
+        setFocusTasks(prev => [...prev, updatedTask])
+      } else {
+        setPendingTasks(prev => [...prev, updatedTask])
+      }
+      
+      // Update allTasks
+      setAllTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t))
+      
+      toast.success(`任务已从收件箱移至${destination === 'focus' ? '焦点' : '待处理'}列表`)
+      return true
+    }
+    
+    return false
+  }
+
+  const toggleFocusTask = (taskId: string) => {
+    const task = focusTasks.find((t) => t.id === taskId)
+    if (!task) return
+
+    // Handle completed tasks - remove from focus, not move to pending
+    if (task.completed) {
+      setFocusTasks(focusTasks.filter((t) => t.id !== taskId))
+      
+      // Update in allTasks
+      setAllTasks(allTasks.map(t => 
+        t.id === taskId 
+          ? { 
+              ...t, 
+              isFocusTask: false,
+              isPriorityFocus: false,
+              isInPending: false,
+              order: undefined
+            }
+          : t
+      ))
+      return
+    }
+
+    if (task.isFocusTask) {
+      // Move out of focus to pending
+      const updatedTask = {
+        ...task,
+        isFocusTask: false,
+        isPriorityFocus: false,
+        order: undefined,
+        status: task.status === "in-progress" ? "paused" as const :
+                task.status === "completed" ? "todo" as const :
+                task.status === "paused" ? "paused" as const :
+                "todo" as const,
+        isInPending: true,
+      }
+
+      setFocusTasks(focusTasks.filter((t) => t.id !== taskId))
+      setPendingTasks([...pendingTasks, updatedTask])
+      // allTasks will be automatically synced via useEffect
+    } else {
+      console.warn("toggleFocusTask called on non-focus task")
+    }
+  }
+
+  const toggleTaskStatus = (taskId: string) => {
+    // First check which list the task is in
+    const task = focusTasks.find(t => t.id === taskId) || 
+                 pendingTasks.find(t => t.id === taskId) ||
+                 inboxTasks.find(t => t.id === taskId)
+    
+    if (!task) return
+
+    let newStatus: "todo" | "in-progress" | "completed" | "paused"
+    switch (task.status) {
+      case "todo":
+        newStatus = "in-progress"
+        break
+      case "in-progress":
+        newStatus = "paused"
+        break
+      case "paused":
+        newStatus = "completed"
+        break
+      case "completed":
+        newStatus = "todo"
+        break
+      default:
+        newStatus = "in-progress"
+    }
+
+    const updates = {
+      status: newStatus,
+      completed: newStatus === "completed",
+    }
+
+    // Check if this is an inbox task that needs to be moved
+    if (inboxTasks.find(t => t.id === taskId) && handleInboxTaskStatusChange(taskId, updates)) {
+      return // Task has been moved from inbox
+    }
+
+    const updateTask = (task: Task) => {
+      if (task.id === taskId) {
+        return { ...task, ...updates }
+      }
+      return task
+    }
+
+    setFocusTasks(focusTasks.map(updateTask))
+    setPendingTasks(pendingTasks.map(updateTask))
+    // allTasks will be automatically synced via useEffect
+  }
+
+  const startTask = (taskId: string) => {
+    // Check if this is an inbox task that needs to be moved
+    if (handleInboxTaskStatusChange(taskId, { status: "in-progress" as const, completed: false })) {
+      return // Task has been moved from inbox
+    }
+
+    const updateTask = (task: Task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: "in-progress" as const,
+            completed: false,
+          }
+        : task
+
+    setFocusTasks(focusTasks.map(updateTask))
+    setPendingTasks(pendingTasks.map(updateTask))
+    // allTasks will be automatically synced via useEffect
+  }
+
+  const pauseTask = (taskId: string) => {
+    // Check if this is an inbox task that needs to be moved
+    if (handleInboxTaskStatusChange(taskId, { status: "paused" as const })) {
+      return // Task has been moved from inbox
+    }
+
+    const updateTask = (task: Task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: "paused" as const,
+          }
+        : task
+
+    setFocusTasks(focusTasks.map(updateTask))
+    setPendingTasks(pendingTasks.map(updateTask))
+    // allTasks will be automatically synced via useEffect
+  }
+
+  const resumeTask = (taskId: string) => {
+    // Check if this is an inbox task that needs to be moved
+    if (handleInboxTaskStatusChange(taskId, { status: "in-progress" as const })) {
+      return // Task has been moved from inbox
+    }
+
+    const updateTask = (task: Task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: "in-progress" as const,
+          }
+        : task
+
+    setFocusTasks(focusTasks.map(updateTask))
+    setPendingTasks(pendingTasks.map(updateTask))
+    // allTasks will be automatically synced via useEffect
+  }
+
+  const completeTask = (taskId: string) => {
+    // Check if this is an inbox task that needs to be moved
+    if (handleInboxTaskStatusChange(taskId, { 
+      status: "completed" as const, 
+      completed: true, 
+      completedAt: new Date()
+    })) {
+      return // Task has been moved from inbox
+    }
+
+    // Check if task is in focusTasks
+    const focusTask = focusTasks.find(t => t.id === taskId)
+    if (focusTask) {
+      // Remove from focus tasks (completed tasks don't belong to pending)
+      setFocusTasks(focusTasks.filter(t => t.id !== taskId))
+      
+      // Update in allTasks to mark as completed
+      setAllTasks(allTasks.map(task => 
+        task.id === taskId 
+          ? { 
+              ...task, 
+              completed: true,
+              status: "completed" as const,
+              isFocusTask: false,
+              isPriorityFocus: false,
+              isInPending: false,
+              order: undefined
+            }
+          : task
+      ))
+    } else {
+      // Handle completion in pending tasks - remove from pending list
+      const completedTask = pendingTasks.find(t => t.id === taskId)
+      if (completedTask) {
+        // Remove from pending tasks
+        setPendingTasks(pendingTasks.filter(task => task.id !== taskId))
+        
+        // Update in allTasks to mark as completed
+        setAllTasks(allTasks.map(task => 
+          task.id === taskId 
+            ? { 
+                ...task, 
+                completed: true,
+                status: "completed" as const,
+                isFocusTask: false,
+                isPriorityFocus: false,
+                isInPending: false
+              }
+            : task
+        ))
+      }
+    }
+    // allTasks will be automatically synced via useEffect
+  }
+
+  const deleteTask = (taskId: string) => {
+    // Find the task to delete
+    const taskToDelete = 
+      focusTasks.find(t => t.id === taskId) ||
+      pendingTasks.find(t => t.id === taskId) ||
+      inboxTasks.find(t => t.id === taskId) ||
+      allTasks.find(t => t.id === taskId)
+    
+    if (!taskToDelete) {
+      console.warn(`Task ${taskId} not found for deletion`)
+      return
+    }
+
+    // Mark task as deleted and move to recycle bin
+    const deletedTask: Task = {
+      ...taskToDelete,
+      deletedAt: new Date(),
+      isDeleted: true,
+      isFocusTask: false,
+      isInPending: false,
+      isInInbox: false
+    }
+
+    // Handle child tasks
+    const childTasks = getChildTasks(taskId)
+    if (childTasks.length > 0) {
+      // Unparent child tasks
+      setFocusTasks(prev => 
+        prev
+          .map(task => task.parentId === taskId ? { ...task, parentId: undefined } : task)
+          .filter(task => task.id !== taskId)
+      )
+      setPendingTasks(prev =>
+        prev
+          .map(task => task.parentId === taskId ? { ...task, parentId: undefined } : task)
+          .filter(task => task.id !== taskId)
+      )
+      setInboxTasks(prev =>
+        prev
+          .map(task => task.parentId === taskId ? { ...task, parentId: undefined } : task)
+          .filter(task => task.id !== taskId)
+      )
+      setAllTasks(prev =>
+        prev
+          .map(task => task.parentId === taskId ? { ...task, parentId: undefined } : task)
+          .filter(task => task.id !== taskId)
+      )
+    } else {
+      // Remove from all lists
+      setFocusTasks(prev => prev.filter(task => task.id !== taskId))
+      setPendingTasks(prev => prev.filter(task => task.id !== taskId))
+      setInboxTasks(prev => prev.filter(task => task.id !== taskId))
+      setAllTasks(prev => prev.filter(task => task.id !== taskId))
+    }
+
+    // Add to recycle bin
+    setRecycleBin(prev => [...prev, deletedTask])
+    
+    toast.success("任务已移至回收站")
+  }
+
+  const deletePendingTask = (taskId: string) => {
+    // Use the same soft delete logic as deleteTask
+    deleteTask(taskId)
+  }
+
+  const removeFromPending = (taskId: string) => {
+    const taskToRemove = pendingTasks.find((task) => task.id === taskId)
+    if (taskToRemove) {
+      // 从待处理列表中移除
+      setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
+      
+      // 确保任务存在于 allTasks 中，并更新状态
+      setAllTasks(prev => {
+        const existsInAll = prev.some(task => task.id === taskId)
+        
+        if (existsInAll) {
+          // 如果已存在，更新其状态
+          return prev.map(task => 
+            task.id === taskId 
+              ? { ...task, isInPending: false }
+              : task
+          )
+        } else {
+          // 如果不存在，添加到 allTasks
+          console.log(`Task ${taskId} not found in allTasks, adding it`)
+          return [...prev, { ...taskToRemove, isInPending: false }]
+        }
+      })
+      
+      toast.success("任务已移至任务库")
+    }
+  }
+
+  const addProgress = (taskId: string, progress: string) => {
+    setFocusTasks(
+      focusTasks.map((task) => {
+        if (task.id === taskId) {
+          const newProgressEntry = {
+            id: Date.now().toString(),
+            content: progress,
+            timestamp: new Date(),
+            type: "progress" as const,
+          }
+
+          return {
+            ...task,
+            progress: progress,
+            progressHistory: [...(task.progressHistory || []), newProgressEntry],
+            updatedAt: new Date(),
+          }
+        }
+        return task
+      }),
+    )
+
+    setPendingTasks(
+      pendingTasks.map((task) => {
+        if (task.id === taskId) {
+          const newProgressEntry = {
+            id: Date.now().toString(),
+            content: progress,
+            timestamp: new Date(),
+            type: "progress" as const,
+          }
+
+          return {
+            ...task,
+            progress: progress,
+            progressHistory: [...(task.progressHistory || []), newProgressEntry],
+            updatedAt: new Date(),
+          }
+        }
+        return task
+      }),
+    )
+
+    setAllTasks(
+      allTasks.map((task) => {
+        if (task.id === taskId) {
+          const newProgressEntry = {
+            id: Date.now().toString(),
+            content: progress,
+            timestamp: new Date(),
+            type: "progress" as const,
+          }
+
+          return {
+            ...task,
+            progress: progress,
+            progressHistory: [...(task.progressHistory || []), newProgressEntry],
+            updatedAt: new Date(),
+          }
+        }
+        return task
+      }),
+    )
+  }
+
+  const addToPending = (
+    newTaskTitleInput?: string,
+    selectedPerspectiveFilters?: PerspectiveFilter,
+    selectedPerspectiveName?: string
+  ) => {
+    const titleToUse = newTaskTitleInput || newTaskTitle
+    if (!titleToUse.trim()) return
+
+    const parsedLines = parseIndentedTaskList(titleToUse)
+    if (parsedLines.length === 0) {
+      toast.error("请输入任务内容")
+      return
+    }
+
+    // Debug log to verify perspective filters are being passed
+    if (selectedPerspectiveFilters) {
+      console.log('[addToPending] Applying perspective filters:', {
+        name: selectedPerspectiveName,
+        filters: selectedPerspectiveFilters
+      })
+    }
+
+    const newTasks: Task[] = []
+    const parentStack: { id: string; indentation: number }[] = []
+
+    parsedLines.forEach((line) => {
+      while (parentStack.length > 0 && line.indentation <= parentStack[parentStack.length - 1].indentation) {
+        parentStack.pop()
+      }
+      const parentId = parentStack.length > 0 ? parentStack[parentStack.length - 1].id : undefined
+
+      const newTask: Task = {
+        id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        title: line.title,
+        completed: false,
+        isFocusTask: false,
+        isPriorityFocus: false,
+        priority: "low",
+        status: "todo",
+        type: "action",
+        createdAt: new Date(),
+        isInPending: true,
+        tags: [...line.tags],
+        parentId: parentId,
+      }
+
+      // Apply perspective filters if provided
+      if (selectedPerspectiveFilters) {
+        const filters = selectedPerspectiveFilters
+        console.log(`[addToPending] Applying filters to task "${line.title}":`, filters)
+
+        if (filters.tags && filters.tags.length > 0) {
+          const existingTags = newTask.tags || []
+          const allTags = [...new Set([...existingTags, ...filters.tags])]
+          newTask.tags = allTags
+          console.log(`[addToPending] Applied tags:`, allTags)
+        }
+
+        if (filters.taskTypes && filters.taskTypes.length === 1) {
+          newTask.type = filters.taskTypes[0] as "action" | "project" | "key-result" | "objective"
+          console.log(`[addToPending] Applied type:`, newTask.type)
+        }
+
+        if (filters.priorities && filters.priorities.length === 1) {
+          newTask.priority = filters.priorities[0] as "low" | "medium" | "high"
+          console.log(`[addToPending] Applied priority:`, newTask.priority)
+        }
+
+        if (filters.statuses && filters.statuses.length === 1) {
+          newTask.status = filters.statuses[0] as "todo" | "in-progress" | "completed" | "paused"
+          newTask.completed = newTask.status === "completed"
+          console.log(`[addToPending] Applied status:`, newTask.status)
+        }
+      }
+
+      newTasks.push(newTask)
+      parentStack.push({ id: newTask.id, indentation: line.indentation })
+    })
+
+    // Set task types to 'project' for focusTasks with children
+    const taskIdsWithChildren = new Set(newTasks.map((t) => t.parentId).filter(Boolean))
+    newTasks.forEach((task) => {
+      if (taskIdsWithChildren.has(task.id)) {
+        task.type = "project"
+      }
+    })
+
+    setPendingTasks((prev) => [...prev, ...newTasks])
+    setAllTasks((prev) => [...prev, ...newTasks])
+    if (!newTaskTitleInput) {
+      setNewTaskTitle("")
+    }
+
+    // Immediately save to prevent data loss on quick refresh
+    // Clear any pending debounced save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    // Perform immediate save
+    apiStorage.updateData({
+      focusTasks,
+      pendingTasks: [...pendingTasks, ...newTasks],
+      inboxTasks,
+      allTasks: [...allTasks, ...newTasks],
+      recycleBin
+    }).catch(error => {
+      console.error('Failed to save immediately after addToPending:', error)
+    })
+
+    // Show success message
+    if (selectedPerspectiveFilters && selectedPerspectiveName) {
+      const appliedConditions: string[] = []
+
+      if (selectedPerspectiveFilters.tags.length > 0) {
+        appliedConditions.push(`标签: ${selectedPerspectiveFilters.tags.join(", ")}`)
+      }
+      if (selectedPerspectiveFilters.taskTypes.length === 1) {
+        appliedConditions.push(`类型: ${selectedPerspectiveFilters.taskTypes[0]}`)
+      }
+      if (selectedPerspectiveFilters.priorities.length === 1) {
+        appliedConditions.push(`优先级: ${selectedPerspectiveFilters.priorities[0]}`)
+      }
+      if (selectedPerspectiveFilters.statuses.length === 1) {
+        appliedConditions.push(`状态: ${selectedPerspectiveFilters.statuses[0]}`)
+      }
+
+      if (appliedConditions.length > 0) {
+        toast.success(`成功添加 ${newTasks.length} 个任务并自动应用透视条件`, {
+          description: appliedConditions.join(" | "),
+          duration: 4000,
+        })
+      } else {
+        toast.success(`成功添加 ${newTasks.length} 个任务到 ${selectedPerspectiveName} 透视`)
+      }
+    } else {
+      toast.success(`成功添加 ${newTasks.length} 个任务`)
+    }
+  }
+
+  const addTaskToPending = (
+    taskData: Omit<Task, "id" | "createdAt">,
+    selectedPerspectiveFilters?: PerspectiveFilter
+  ) => {
+    const finalTaskData = { ...taskData }
+
+    // Apply perspective filters if provided
+    if (selectedPerspectiveFilters) {
+      const filters = selectedPerspectiveFilters
+
+      if (filters.tags.length > 0) {
+        const existingTags = finalTaskData.tags || []
+        const newTags = [...new Set([...existingTags, ...filters.tags])]
+        finalTaskData.tags = newTags
+      }
+
+      if (filters.taskTypes.length === 1 && !taskData.type) {
+        finalTaskData.type = filters.taskTypes[0] as "action" | "project" | "key-result" | "objective"
+      }
+
+      if (filters.priorities.length === 1 && !taskData.priority) {
+        finalTaskData.priority = filters.priorities[0] as "low" | "medium" | "high"
+      }
+
+      if (filters.statuses.length === 1 && !taskData.status) {
+        finalTaskData.status = filters.statuses[0] as "todo" | "in-progress" | "completed" | "paused"
+        finalTaskData.completed = finalTaskData.status === "completed"
+      }
+    }
+
+    const newTask: Task = {
+      ...finalTaskData,
+      id: `task-${Date.now()}`,
+      createdAt: new Date(),
+    }
+    setPendingTasks([...pendingTasks, newTask])
+    setAllTasks([...allTasks, newTask])
+    
+    // Immediately save to prevent data loss on quick refresh
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    apiStorage.updateData({
+      focusTasks,
+      pendingTasks: [...pendingTasks, newTask],
+      inboxTasks,
+      allTasks: [...allTasks, newTask],
+      recycleBin
+    }).catch(error => {
+      console.error('Failed to save immediately after addTaskToPending:', error)
+    })
+
+    const appliedTags = newTask.tags || []
+    if (appliedTags.length > 0 && selectedPerspectiveFilters && selectedPerspectiveFilters.tags.length > 0) {
+      toast.success(`任务已添加并自动应用透视标签: ${appliedTags.join(", ")}`)
+    }
+  }
+
+  const addTaskToLibrary = (
+    taskData: Omit<Task, "id" | "createdAt">,
+    selectedPerspectiveFilters?: PerspectiveFilter
+  ) => {
+    const finalTaskData = { ...taskData }
+
+    // Apply perspective filters if provided
+    if (selectedPerspectiveFilters) {
+      const filters = selectedPerspectiveFilters
+
+      if (filters.tags.length > 0) {
+        const existingTags = finalTaskData.tags || []
+        const newTags = [...new Set([...existingTags, ...filters.tags])]
+        finalTaskData.tags = newTags
+      }
+
+      if (filters.taskTypes.length === 1 && !taskData.type) {
+        finalTaskData.type = filters.taskTypes[0] as "action" | "project" | "key-result" | "objective"
+      }
+
+      if (filters.priorities.length === 1 && !taskData.priority) {
+        finalTaskData.priority = filters.priorities[0] as "low" | "medium" | "high"
+      }
+
+      if (filters.statuses.length === 1 && !taskData.status) {
+        finalTaskData.status = filters.statuses[0] as "todo" | "in-progress" | "completed" | "paused"
+        finalTaskData.completed = finalTaskData.status === "completed"
+      }
+    }
+
+    const newTask: Task = {
+      ...finalTaskData,
+      id: `task-${Date.now()}`,
+      createdAt: new Date(),
+      isInPending: false, // Ensure it's not marked as pending
+      isFocusTask: false,
+      isInInbox: false
+    }
+    
+    // Only add to allTasks, not to pendingTasks
+    setAllTasks([...allTasks, newTask])
+    
+    // Immediately save to prevent data loss on quick refresh
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    
+    apiStorage.updateData({
+      focusTasks,
+      pendingTasks,
+      inboxTasks,
+      allTasks: [...allTasks, newTask],
+      recycleBin
+    }).catch(error => {
+      console.error('Failed to save immediately after addTaskToLibrary:', error)
+    })
+
+    const appliedTags = newTask.tags || []
+    if (appliedTags.length > 0 && selectedPerspectiveFilters && selectedPerspectiveFilters.tags.length > 0) {
+      toast.success(`任务已添加到任务库并应用透视标签: ${appliedTags.join(", ")}`)
+    } else {
+      toast.success(`任务已添加到任务库`)
+    }
+  }
+
+  const addToFocus = (taskId: string) => {
+    // First check pending tasks
+    const taskFromPending = pendingTasks.find((task) => task.id === taskId)
+    if (taskFromPending) {
+      const maxOrder = Math.max(...focusTasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0), 0)
+      const focusTask = {
+        ...taskFromPending,
+        isFocusTask: true,
+        status: "in-progress" as const,
+        order: maxOrder + 1,
+        isInPending: false,
+      }
+      setFocusTasks([...focusTasks, focusTask])
+      setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
+
+      setAllTasks(
+        allTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                isFocusTask: true,
+                status: "in-progress" as const,
+                order: maxOrder + 1,
+                isInPending: false,
+              }
+            : task,
+        ),
+      )
+
+      toast.success("任务已添加到焦点")
+      return
+    }
+
+    // Check all tasks
+    const taskFromAll = allTasks.find((task) => task.id === taskId)
+    if (taskFromAll && !taskFromAll.isFocusTask) {
+      const maxOrder = Math.max(...focusTasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0), 0)
+      const focusTask = {
+        ...taskFromAll,
+        isFocusTask: true,
+        status: "in-progress" as const,
+        order: maxOrder + 1,
+        isInPending: false,
+      }
+
+      setFocusTasks([...focusTasks, focusTask])
+
+      if (taskFromAll.isInPending) {
+        setPendingTasks(pendingTasks.filter((task) => task.id !== taskId))
+      }
+
+      setAllTasks(
+        allTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                isFocusTask: true,
+                status: "in-progress" as const,
+                order: maxOrder + 1,
+                isInPending: false,
+              }
+            : task,
+        ),
+      )
+
+      toast.success("任务已添加到焦点")
+    }
+  }
+
+  const addToPendingFromLibrary = (taskId: string) => {
+    // Check focus tasks
+    const taskFromFocus = focusTasks.find((task) => task.id === taskId)
+    if (taskFromFocus) {
+      const pendingTask = {
+        ...taskFromFocus,
+        isFocusTask: false,
+        isPriorityFocus: false,
+        order: undefined,
+        status: taskFromFocus.status === "in-progress" ? "paused" as const :
+                taskFromFocus.status === "completed" ? "todo" as const :
+                taskFromFocus.status === "paused" ? "paused" as const :
+                "todo" as const,
+        isInPending: true,
+      }
+
+      setFocusTasks(focusTasks.filter((task) => task.id !== taskId))
+      setPendingTasks([...pendingTasks, pendingTask])
+
+      setAllTasks(
+        allTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                isFocusTask: false,
+                isPriorityFocus: false,
+                order: undefined,
+                status: taskFromFocus.status === "in-progress" ? "paused" as const :
+                        taskFromFocus.status === "completed" ? "todo" as const :
+                        taskFromFocus.status === "paused" ? "paused" as const :
+                        "todo" as const,
+                isInPending: true,
+              }
+            : task,
+        ),
+      )
+
+      toast.success("任务已添加到待处理列表")
+      return
+    }
+
+    // Check all tasks
+    const taskFromAll = allTasks.find((task) => task.id === taskId)
+    if (taskFromAll && !taskFromAll.isInPending) {
+      const pendingTask = {
+        ...taskFromAll,
+        isFocusTask: false,
+        isPriorityFocus: false,
+        order: undefined,
+        status: taskFromAll.status === "in-progress" ? "paused" as const :
+                taskFromAll.status === "completed" ? "todo" as const :
+                taskFromAll.status === "paused" ? "paused" as const :
+                "todo" as const,
+        isInPending: true,
+      }
+
+      const existsInPending = pendingTasks.some((task) => task.id === taskId)
+      if (!existsInPending) {
+        setPendingTasks([...pendingTasks, pendingTask])
+      }
+
+      setAllTasks(
+        allTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                isFocusTask: false,
+                isPriorityFocus: false,
+                order: undefined,
+                status: taskFromAll.status === "in-progress" ? "paused" as const :
+                        taskFromAll.status === "completed" ? "todo" as const :
+                        taskFromAll.status === "paused" ? "paused" as const :
+                        "todo" as const,
+                isInPending: true,
+              }
+            : task,
+        ),
+      )
+
+      toast.success("任务已添加到待处理列表")
+    }
+  }
+
+  const updateTask = (taskId: string, updates: Partial<Task>) => {
+    console.log(`[updateTask] Updating task ${taskId} with:`, updates)
+    
+    // Check if this is an inbox task that needs to be moved due to status change
+    if (handleInboxTaskStatusChange(taskId, updates)) {
+      return // Task has been moved from inbox, no need for further updates
+    }
+    
+    setFocusTasks(prev => {
+      const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      return updated
+    })
+    
+    setPendingTasks(prev => {
+      const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      return updated
+    })
+    
+    setInboxTasks(prev => {
+      const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      const updatedTask = updated.find(t => t.id === taskId)
+      if (updatedTask) {
+        console.log(`[updateTask] Updated inboxTask:`, updatedTask)
+      }
+      return updated
+    })
+    
+    setAllTasks(prev => {
+      const updated = prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))
+      return updated
+    })
+  }
+
+  const updateProgress = (taskId: string, progressId: string, content: string) => {
+    setFocusTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id === taskId) {
+          const updatedProgressHistory =
+            task.progressHistory?.map((progress) =>
+              progress.id === progressId ? { ...progress, content } : progress,
+            ) || []
+          return { ...task, progressHistory: updatedProgressHistory, updatedAt: new Date() }
+        }
+        return task
+      }),
+    )
+
+    setPendingTasks((prevPendingTasks) =>
+      prevPendingTasks.map((task) => {
+        if (task.id === taskId) {
+          const updatedProgressHistory =
+            task.progressHistory?.map((progress) =>
+              progress.id === progressId ? { ...progress, content } : progress,
+            ) || []
+          return { ...task, progressHistory: updatedProgressHistory, updatedAt: new Date() }
+        }
+        return task
+      }),
+    )
+
+    setAllTasks((prevAllTasks) =>
+      prevAllTasks.map((task) => {
+        if (task.id === taskId) {
+          const updatedProgressHistory =
+            task.progressHistory?.map((progress) =>
+              progress.id === progressId ? { ...progress, content } : progress,
+            ) || []
+          return { ...task, progressHistory: updatedProgressHistory, updatedAt: new Date() }
+        }
+        return task
+      }),
+    )
+  }
+
+  const deleteProgress = (taskId: string, progressId: string) => {
+    setFocusTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id === taskId) {
+          const updatedProgressHistory = task.progressHistory?.filter((progress) => progress.id !== progressId) || []
+          return { ...task, progressHistory: updatedProgressHistory, updatedAt: new Date() }
+        }
+        return task
+      }),
+    )
+
+    setPendingTasks((prevPendingTasks) =>
+      prevPendingTasks.map((task) => {
+        if (task.id === taskId) {
+          const updatedProgressHistory = task.progressHistory?.filter((progress) => progress.id !== progressId) || []
+          return { ...task, progressHistory: updatedProgressHistory, updatedAt: new Date() }
+        }
+        return task
+      }),
+    )
+
+    setAllTasks((prevAllTasks) =>
+      prevAllTasks.map((task) => {
+        if (task.id === taskId) {
+          const updatedProgressHistory = task.progressHistory?.filter((progress) => progress.id !== progressId) || []
+          return { ...task, progressHistory: updatedProgressHistory, updatedAt: new Date() }
+        }
+        return task
+      }),
+    )
+  }
+
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedPendingTasks((prev) => (prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]))
+  }
+
+  const selectFocusTasks = () => {
+    setIsSelectionMode(!isSelectionMode)
+    setSelectedPendingTasks([])
+  }
+
+  const clearFocusTasks = () => {
+    const focusTasksToMove = focusTasks
+      .filter((task) => task.isFocusTask)
+      .map((task) => ({
+        ...task,
+        isFocusTask: false,
+        isPriorityFocus: false,
+        order: undefined,
+        status: "todo" as const,
+        isInPending: true,
+      }))
+
+    const nonFocusTasks = focusTasks.filter((task) => !task.isFocusTask)
+
+    setFocusTasks(nonFocusTasks)
+    setPendingTasks([...pendingTasks, ...focusTasksToMove])
+  }
+
+  const addSelectedToFocus = () => {
+    selectedPendingTasks.forEach((taskId) => {
+      const taskToMove = pendingTasks.find((task) => task.id === taskId)
+      if (taskToMove) {
+        const maxOrder = Math.max(
+          ...focusTasks.filter((t) => t.isFocusTask && !t.isPriorityFocus).map((t) => t.order || 0),
+          0,
+        )
+        const focusTask = {
+          ...taskToMove,
+          isFocusTask: true,
+          status: "in-progress" as const,
+          order: maxOrder + selectedPendingTasks.indexOf(taskId) + 1,
+          isInPending: false,
+        }
+        setFocusTasks((prev) => [...prev, focusTask])
+      }
+    })
+
+    setPendingTasks((prev) => prev.filter((task) => !selectedPendingTasks.includes(task.id)))
+    setSelectedPendingTasks([])
+    setIsSelectionMode(false)
+  }
+
+  const removeSelectedFromPending = () => {
+    // 一次性从待处理列表中移除所有选中的任务
+    setPendingTasks(prev => prev.filter(task => !selectedPendingTasks.includes(task.id)))
+    
+    // 更新 allTasks 中这些任务的状态
+    setAllTasks(prev => prev.map(task => 
+      selectedPendingTasks.includes(task.id) 
+        ? { ...task, isInPending: false }
+        : task
+    ))
+    
+    // 显示成功提示
+    toast.success(`已将 ${selectedPendingTasks.length} 个任务移至任务库`)
+    
+    // 清空选中列表并退出选择模式
+    setSelectedPendingTasks([])
+    setIsSelectionMode(false)
+  }
+
+  const resetData = async () => {
+    setFocusTasks([])
+    setPendingTasks([])
+    setAllTasks([])
+    
+    // Clear file storage (only task-related data)
+    await apiStorage.updateData({
+      focusTasks: [],
+      pendingTasks: [],
+      allTasks: []
+    })
+    
+    toast.success("数据已重置")
+  }
+
+  const importTasks = (focusTasks: Task[], pendingTasksList: Task[], allTasksList?: Task[]) => {
+    // Set focus tasks
+    setFocusTasks(focusTasks)
+    
+    // Set pending tasks
+    setPendingTasks(pendingTasksList)
+    
+    // Set all focusTasks - if not provided, construct from focus and pending
+    if (allTasksList) {
+      setAllTasks(allTasksList)
+    } else {
+      // Build allTasks from focus and pending, avoiding duplicates
+      const taskMap = new Map<string, Task>()
+      
+      // Add all focus tasks
+      focusTasks.forEach(task => {
+        taskMap.set(task.id, task)
+      })
+      
+      // Add all pending tasks
+      pendingTasksList.forEach(task => {
+        taskMap.set(task.id, task)
+      })
+      
+      setAllTasks(Array.from(taskMap.values()))
+    }
+    
+    // The useEffect hook will automatically save to API storage
+  }
+
+  const refreshData = async () => {
+    try {
+      const data = await apiStorage.loadData()
+      
+      setFocusTasks(data.focusTasks.map((task: any, index: number) => ({
+        ...task,
+        order: task.order ?? index,
+        type: task.type || "action",
+        tags: task.tags || [],
+      })))
+      setPendingTasks(data.pendingTasks)
+      setInboxTasks(data.inboxTasks || [])
+      setRecycleBin(data.recycleBin || [])
+      // Also refresh allTasks
+      setAllTasks(data.allTasks || [])
+      
+      toast.success("数据已刷新")
+      return true
+    } catch (error) {
+      console.error('Failed to refresh data:', error)
+      toast.error('刷新失败，请重试')
+      return false
+    }
+  }
+
+  // Inbox operations
+  const addToInbox = (title: string, additionalProps?: Partial<Task>) => {
+    const { title: parsedTitle, tags } = parseTaskTitleWithTags(title)
+    
+    if (!parsedTitle.trim()) {
+      toast.error("请输入任务标题")
+      return
+    }
+
+    const newTask: Task = {
+      id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      title: parsedTitle,
+      completed: false,
+      isFocusTask: false,
+      isPriorityFocus: false,
+      priority: "low",
+      status: "todo",
+      type: "action",
+      isInInbox: true,
+      tags: tags.length > 0 ? tags : [],
+      createdAt: new Date(),
+      progressHistory: [],
+      ...additionalProps
+    }
+
+    setInboxTasks(prev => [...prev, newTask])
+    setAllTasks(prev => [...prev, newTask])
+    toast.success("已添加到收件箱")
+    return newTask
+  }
+
+  const deleteInboxTask = (taskId: string) => {
+    // Use the same soft delete logic as deleteTask
+    deleteTask(taskId)
+  }
+
+  // Recycle bin operations
+  const restoreFromRecycleBin = (taskId: string) => {
+    const taskToRestore = recycleBin.find(t => t.id === taskId)
+    if (!taskToRestore) {
+      console.warn(`Task ${taskId} not found in recycle bin`)
+      return
+    }
+
+    // Remove deleted flags
+    const restoredTask: Task = {
+      ...taskToRestore,
+      deletedAt: undefined,
+      isDeleted: false,
+    }
+
+    // Determine where to restore the task based on its previous location
+    if (taskToRestore.isFocusTask) {
+      setFocusTasks(prev => [...prev, { ...restoredTask, isFocusTask: true }])
+    } else if (taskToRestore.isInPending) {
+      setPendingTasks(prev => [...prev, { ...restoredTask, isInPending: true }])
+    } else if (taskToRestore.isInInbox) {
+      setInboxTasks(prev => [...prev, { ...restoredTask, isInInbox: true }])
+    } else {
+      // Default to allTasks only (library task)
+      setAllTasks(prev => [...prev, restoredTask])
+    }
+
+    // Always add to allTasks if not already there
+    setAllTasks(prev => {
+      const exists = prev.some(t => t.id === taskId)
+      if (!exists) {
+        return [...prev, restoredTask]
+      }
+      return prev.map(t => t.id === taskId ? restoredTask : t)
+    })
+
+    // Remove from recycle bin
+    setRecycleBin(prev => prev.filter(t => t.id !== taskId))
+    
+    toast.success("任务已恢复")
+  }
+
+  const permanentlyDelete = (taskId: string) => {
+    setRecycleBin(prev => prev.filter(t => t.id !== taskId))
+    toast.success("任务已永久删除")
+  }
+
+  const emptyRecycleBin = () => {
+    const count = recycleBin.length
+    if (count === 0) {
+      toast.info("回收站已空")
+      return
+    }
+    
+    setRecycleBin([])
+    toast.success(`已永久删除 ${count} 个任务`)
+  }
+
+  const cleanupOldRecycleBinItems = () => {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    
+    const itemsToKeep = recycleBin.filter(task => {
+      if (!task.deletedAt) return true // Keep if no deletion date
+      return new Date(task.deletedAt) > sevenDaysAgo
+    })
+    
+    const deletedCount = recycleBin.length - itemsToKeep.length
+    if (deletedCount > 0) {
+      setRecycleBin(itemsToKeep)
+      console.log(`自动清理了 ${deletedCount} 个过期的回收站任务`)
+    }
+  }
+
+  // Run cleanup on mount and every day
+  useEffect(() => {
+    cleanupOldRecycleBinItems()
+    
+    // Set up daily cleanup
+    const interval = setInterval(() => {
+      cleanupOldRecycleBinItems()
+    }, 24 * 60 * 60 * 1000) // Run once per day
+    
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run on mount
+
+  const moveFromInboxToFocus = (taskId: string) => {
+    const task = inboxTasks.find(t => t.id === taskId)
+    if (!task) return
+
+    const updatedTask = { ...task, isFocusTask: true, isInInbox: false }
+    setInboxTasks(prev => prev.filter(t => t.id !== taskId))
+    setFocusTasks(prev => [...prev, updatedTask])
+    setAllTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t))
+    toast.success("已移至焦点任务")
+  }
+
+  const moveFromInboxToPending = (taskId: string) => {
+    const task = inboxTasks.find(t => t.id === taskId)
+    if (!task) return
+
+    const updatedTask = { ...task, isInPending: true, isInInbox: false }
+    setInboxTasks(prev => prev.filter(t => t.id !== taskId))
+    setPendingTasks(prev => [...prev, updatedTask])
+    setAllTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t))
+    toast.success("已移至待处理任务")
+  }
+
+  const moveSelectedFromInbox = (destination: "focus" | "pending") => {
+    const selectedTasks = inboxTasks.filter(t => selectedInboxTasks.includes(t.id))
+    
+    if (selectedTasks.length === 0) {
+      toast.error("请先选择任务")
+      return
+    }
+
+    if (destination === "focus") {
+      const updatedTasks = selectedTasks.map(t => ({ ...t, isFocusTask: true, isInInbox: false }))
+      setInboxTasks(prev => prev.filter(t => !selectedInboxTasks.includes(t.id)))
+      setFocusTasks(prev => [...prev, ...updatedTasks])
+      setAllTasks(prev => prev.map(t => {
+        const updated = updatedTasks.find(ut => ut.id === t.id)
+        return updated || t
+      }))
+      toast.success(`已将 ${selectedTasks.length} 个任务移至焦点任务`)
+    } else {
+      const updatedTasks = selectedTasks.map(t => ({ ...t, isInPending: true, isInInbox: false }))
+      setInboxTasks(prev => prev.filter(t => !selectedInboxTasks.includes(t.id)))
+      setPendingTasks(prev => [...prev, ...updatedTasks])
+      setAllTasks(prev => prev.map(t => {
+        const updated = updatedTasks.find(ut => ut.id === t.id)
+        return updated || t
+      }))
+      toast.success(`已将 ${selectedTasks.length} 个任务移至待处理`)
+    }
+
+    setSelectedInboxTasks([])
+  }
+
+  const toggleInboxTaskSelection = (taskId: string) => {
+    setSelectedInboxTasks(prev =>
+      prev.includes(taskId)
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    )
+  }
+
+  const clearInboxSelection = () => {
+    setSelectedInboxTasks([])
+  }
+
+  const updateInboxTask = (taskId: string, updates: Partial<Task>) => {
+    console.log(`[updateInboxTask] Updating task ${taskId} with:`, updates)
+    
+    // If status is being updated and changed from 'todo', move task out of inbox
+    if (updates.status && updates.status !== 'todo') {
+      handleInboxTaskStatusChange(taskId, updates)
+    } else {
+      // Only update task info without moving it
+      setInboxTasks(prev => {
+        const updated = prev.map(t => t.id === taskId ? { ...t, ...updates } : t)
+        console.log(`[updateInboxTask] Updated inboxTasks:`, updated.find(t => t.id === taskId))
+        return updated
+      })
+      // Update allTasks as well
+      setAllTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+    }
+  }
+
+  // Recycle bin selection operations
+  const toggleRecycleBinTaskSelection = (taskId: string) => {
+    setSelectedRecycleBinTasks(prev =>
+      prev.includes(taskId)
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    )
+  }
+
+  const clearRecycleBinSelection = () => {
+    setSelectedRecycleBinTasks([])
+  }
+
+  const restoreSelectedFromRecycleBin = () => {
+    if (selectedRecycleBinTasks.length === 0) {
+      toast.error("请先选择要恢复的任务")
+      return
+    }
+
+    selectedRecycleBinTasks.forEach(taskId => {
+      restoreFromRecycleBin(taskId)
+    })
+
+    clearRecycleBinSelection()
+    toast.success(`已恢复 ${selectedRecycleBinTasks.length} 个任务`)
+  }
+
+  const permanentlyDeleteSelected = () => {
+    if (selectedRecycleBinTasks.length === 0) {
+      toast.error("请先选择要删除的任务")
+      return
+    }
+
+    const count = selectedRecycleBinTasks.length
+    setRecycleBin(prev => prev.filter(t => !selectedRecycleBinTasks.includes(t.id)))
+    clearRecycleBinSelection()
+    toast.success(`已永久删除 ${count} 个任务`)
+  }
+
+  return {
+    // Loading state
+    isLoading,
+    
+    // State
+    focusTasks,
+    pendingTasks,
+    inboxTasks,
+    allTasks,
+    recycleBin,
+    selectedPendingTasks,
+    selectedInboxTasks,
+    selectedRecycleBinTasks,
+    isSelectionMode,
+    newTaskTitle,
+    setNewTaskTitle,
+
+    // Helper functions
+    getAllTasksList,
+    getAllTags,
+    getAvailableParentTasks,
+    getChildTasks,
+    generateTaskPath,
+
+    // Task operations
+    togglePriorityFocus,
+    toggleFocusTask,
+    toggleTaskStatus,
+    startTask,
+    pauseTask,
+    resumeTask,
+    completeTask,
+    deleteTask,
+    deletePendingTask,
+    removeFromPending,
+    addProgress,
+    addToPending,
+    addTaskToPending,
+    addTaskToLibrary,
+    addToFocus,
+    addToPendingFromLibrary,
+    updateTask,
+    updateProgress,
+    deleteProgress,
+    toggleTaskSelection,
+    selectFocusTasks,
+    clearFocusTasks,
+    addSelectedToFocus,
+    removeSelectedFromPending,
+    resetData,
+    importTasks,
+    refreshData,
+    
+    // Inbox operations
+    addToInbox,
+    deleteInboxTask,
+    moveFromInboxToFocus,
+    moveFromInboxToPending,
+    moveSelectedFromInbox,
+    toggleInboxTaskSelection,
+    clearInboxSelection,
+    updateInboxTask,
+
+    // Recycle bin operations
+    restoreFromRecycleBin,
+    permanentlyDelete,
+    emptyRecycleBin,
+    cleanupOldRecycleBinItems,
+    toggleRecycleBinTaskSelection,
+    clearRecycleBinSelection,
+    restoreSelectedFromRecycleBin,
+    permanentlyDeleteSelected,
+  }
+}

@@ -522,6 +522,89 @@ Pangu.spacing(text)
 - **String.prototype**: 85+ 方法扩展
 - **MNNote.prototype**: 30+ 方法扩展，提供更流畅的链式调用
 
+## ⚠️ 重要：note.MNComments 与 note.comments 的区别（2025-01-12）
+
+### 问题背景
+在开发手写评论优化功能时，发现了一个关键的 API 使用误区，导致类型判断失效。
+
+### 核心区别
+
+#### 1. `note.comments` - 原始评论数组
+- 包含底层的 `NoteComment` 对象
+- `comment.type` 只有基础类型值：
+  - `"TextNote"` - 文本评论
+  - `"HtmlNote"` - HTML 评论
+  - `"LinkNote"` - 链接评论（包括合并的图片/文本）
+  - `"PaintNote"` - 绘图评论（包括图片和手写）
+  - `"AudioNote"` - 音频评论
+
+#### 2. `note.MNComments` - 处理后的评论数组
+- 通过 `MNComment.from(note)` 生成的 `MNComment` 实例数组
+- 每个 `MNComment` 实例在构造时会调用 `MNComment.getCommentType(comment)`
+- `MNComment` 的 `type` 属性是细分后的类型：
+  - `"textComment"` - 纯文本
+  - `"markdownComment"` - Markdown 文本
+  - `"tagComment"` - 标签（#开头）
+  - `"linkComment"` - 笔记链接
+  - `"summaryComment"` - 概要链接
+  - `"HtmlComment"` - HTML 评论
+  - `"mergedTextComment"` - 合并的文本
+  - `"mergedImageComment"` - 合并的图片
+  - `"mergedImageCommentWithDrawing"` - 合并的图片+手写
+  - `"imageComment"` - 图片
+  - `"imageCommentWithDrawing"` - 图片+手写
+  - `"drawingComment"` - 纯手写
+  - `"audioComment"` - 音频
+
+### 正确用法
+
+```javascript
+// ❌ 错误：对 MNComments 元素再次调用 getCommentType
+let commentType = MNComment.getCommentType(note.MNComments[0]);
+
+// ✅ 正确：直接使用 MNComments 元素的 type 属性
+let commentType = note.MNComments[0].type;
+
+// ❌ 错误：对原始 comments 使用细分类型判断
+if (note.comments[0].type === "drawingComment") { } // 永远为 false
+
+// ✅ 正确：对原始 comments 使用基础类型判断
+if (note.comments[0].type === "PaintNote") { }
+
+// ✅ 或者：对原始 comments 调用 getCommentType 获取细分类型
+let commentType = MNComment.getCommentType(note.comments[0]);
+if (commentType === "drawingComment") { }
+```
+
+### 实际应用示例
+
+```javascript
+// 判断是否为手写评论
+function isHandwritingComment(note, index) {
+  // 方法1：使用 MNComments（推荐）
+  let commentType = note.MNComments[index].type;
+  return commentType === "drawingComment" || 
+         commentType === "imageCommentWithDrawing" || 
+         commentType === "mergedImageCommentWithDrawing";
+  
+  // 方法2：使用原始 comments
+  let comment = note.comments[index];
+  if (comment.type === "PaintNote" || comment.type === "LinkNote") {
+    let commentType = MNComment.getCommentType(comment);
+    return commentType === "drawingComment" || 
+           commentType === "imageCommentWithDrawing" || 
+           commentType === "mergedImageCommentWithDrawing";
+  }
+  return false;
+}
+```
+
+### 注意事项
+1. **优先使用 `note.MNComments`**：已经过处理，type 属性更精确
+2. **不要重复调用 `getCommentType`**：MNComments 的元素已经调用过了
+3. **理解类型层次**：基础类型（5种） → 细分类型（15+种）
+4. **调试技巧**：使用 `MNUtil.log(note.MNComments[0])` 查看实际的 type 值
+
 ## 🎨 UI/UX 设计规范
 
 ### 1. 颜色主题
@@ -553,6 +636,71 @@ MNUtil.animate(() => {
   // 动画内容
 }, 0.25); // 动画时长
 ```
+
+## 🔧 代码解压与格式化
+
+### JavaScript 压缩代码解压
+
+当遇到压缩/混淆的 JavaScript 代码时，可以使用以下工具进行格式化：
+
+#### 1. 使用 Prettier（推荐）
+```bash
+# 安装并使用 prettier 格式化代码
+npx prettier@latest filename.js --write --print-width 120 --tab-width 2 --single-quote --trailing-comma es5 --bracket-spacing --arrow-parens always
+```
+
+#### 2. 使用 js-beautify
+```bash
+# 安装 js-beautify
+npm install -g js-beautify
+
+# 格式化代码
+js-beautify filename.js -o formatted_filename.js -s 2 --type js
+```
+
+#### 3. 使用 Node.js 自定义脚本
+创建格式化脚本 `format.js`：
+```javascript
+const fs = require('fs');
+const content = fs.readFileSync('compressed.js', 'utf8');
+
+function formatJavaScript(code) {
+  return code
+    .split(';').join(';\n')
+    .split('{').join('{\n  ')
+    .split('}').join('\n}\n')
+    .split(',').join(', ')
+    .replace(/\n\s*\n\s*\n/g, '\n\n')
+    .replace(/function\(/g, 'function (')
+    .replace(/if\(/g, 'if (')
+    .replace(/for\(/g, 'for (')
+    .replace(/while\(/g, 'while (')
+    .replace(/\)\{/g, ') {');
+}
+
+const formatted = formatJavaScript(content);
+fs.writeFileSync('formatted.js', formatted);
+console.log('格式化完成');
+```
+
+运行脚本：
+```bash
+node format.js
+```
+
+#### 格式化参数说明
+- `--print-width 120`: 行宽度限制
+- `--tab-width 2`: 缩进宽度
+- `--single-quote`: 使用单引号
+- `--trailing-comma es5`: ES5 兼容的尾逗号
+- `--bracket-spacing`: 括号内空格
+- `--arrow-parens always`: 箭头函数始终使用括号
+
+### 注意事项
+1. **压缩代码的限制**：变量名已被混淆（如 t, e, i），无法恢复原始有意义的变量名
+2. **格式化 vs 反混淆**：这些工具只能改善代码格式，不能还原变量名和注释
+3. **备份原文件**：格式化前建议备份原始文件
+4. **大文件处理**：超大文件可能需要分段处理或使用专门的在线工具
 
 ## 🐛 调试技巧
 

@@ -113,6 +113,17 @@ function registerAllCustomActions() {
     }
   });
   
+  // pauseTask - 暂停任务（长按菜单）
+  MNTaskGlobal.registerCustomAction("pauseTask", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      await MNTaskManager.pauseTask(focusNote);
+    } catch (error) {
+      MNUtil.log(`❌ pauseTask 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`暂停任务失败: ${error.message || "未知错误"}`);
+    }
+  });
 
   // changeTaskType - 修改卡片类型（支持多选）
   MNTaskGlobal.registerCustomAction("changeTaskType", async function(context) {
@@ -584,8 +595,13 @@ function registerAllCustomActions() {
                 const seconds = String(now.getSeconds()).padStart(2, '0');
                 const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
                 
-                // 构建带样式的时间戳HTML
-                const timestampHtml = `<div style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
+                // 生成唯一的进展记录ID
+                const timestampForId = timestamp.replace(/[- :]/g, '');  // 移除特殊字符
+                const randomSuffix = Math.random().toString(36).substr(2, 6);  // 生成6位随机字符串
+                const progressId = `progress_${timestampForId}_${randomSuffix}`;
+                
+                // 构建带样式的时间戳HTML，添加唯一ID属性
+                const timestampHtml = `<div data-progress-id="${progressId}" style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
   <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
               width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
               border-radius:50%; display:flex; align-items:center; justify-content:center">

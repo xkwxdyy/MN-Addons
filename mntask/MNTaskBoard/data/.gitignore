@@ -1,0 +1,4 @@
+# Ignore all data files to protect privacy
+*.json
+backup/
+!.gitignore

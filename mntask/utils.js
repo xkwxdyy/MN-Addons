@@ -13,30 +13,78 @@ class taskFrame{
    * @param {number} height 
    */
   static set(view,x,y,width,height){
+    // 添加安全检查
+    if (!view) {
+      // 静默返回，避免在布局更新时产生大量警告
+      // 某些视图可能尚未创建或已被销毁
+      return
+    }
+    
+    if (!view.frame) {
+      MNUtil.log("⚠️ taskFrame.set: view.frame 不存在")
+      return
+    }
+    
     let oldFrame = view.frame
     let frame = view.frame
+    
+    // 验证数值参数
     if (x !== undefined) {
-      frame.x = x
-    }else if (view.x !== undefined) {
+      if (!isNaN(x) && isFinite(x)) {
+        frame.x = x
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 x 值: ${x}`)
+      }
+    } else if (view.x !== undefined) {
       frame.x = view.x
     }
+    
     if (y !== undefined) {
-      frame.y = y
-    }else if (view.y !== undefined) {
+      if (!isNaN(y) && isFinite(y)) {
+        frame.y = y
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 y 值: ${y}`)
+      }
+    } else if (view.y !== undefined) {
       frame.y = view.y
     }
+    
     if (width !== undefined) {
-      frame.width = width
-    }else if (view.width !== undefined) {
+      if (!isNaN(width) && isFinite(width) && width > 0) {
+        frame.width = width
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 width 值: ${width}`)
+      }
+    } else if (view.width !== undefined) {
       frame.width = view.width
     }
+    
     if (height !== undefined) {
-      frame.height = height
-    }else if (view.height !== undefined) {
+      if (!isNaN(height) && isFinite(height) && height > 0) {
+        frame.height = height
+      } else {
+        MNUtil.log(`⚠️ taskFrame.set: 无效的 height 值: ${height}`)
+      }
+    } else if (view.height !== undefined) {
       frame.height = view.height
     }
-    if (!this.sameFrame(oldFrame,frame)) {
-      view.frame = frame
+    
+    // 最终验证 frame 的有效性
+    if (frame && !isNaN(frame.x) && !isNaN(frame.y) && 
+        !isNaN(frame.width) && !isNaN(frame.height) &&
+        isFinite(frame.x) && isFinite(frame.y) && 
+        isFinite(frame.width) && isFinite(frame.height) &&
+        frame.width > 0 && frame.height > 0) {
+      
+      if (!this.sameFrame(oldFrame,frame)) {
+        try {
+          view.frame = frame
+        } catch (error) {
+          MNUtil.log(`❌ taskFrame.set: 设置 frame 失败: ${error.message}`)
+        }
+      }
+    } else {
+      MNUtil.log(`⚠️ taskFrame.set: frame 值无效: ${JSON.stringify(frame)}`)
     }
   }
   static sameFrame(frame1,frame2){
@@ -4690,6 +4738,14 @@ class taskConfig {
    */
   static cloudStore
   
+  // 今日看板任务数据缓存
+  static todayBoardCache = {
+    data: null,                 // 缓存的任务数据
+    timestamp: null,            // 缓存时间戳
+    notebookId: null,          // 缓存对应的笔记本ID
+    isValid: false             // 缓存是否有效
+  }
+  
   // 定义全局配置字段（跨笔记本共享）
   static globalConfigFields = [
     'windowState', 'action', 'dynamicAction', 'actions', 
@@ -4773,6 +4829,8 @@ class taskConfig {
     // this.popupConfig = this.defaultPopupReplaceConfig
     this.popupConfig = this.getByDefault("MNTask_popupConfig", this.defaultPopupReplaceConfig)
     this.syncConfig = this.getByDefault("MNTask_syncConfig", this.defaultSyncConfig)
+    // 标签触发器开关配置
+    this.tagTriggerEnabled = this.getByDefault("MNTask_tagTriggerEnabled", true)
     this.initImage()
     this.checkCloudStore(false)
   }
@@ -5617,6 +5675,7 @@ static save(key = undefined,value = undefined,upload = true) {
     defaults.setObjectForKey(this.popupConfig,"MNTask_popupConfig")
     defaults.setObjectForKey(this.imageScale,"MNTask_imageScale")
     defaults.setObjectForKey(this.syncConfig,"MNTask_syncConfig")
+    defaults.setObjectForKey(this.tagTriggerEnabled,"MNTask_tagTriggerEnabled")
     this.syncConfig.lastModifyTime = Date.now()
     if (upload && this.iCloudSync) {
       this.writeCloudConfig(false)
@@ -6062,6 +6121,89 @@ static getDescriptionByName(actionName){
     }
     
     return { cleaned, cleanedBoards }
+  }
+  
+  // ========== 今日看板性能优化：缓存管理方法 ==========
+  
+  /**
+   * 检查缓存是否有效
+   * @returns {boolean} 缓存是否有效
+   */
+  static isTodayBoardCacheValid() {
+    // 检查缓存是否存在
+    if (!this.todayBoardCache.data || !this.todayBoardCache.timestamp) {
+      return false
+    }
+    
+    // 检查缓存是否对应当前笔记本
+    const currentNotebookId = this.getCurrentNotebookId()
+    if (this.todayBoardCache.notebookId !== currentNotebookId) {
+      return false
+    }
+    
+    // 检查缓存是否过期（默认5分钟过期）
+    const cacheAge = Date.now() - this.todayBoardCache.timestamp
+    const maxAge = 5 * 60 * 1000 // 5分钟
+    if (cacheAge > maxAge) {
+      return false
+    }
+    
+    return this.todayBoardCache.isValid
+  }
+  
+  /**
+   * 获取缓存的任务数据
+   * @returns {Object|null} 缓存的任务数据
+   */
+  static getTodayBoardCache() {
+    if (this.isTodayBoardCacheValid()) {
+      MNUtil.log("✅ 使用缓存的今日看板数据")
+      return this.todayBoardCache.data
+    }
+    return null
+  }
+  
+  /**
+   * 设置任务数据缓存
+   * @param {Object} data - 要缓存的任务数据
+   */
+  static setTodayBoardCache(data) {
+    this.todayBoardCache = {
+      data: data,
+      timestamp: Date.now(),
+      notebookId: this.getCurrentNotebookId(),
+      isValid: true
+    }
+    MNUtil.log("✅ 已更新今日看板数据缓存")
+  }
+  
+  /**
+   * 清除缓存
+   */
+  static clearTodayBoardCache() {
+    this.todayBoardCache = {
+      data: null,
+      timestamp: null,
+      notebookId: null,
+      isValid: false
+    }
+    MNUtil.log("🗑️ 已清除今日看板数据缓存")
+  }
+  
+  /**
+   * 标记缓存为无效（但不清除数据）
+   */
+  static invalidateTodayBoardCache() {
+    this.todayBoardCache.isValid = false
+    MNUtil.log("⚠️ 已标记今日看板缓存为无效")
+  }
+  
+  /**
+   * 当任务数据发生变化时调用
+   * 用于主动使缓存失效
+   */
+  static onTaskDataChanged() {
+    this.invalidateTodayBoardCache()
   }
 
 }

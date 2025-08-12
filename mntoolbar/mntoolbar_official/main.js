@@ -55,9 +55,12 @@ JSB.newAddon = function (mainPath) {
         MNUtil.removeObserver(self,'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI')
         MNUtil.removeObserver(self,'ClosePopupMenuOnSelection')
         MNUtil.removeObserver(self,'AddonBroadcast');
+        NSUserDefaults.standardUserDefaults().synchronize()
+
       },
 
       sceneWillResignActive: function () { // Window resign active
+        NSUserDefaults.standardUserDefaults().synchronize()
       },
 
       sceneDidBecomeActive: function () { // Window become active
@@ -95,6 +98,7 @@ JSB.newAddon = function (mainPath) {
         toolbarConfig.windowState.open  = !self.addonController.view.hidden
         toolbarConfig.windowState.frame = self.addonController.view.frame
         toolbarConfig.save("MNToolbar_windowState")
+        NSUserDefaults.standardUserDefaults().synchronize()
       },
       // /**
       //  * 
@@ -174,6 +178,7 @@ JSB.newAddon = function (mainPath) {
         }
         lastFrame.y = menuFrame.y-yOffset
         lastFrame.x = menuFrame.x
+        lastFrame.height = 40
         let testController = self.testController
         // let delay = testController.view.hidden?0.5:0
         // await MNUtil.delay(delay)
@@ -307,6 +312,7 @@ JSB.newAddon = function (mainPath) {
         let studyHeight = studyFrame.height
         
         self.testController.onClick = false
+        let testController = self.testController
         if (toolbarConfig.horizontal(true)) {
           let yOffset
           await MNUtil.delay(0.01)
@@ -329,7 +335,13 @@ JSB.newAddon = function (mainPath) {
               break;
           }
           lastFrame.y = menuFrame.y-yOffset
+          if (lastFrame.y < 0) {
+            testController.view.hidden = true
+            return
+          }
+          // MNUtil.log(lastFrame.y)
           lastFrame.x = menuFrame.x
+          lastFrame.height = 40
         }else{
           if (winRect.x-43<0) {
             lastFrame.x = winRect.x+winRect.width-studyFrameX
@@ -346,7 +358,6 @@ JSB.newAddon = function (mainPath) {
           }
         }
 
-        let testController = self.testController
         // let delay = testController.view.hidden?0.5:0
         // await MNUtil.delay(delay)
         if (self.notShow) {
@@ -419,20 +430,35 @@ JSB.newAddon = function (mainPath) {
         let config = MNUtil.parseURL(message)
         let addon = config.pathComponents[0]
         if (addon === "mntoolbar") {
-          let actionKey = config.params.action
-          let actionDes = toolbarConfig.getDescriptionById(actionKey)
-          if (!("action" in actionDes)) {
-            self.showHUD("Missing action")
+          if ("action" in config.params) {
+            let actionKey = config.params.action
+            let actionDes = toolbarConfig.getDescriptionById(actionKey)
+            if (!("action" in actionDes)) {
+              self.showHUD("Missing action")
+              return
+            }
+            await toolbarUtils.customActionByDes(actionDes)
+            while ("onFinish" in actionDes) {
+              let delay = actionDes.delay ?? 0.5
+              actionDes = actionDes.onFinish
+              await MNUtil.delay(delay)
+              await toolbarUtils.customActionByDes(actionDes)
+            }
             return
           }
-          // MNUtil.copy(actionDes)
-          await toolbarUtils.customActionByDes(actionDes)
-          while ("onFinish" in actionDes) {
-            let delay = actionDes.delay ?? 0.5
-            actionDes = actionDes.onFinish
-            await MNUtil.delay(delay)
-            await toolbarUtils.customActionByDes(actionDes)
+          if ("config" in config.params) {
+            if (self.settingController && !self.settingController.view.hidden) {
+              self.settingController.importFromShareURL(config.params.config)
+              return
+            }else{
+              let confirm = await MNUtil.confirm("MN Toolbar", "Open Setting first\n\n请先打开设置并选中要替换的动作")
+              if (confirm) {
+                self.openSetting()
+              }
+            }
+            // self.openSetting()
           }
+          // MNUtil.copy(actionDes)
         }
         
       } catch (error) {
@@ -467,11 +493,13 @@ JSB.newAddon = function (mainPath) {
                 self.testController.view.hidden = true
               })
             }
-            let currentFrame = self.testController.currentFrame
-            let buttonNumber = toolbarConfig.getWindowState("dynamicButton");
-            currentFrame.height = toolbarUtils.checkHeight(currentFrame.height,buttonNumber)
-            self.testController.view.frame = currentFrame
-            self.testController.currentFrame = currentFrame
+            if (!toolbarConfig.horizontal(true)) {
+              let currentFrame = self.testController.currentFrame
+              let buttonNumber = toolbarConfig.getWindowState("dynamicButton");
+              currentFrame.height = toolbarUtils.checkHeight(currentFrame.height,buttonNumber)
+              self.testController.view.frame = currentFrame
+              self.testController.currentFrame = currentFrame
+            }
           }
         }
         if (self.settingController && !self.settingController.onAnimate) {
@@ -834,7 +862,7 @@ try {
             self.tableItem('🛠️   Toolbar', 'toggleToolbar:',undefined,!self.addonController.view.hidden),
             self.tableItem('🛠️   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"fixed"),
             self.tableItem('🌟   Dynamic   ', "toggleDynamic",undefined,toolbarConfig.dynamic),
-            self.tableItem('🌟   Direction   '+(toolbarConfig.vertical()?'↕️':'↔️'), selector,"dynamic"),
+            self.tableItem('🌟   Direction   '+(toolbarConfig.vertical(true)?'↕️':'↔️'), selector,"dynamic"),
             self.tableItem('📄   Document', 'openDocument:'),
             self.tableItem('🔄   Manual Sync','manualSync:')
         ];
@@ -950,6 +978,10 @@ try {
       this.studyController.view.addSubview(this.settingController.view)
       // toolbarUtils.studyController().view.addSubview(this.settingController.view)
     }
+    if (toolbarUtils.settingViewOpened) {
+      MNUtil.showHUD("Setting view is already opened")
+      return
+    }
     this.settingController.show()
     } catch (error) {
       toolbarUtils.addErrorLog(error, "openSetting")
@@ -995,6 +1027,7 @@ try {
           if (toolbarConfig.horizontal()) {
             let currentFrame = toolbar.currentFrame
             // let maxWidth = toolbarUtils.checkHeight(this.studyView.bounds.width-currentFrame.x-15,toolbar.maxButtonNumber)
+            let studyFrame = this.studyView.bounds
             let width = 45*toolbar.buttonNumber+15
             // MNUtil.copy({currentFrame:currentFrame,width:width,studyFrame:this.studyView.bounds})
             if ((currentFrame.width+currentFrame.x) > (this.studyView.bounds.width)) {//工具栏超过边界,需要约束
@@ -1017,6 +1050,18 @@ try {
                 currentFrame.width = width
                 toolbar.view.frame = currentFrame
                 return
+              }
+            }
+            if (toolbar.sideMode) {
+              switch (toolbar.sideMode) {
+                case "top":
+                  currentFrame.y = 0
+                  break;
+                case "bottom":
+                  currentFrame.y = studyFrame.height-toolbarUtils.bottomOffset-40
+                  break;
+                default:
+                  break;
               }
             }
             toolbar.view.frame = currentFrame

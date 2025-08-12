@@ -28,6 +28,12 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
     self.resizeGesture = new UIPanGestureRecognizer(self,"onResizeGesture:")
     self.promptSaveButton.addGestureRecognizer(self.resizeGesture)
     self.resizeGesture.view.hidden = false
+
+    self.resizeGesture0 = new UIPanGestureRecognizer(self,"onResizeGesture:")
+    self.saveCustomButton.addGestureRecognizer(self.resizeGesture0)
+    self.resizeGesture.view.hidden = false
+    // MNButton.addPanGesture(self.saveCustomButtonConfig, self, "onResizeGesture:")
+    // self.saveCustomButtonConfig.addGestureRecognizer(self.resizeGesture)
     // self.resizeGesture.addTargetAction(self,"onResizeGesture:")
     // self.chatglmController.view.hidden = false
     } catch (error) {
@@ -182,47 +188,32 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
     // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
     let source = chatAIConfig.config.source
     let selector = 'setSource:'
-    var commandTable
+    let menu = new Menu(sender,self)
+    menu.width = 200
+    menu.preferredPosition = 1
+    menu.addMenuItem("💡  Built-in", selector,'Built-in',source =='Built-in')
     if (chatAIUtils.isActivated()) {
-      commandTable = [
-        self.tableItem('💡  Built-in', selector,'Built-in',source =='Built-in'),
-        self.tableItem('💲  Subscription', selector,'Subscription',source =='Subscription'),
-        self.tableItem('💡  ChatGPT', selector,'ChatGPT',source =='ChatGPT'),
-        self.tableItem('💡  ChatGLM', selector,'ChatGLM',source =='ChatGLM'),
-        self.tableItem('💡  KimiChat', selector,'KimiChat',source =='KimiChat'),
-        self.tableItem('🎶  Minimax', selector,'Minimax',source =='Minimax'),
-        self.tableItem('🐳  Deepseek', selector,'Deepseek',source =='Deepseek'),
-        self.tableItem('💡  SiliconFlow', selector,'SiliconFlow',source =='SiliconFlow'),
-        self.tableItem('🐙  Github', selector,'Github',source =='Github'),
-        self.tableItem('💡  Qwen', selector,'Qwen',source =='Qwen'),
-        self.tableItem('🌋  Volcengine', selector,'Volcengine',source =='Volcengine'),
-        self.tableItem('✴️  Claude', selector,'Claude',source =='Claude'),
-        self.tableItem('✨  Gemini', selector,'Gemini',source =='Gemini'),
-        self.tableItem('🎨  Custom', selector,'Custom',source =='Custom')
-      ];
-    }else{
-      commandTable = [
-        self.tableItem('💡  Built-in', selector,'Built-in',source =='Built-in'),
-        self.tableItem('💡  ChatGPT', selector,'ChatGPT',source =='ChatGPT'),
-        self.tableItem('💡  ChatGLM', selector,'ChatGLM',source =='ChatGLM'),
-        self.tableItem('💡  KimiChat', selector,'KimiChat',source =='KimiChat'),
-        self.tableItem('🎶  Minimax', selector,'Minimax',source =='Minimax'),
-        self.tableItem('🐳  Deepseek', selector,'Deepseek',source =='Deepseek'),
-        self.tableItem('💡  SiliconFlow', selector,'SiliconFlow',source =='SiliconFlow'),
-        self.tableItem('🐙  Github', selector,'Github',source =='Github'),
-        self.tableItem('💡  Qwen', selector,'Qwen',source =='Qwen'),
-        self.tableItem('🌋  Volcengine', selector,'Volcengine',source =='Volcengine'),
-        self.tableItem('✴️  Claude', selector,'Claude',source =='Claude'),
-        self.tableItem('✨  Gemini', selector,'Gemini',source =='Gemini'),
-        self.tableItem('🎨  Custom', selector,'Custom',source =='Custom')
-      ];
+      menu.addMenuItem("💲  Subscription", selector,'Subscription',source =='Subscription')
     }
-    self.popoverController = MNUtil.getPopoverAndPresent(sender,commandTable,200,1)
-    // self.popoverController = MNUtil.getPopoverAndPresent(sender,commandTable,150)
+    menu.addMenuItem("💡  ChatGPT", selector,'ChatGPT',source =='ChatGPT')
+    menu.addMenuItem("💡  ChatGLM", selector,'ChatGLM',source =='ChatGLM')
+    menu.addMenuItem("🎶  Minimax", selector,'Minimax',source =='Minimax')
+    menu.addMenuItem("🐳  Deepseek", selector,'Deepseek',source =='Deepseek')
+    menu.addMenuItem("💡  SiliconFlow", selector,'SiliconFlow',source =='SiliconFlow')
+    menu.addMenuItem("💡  KimiChat", selector,'KimiChat',source =='KimiChat')
+    menu.addMenuItem("💡  PPIO", selector,'PPIO',source =='PPIO')
+    menu.addMenuItem("🐙  Github", selector,'Github',source =='Github')
+    menu.addMenuItem("💡  Qwen", selector,'Qwen',source =='Qwen')
+    menu.addMenuItem("🌋  Volcengine", selector,'Volcengine',source =='Volcengine')
+    menu.addMenuItem("✴️  Claude", selector,'Claude',source =='Claude')
+    menu.addMenuItem("✨  Gemini", selector,'Gemini',source =='Gemini')
+    menu.addMenuItem("🎨  Custom", selector,'Custom',source =='Custom')
+    menu.show()
   },
   setSource: function(param) {
   let self = getChatglmController()
   try {
+    Menu.dismissCurrentMenu()
     if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
     let source = chatAIConfig.config.source
     if (param === source) {
@@ -270,11 +261,12 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
       // let viewFrame = self.view.bounds
       // let width = viewFrame.width
       chatAIConfig.config.source = buttonSource
-      chatAIConfig.setDefaultModel(buttonSource)
+      chatAIConfig.setDefaultModel(buttonSource,undefined,false)
       let syncDynamicModel = chatAIConfig.getConfig("syncDynamicModel")
       if (syncDynamicModel) {
-        chatAIConfig.setDynamicModel(chatAIConfig.config.source)
+        chatAIConfig.setDynamicModel(chatAIConfig.config.source,undefined,false)
       }
+      chatAIConfig.save("MNChatglm_config")
 
       // MNUtil.showHUD("Source changed to: "+chatAIConfig.config.source)
       // self.sourceButton.setTitleForState("Source: "+chatAIConfig.config.source,0)
@@ -331,55 +323,6 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
     let self = getChatglmController()
     Menu.dismissCurrentMenu()
     chatAIConfig.setDefaultModel(chatAIConfig.config.source,model,false)
-    // switch (chatAIConfig.config.source) {
-    //   case "ChatGLM":
-    //     chatAIConfig.config.chatglmModel = model
-    //     break;
-    //   case "Claude":
-    //     chatAIConfig.config.claudeModel = model
-    //     break;
-    //   case "SiliconFlow":
-    //     chatAIConfig.config.siliconFlowModel = model
-    //     break;
-    //   case "Volcengine":
-    //     chatAIConfig.config.volcengineModel = model
-    //     break;
-    //   case "Github":
-    //     chatAIConfig.config.githubModel = model
-    //     break;
-    //   case "ChatGPT":
-    //     chatAIConfig.config.model = model
-    //     break;
-    //   case "KimiChat":
-    //     chatAIConfig.config.moonshotModel = model
-    //     break;
-    //   case "Minimax":
-    //     chatAIConfig.config.miniMaxModel = model
-    //     break;
-    //   case "Custom":
-    //     chatAIConfig.config.customModelIndex = model
-    //     break;
-    //   case "Gemini":
-    //     chatAIConfig.config.geminiModel = model
-    //     break;
-    //   case "Deepseek":
-    //     chatAIConfig.config.deepseekModel = model
-    //     break;
-    //   case "Qwen":
-    //     chatAIConfig.config.qwenModel = model
-    //     break;
-    //   case "Subscription":
-    //     chatAIConfig.config.subscriptionModel = model
-    //     break
-    //   case "Built-in":
-    //     break;
-    //   default:
-    //     MNUtil.showHUD("Unspported source: "+config.source)
-    //     return
-    // }
-    // chatAIConfig.defaultModel = chatAIConfig.getDefaultModel()
-    // MNUtil.showHUD("Model: "+model)
-    // self.setModel(chatAIConfig.config.source)
     let syncDynamicModel = chatAIConfig.getConfig("syncDynamicModel")
     if (syncDynamicModel) {
       chatAIConfig.setDynamicModel(chatAIConfig.config.source, model)
@@ -392,7 +335,12 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
   saveCustomModels: function (params) {
     chatAIConfig.config.customModel = self.customModelInput.text
     chatAIConfig.save("MNChatglm_config")
-    MNUtil.showHUD("Save model")
+    self.showHUD("Save model")
+  },
+  showNotification: async function (params) {
+    if (chatAIUtils.notifyController.view.hidden) {
+      chatAIUtils.notifyController.beginNotification("test")
+    }
   },
   saveCustomButtonConfig: async function (params) {
     try {
@@ -401,9 +349,10 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
       }
     let content = await self.getWebviewContent()
     let customButton = JSON.parse(content)
+    MNUtil.log({message:"customButton",source:"MN ChatAI",detail:customButton})
     chatAIConfig.config.customButton = customButton
     chatAIConfig.save("MNChatglm_config")
-    MNUtil.showHUD("Save Custom Buttons")
+    self.showHUD("Save Custom Buttons")
     self.refreshCustomButton()
 
     } catch (error) {
@@ -451,9 +400,6 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
   changeFunc: function (button) {
     let self = getChatglmController()
     try {
-      if (!chatAIUtils.checkSubscribe(false)) {
-        return
-      }
       let currentFunc
       let selector
       if (self.contextButton.currentTitle === "Text") {
@@ -464,50 +410,61 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
         currentFunc = chatAIConfig.currentFunc
         selector = 'setFunc:'
       }
-    let newOrder = chatAITool.activatedTools
+    let newOrder = chatAITool.activatedToolsExceptOld
+    let isAllTools = newOrder.every(toolIndex=>currentFunc.includes(toolIndex))
     let menu = new Menu(button,self)
     menu.width = 250
     menu.rowHeight = 35
     menu.preferredPosition = 0
-    menu.addMenuItem("🛠️ All Tools",        selector,100,currentFunc.length === newOrder.length)
+    menu.addMenuItem("🌟 All Tools",        selector,100,isAllTools)
     let toolNames = chatAITool.toolNames
     newOrder.map((toolIndex)=>{
       let toolName = toolNames[toolIndex]
       let tool = chatAITool.getToolByName(toolName)
       menu.addMenuItem(tool.toolTitle,        selector,toolIndex,currentFunc.includes(toolIndex))
     })
+    menu.addMenuItem("🗿 Old Tools (Free)", "showOldTools:",button)
     menu.addMenuItem("❌ None",             selector,-1,currentFunc.length === 0)
     menu.show()
     } catch (error) {
       chatAIUtils.addErrorLog(error, "changeFunc")
     }
   },
-  setFunc(param) {
+  showOldTools: function(button){
+    let self = getChatglmController()
+    Menu.dismissCurrentMenu()
+    try {
+    let currentFunc
+    let selector
+    if (self.contextButton.currentTitle === "Text") {
+      // MNUtil.showHUD("dynamicFunc")
+      currentFunc = chatAIConfig.getConfig("dynamicFunc")
+      selector = 'setDynamicFunc:'
+    }else{
+      currentFunc = chatAIConfig.currentFunc
+      selector = 'setFunc:'
+    }
+    let newOrder = chatAITool.oldTools
+    let menu = new Menu(button,self)
+    menu.width = 250
+    menu.rowHeight = 35
+    menu.preferredPosition = 0
+    let toolNames = chatAITool.toolNames
+    newOrder.map((toolIndex)=>{
+      let toolName = toolNames[toolIndex]
+      let tool = chatAITool.getToolByName(toolName)
+      menu.addMenuItem(tool.toolTitle,        selector,toolIndex,currentFunc.includes(toolIndex))
+    })
+    menu.show()
+    } catch (error) {
+      chatAIUtils.addErrorLog(error, "changeFunc")
+    }
+  },
+  setFunc(index) {
 try {
     Menu.dismissCurrentMenu()
     if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
-    if (!chatAIUtils.checkSubscribe()) {
-      return
-    }
-    let currentFunc = chatAIConfig.currentFunc
-    switch (param) {
-      case -1:
-        currentFunc = []
-        break;
-      case 100:
-        currentFunc = chatAITool.activatedTools
-        break
-      default:
-        if (currentFunc.includes(param)) {
-          currentFunc = currentFunc.filter(func=> func!==param)
-        }else{
-          currentFunc.push(param)
-        }
-        currentFunc.sort(function(a, b) {
-          return a - b;
-        });
-        break;
-    }
+    let currentFunc = chatAITool.getChangedTools(chatAIConfig.currentFunc, index)
     // chatAIUtils.copyJSON(currentFunc)
     chatAIConfig.currentFunc = currentFunc
     chatAIConfig.prompts[chatAIConfig.currentPrompt].func = currentFunc
@@ -516,36 +473,13 @@ try {
   MNUtil.showHUD(error)
 }
   },
-  setDynamicFunc(param) {
+  setDynamicFunc(index) {
     Menu.dismissCurrentMenu()
     if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
-    if (!chatAIUtils.checkSubscribe()) {
-      return
-    }
 try {
-    let currentFunc = chatAIConfig.config.dynamicFunc ? chatAIConfig.config.dynamicFunc : []
-    switch (param) {
-      case -1://None
-        currentFunc = []
-        break;
-      case 100://All
-        currentFunc = chatAITool.activatedTools
-        break
-      default:
-        if (currentFunc.includes(param)) {
-          //已经选中了则去除选中状态
-          currentFunc = currentFunc.filter(func=> func!==param)
-        }else{
-          //未选中则增加
-          currentFunc.push(param)
-        }
-        //排序
-        currentFunc.sort(function(a, b) {
-          return a - b;
-        });
-        break;
-    }
-    chatAIConfig.config.dynamicFunc = currentFunc
+    let currentFunc = chatAIConfig.config.dynamicFunc ?? []
+    let targetFunc = chatAITool.getChangedTools(currentFunc, index)
+    chatAIConfig.config.dynamicFunc = targetFunc
     chatAIConfig.save("MNChatglm_config")
 } catch (error) {
   chatAIUtils.addErrorLog(error, "setDynamicFunc")
@@ -679,9 +613,9 @@ try {
   },
   changeActions: function (button) {
     let self = getChatglmController()
-    if (!chatAIUtils.checkSubscribe(false)) {
-      return
-    }
+    // if (!chatAIUtils.checkSubscribe(false)) {
+    //   return
+    // }
     let currentAction
     let selector
     if (self.contextButton.currentTitle === "Text") {
@@ -692,35 +626,41 @@ try {
       currentAction = chatAIConfig.currentAction ?? []
       selector = 'setAction:'
     }
-    var commandTable = [
-          {title:"🛠️ All Actions",object:self,selector:selector,param:100,checked:currentAction.length === 10},
-          {title:"🔨 Set Title",object:self,selector:selector,param:0,checked:currentAction.includes(0)},
-          {title:"🔨 Add Comment",object:self,selector:selector,param:1,checked:currentAction.includes(1)},
-          {title:"🔨 Add Tag",object:self,selector:selector,param:6,checked:currentAction.includes(6)},
-          {title:"🔨 Add Child Note",object:self,selector:selector,param:7,checked:currentAction.includes(7)},
-          {title:"🔨 Copy MD Link",object:self,selector:selector,param:2,checked:currentAction.includes(2)},
-          {title:"🔨 Copy Card URL",object:self,selector:selector,param:3,checked:currentAction.includes(3)},
-          {title:"🔨 Copy Text",object:self,selector:selector,param:4,checked:currentAction.includes(4)},
-          {title:"🔨 Clear Excerpt",object:self,selector:selector,param:8,checked:currentAction.includes(8)},
-          {title:"🔨 Set Excerpt",object:self,selector:selector,param:9,checked:currentAction.includes(9)},
-          {title:"🔨 Close",object:self,selector:selector,param:5,checked:currentAction.includes(5)},
-          {title:"❌ None",object:self,selector:selector,param:-1,checked:currentAction.length === 0},
-        ];
-    self.popoverController = chatAIUtils.getPopoverAndPresent(button,commandTable,250,0)
+    let menu = new Menu(button,self)
+    menu.preferredPosition = 0
+    menu.addMenuItem("🔨 Set Title", selector,0,currentAction.includes(0))
+    menu.addMenuItem("🔨 Append Comment", selector,1,currentAction.includes(1))
+    menu.addMenuItem("🔨 Append Blank Comment", selector,12,currentAction.includes(12))
+    menu.addMenuItem("🔨 Append Title", selector,13,currentAction.includes(13))
+    menu.addMenuItem("🔨 Append Tag", selector,6,currentAction.includes(6))
+    menu.addMenuItem("🔨 Append Excerpt", selector,14,currentAction.includes(14))
+    menu.addMenuItem("🔨 Replace Excerpt", selector,9,currentAction.includes(9))
+    menu.addMenuItem("🔨 Clear Excerpt", selector,8,currentAction.includes(8))
+    menu.addMenuItem("🔨 Create Mindmap", selector,16,currentAction.includes(16))
+    menu.addMenuItem("🔨 Create Child Note", selector,7,currentAction.includes(7))
+    menu.addMenuItem("🔨 Create Brother Note", selector,11,currentAction.includes(11))
+    menu.addMenuItem("🔨 Copy Markdown Link", selector,2,currentAction.includes(2))
+    menu.addMenuItem("🔨 Copy Card URL", selector,3,currentAction.includes(3))
+    menu.addMenuItem("🔨 Copy Text", selector,4,currentAction.includes(4))
+    menu.addMenuItem("🔨 Snipaste HTML", selector,10,currentAction.includes(10))
+    menu.addMenuItem("🔨 Snipaste Text", selector,15,currentAction.includes(15))
+    menu.addMenuItem("🔨 Close", selector,5,currentAction.includes(5))
+    menu.addMenuItem("❌ None", selector,-1,currentAction.length === 0)
+    menu.addMenuItem("➡️ Toolbar actions:", "chooseToolbarActions:",button)
+
+    menu.width = 250
+    menu.show()
   },
   setAction(param) {
-    if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
+    Menu.dismissCurrentMenu()
 try {
-    if (!chatAIUtils.checkSubscribe()) {
-      return
-    }
     let currentAction = chatAIConfig.currentAction
     switch (param) {
       case -1:
         currentAction = []
         break;
       case 100:
-        currentAction = [0,1,2,3,4,5,6,7,8,9]//增加函数后要在这里加一条，不然显示不出来
+        currentAction = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]//增加函数后要在这里加一条，不然显示不出来
         break
       default:
         if (currentAction.includes(param)) {
@@ -733,19 +673,17 @@ try {
         });
         break;
     }
+    self.showHUD("Save actions")
     // chatAIUtils.copyJSON(currentAction)
     chatAIConfig.currentAction = currentAction
     chatAIConfig.prompts[chatAIConfig.currentPrompt].action = currentAction
     chatAIConfig.save("MNChatglm_prompts")
 } catch (error) {
-  MNUtil.showHUD(error)
+  chatAIUtils.addErrorLog(error, "chatglmController.setAction")
 }
   },
   setDynamicAction(param) {
-    if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
-    if (!chatAIUtils.checkSubscribe()) {
-      return
-    }
+    Menu.dismissCurrentMenu()
 try {
     let currentAction = chatAIConfig.config.dynamicAction ? chatAIConfig.config.dynamicAction : []
     switch (param) {
@@ -772,9 +710,40 @@ try {
     chatAIConfig.config.dynamicAction = currentAction
     chatAIConfig.save("MNChatglm_config")
 } catch (error) {
-  MNUtil.showHUD(error)
+  chatAIUtils.addErrorLog(error, "chooseAction")
 }
 
+  },
+  chooseToolbarActions: function (button) {
+    let self = getChatglmController()
+    Menu.dismissCurrentMenu()
+    let currentAction = chatAIConfig.prompts[chatAIConfig.currentPrompt].toolbarAction ?? ""
+    let menu = new Menu(button,self)
+    menu.preferredPosition = 0
+    let actionKey = toolbarConfig.getAllActions()
+    let selector = "setToolbarActions:"
+    actionKey.map(key=>{
+      menu.addMenuItem("🔨  "+toolbarConfig.getAction(key).name, selector,key,key == currentAction)
+    })
+    menu.show()
+  },
+  setToolbarActions: function (action) {
+    Menu.dismissCurrentMenu()
+    if (!chatAIUtils.checkSubscribe(true)) {
+      return
+    }
+    let preAction = chatAIConfig.prompts[chatAIConfig.currentPrompt].toolbarAction??""
+    let actionName = toolbarConfig.getAction(action).name
+    let promptName = chatAIConfig.prompts[chatAIConfig.currentPrompt].title
+    if (preAction === action) {
+      action = ""
+      MNUtil.showHUD("Cancel action for "+promptName+": ["+actionName+"]")
+    }else{
+      MNUtil.showHUD("Set action for "+promptName+": ["+actionName+"]")
+    }
+    chatAIConfig.prompts[chatAIConfig.currentPrompt].toolbarAction = action
+    chatAIConfig.setCurrentPrompt(chatAIConfig.currentPrompt)
+    chatAIConfig.save("MNChatglm_prompts")
   },
   changeOpacityTo:function (opacity) {
     self.view.layer.opacity = opacity
@@ -852,8 +821,20 @@ try {
     if (!chatAIUtils.checkSubscribe()) {
       return
     }
-    chatAIConfig.config.autoImage = !chatAIConfig.getConfig("autoImage")
-    MNButton.setTitle(self.autoImageButton, "Auto Select Image: "+(chatAIConfig.getConfig("autoImage")?"✅":"❌"))
+    Menu.dismissCurrentMenu()
+    let autoImage = chatAIConfig.getConfig("autoImage")
+    chatAIConfig.config.autoImage = !autoImage
+    self.showHUD("Auto Vision: "+(chatAIConfig.config.autoImage?"✅":"❌"))
+    chatAIConfig.save("MNChatglm_config")
+  },
+  toggleAutoOCR: function (params) {
+    if (!chatAIUtils.checkSubscribe()) {
+      return
+    }
+    Menu.dismissCurrentMenu()
+    let autoOCR = chatAIConfig.getConfig("autoOCR")
+    chatAIConfig.config.autoOCR = !autoOCR
+    self.showHUD("Auto OCR: "+(chatAIConfig.config.autoOCR?"✅":"❌"))
     chatAIConfig.save("MNChatglm_config")
   },
   toggleAllowEdit: function (params) {
@@ -866,8 +847,9 @@ try {
   },
   choosePDFExtractMode: function (button) {
     let menu = new Menu(button,self)
-    menu.addMenuItem("PDF.js", "setPDFExtractMode:","local")
-    menu.addMenuItem("Moonshot", "setPDFExtractMode:","moonshot")
+    let mode = chatAIConfig.getConfig("PDFExtractMode")
+    menu.addMenuItem("PDF.js", "setPDFExtractMode:","local",mode==="local")
+    menu.addMenuItem("Moonshot", "setPDFExtractMode:","moonshot",mode==="moonshot")
     menu.show()
   },
   setPDFExtractMode: function (mode) {
@@ -931,7 +913,7 @@ try {
       MNUtil.studyView.bringSubviewToFront(self.view)
     }
   } catch (error) {
-    MNUtil.showHUD(error)
+    chatAIUtils.addErrorLog(error, "onResizeGesture")
   }
   },
   onResizeGesture0:function (gesture) {
@@ -989,12 +971,14 @@ try {
   },
   refreshModel: async function (param) {
     Menu.dismissCurrentMenu()
+    self.waitHUD("Refresh Model...")
     let res = await chatAINetwork.fetchModelConfig()
     if (res && "Github" in res) {
       // MNUtil.copy(res)
-      MNUtil.showHUD("✅ Refresh Success!")
+      self.waitHUD("✅ Refresh Success!")
       chatAIConfig.modelConfig = res
       chatAIConfig.save("MNChatglm_modelConfig")
+      MNUtil.stopHUD(1)
     }
   },
   customButtonTabTapped: function (button) {
@@ -1004,8 +988,20 @@ try {
   self.setWebviewContent(text)
       // self.customButtonView.hidden = false
   },
-  triggerButtonTapped: function (params) {
-    self.switchView("autoActionView")
+  triggerButtonTapped: function (button) {
+    if (button.isSelected) {
+      let text = "Ignore short text: "+(chatAIConfig.config.ignoreShortText?"✅":"🚫")
+      let delay = "Delay: "+chatAIConfig.config.delay+"s"
+      let menu = new Menu(button,self)
+      menu.width = 200
+      menu.rowHeight = 35
+      menu.preferredPosition = 1
+      menu.addMenuItem(text, "toggleIgnoreShortText:")
+      menu.addMenuItem(delay, "changeDelay:",button)
+      menu.show()
+    }else{
+      self.switchView("autoActionView")
+    }
   },
   advancedButtonTapped: function (params) {
     self.switchView("advanceView")
@@ -1197,6 +1193,7 @@ try {
         self.usageButton.setTitleForState("Usage: "+usage.usage+"/100",0)
       }
     }else{
+      //只有OpenAI渠道支持显示余额
       let self = getChatglmController()
       MNUtil.showHUD("Fetching usage")
       let usage  = await chatAINetwork.getUsage()
@@ -1206,15 +1203,17 @@ try {
   configAddTapped: function (button) {
     let self = getChatglmController()
     if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
-    var commandTable = [
-      {title:"➕   New Prompt",object:self,selector:'improtAction:',param:"New"},
-      {title:"📋   From Clipboard",object:self,selector:'improtAction:',param:"Paste"},
-    ]
-    self.popoverController = MNUtil.getPopoverAndPresent(button,commandTable,190)
+    let menu = new Menu(button,self,200)
+    menu.preferredPosition = 0
+    let selector = 'improtAction:'
+    menu.addMenuItem("➕   New Prompt",selector,"New")
+    menu.addMenuItem("📋   From Clipboard",selector,"Paste")
+    menu.show()
     return
   },
   improtAction: async function (params) {
     let self = getChatglmController()
+    Menu.dismissCurrentMenu()
     if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
     if (Object.keys(chatAIConfig.prompts).length >= 10 && !chatAIUtils.checkSubscribe()) {
       return
@@ -1223,23 +1222,21 @@ try {
 
     let config = {}
     let prompt = {}
-    let i = 0
-    while (chatAIConfig.prompts["customEngine"+i]) {
-      i = i+1
-    }
+    let unusedKey = chatAIConfig.getUnusedKey()
+    // let i = 0
+    // while (chatAIConfig.prompts["customEngine"+i]) {
+    //   i = i+1
+    // }
     switch (params) {
       case "New":
-        let userInput = await MNUtil.input("MN ChatAI\nNew prompt Name", "请输入新的prompt名称",["Cancel","Confirm"])
+        let userInput = await MNUtil.input("MN ChatAI\nNew prompt Name", "请输入新的prompt名称",["Cancel","Confirm"],{default:"new prompt"})
         if (userInput.button === 0) {
           MNUtil.showHUD("Cancel")
           return
         }
-        // MNUtil.showHUD("message"+Object.keys(chatAIConfig.prompts).length)
-        self.titleInput.text = userInput.input
-        self.contextInput.text = "input your prompt"
-        self.systemInput.text = ""
-        config = {title:self.titleInput.text,context:self.contextInput.text}
-        break;
+        config = {title:userInput.input,context:"input your prompt",system:""}
+        self.importNewPrompt(config, unusedKey)
+        return;
       case "Paste":
         let clipboardText = MNUtil.clipboardText
         if (clipboardText && MNUtil.isValidJSON(clipboardText)) {
@@ -1247,37 +1244,35 @@ try {
           if (prompt.title) {
             let confirm = await MNUtil.confirm("MN ChatAI\nImport prompt ["+prompt.title+"]?", "是否导入 prompt ["+prompt.title+"]？\n"+JSON.stringify(prompt,null,2))
             if (!confirm) {
-              MNUtil.showHUD("Cancel import")
+              self.showHUD("Cancel import")
               return
             }
           }else{
             return
           }
-          self.titleInput.text = prompt.title
-          self.contextInput.text = prompt.context
-          self.systemInput.text = prompt.system
-          config = prompt
+          self.importNewPrompt(prompt, unusedKey)
+          return;
         }else{
-          MNUtil.showHUD("Invalid clipboard text")
+          self.showHUD("Invalid clipboard text")
           return
         }
       default:
         break;
     }
-    let prompts = chatAIConfig.prompts
-    prompts["customEngine"+i] = config
-    chatAIConfig.prompts = prompts
-    chatAIConfig.config.promptNames = chatAIConfig.config.promptNames.concat(("customEngine"+i))
-    self.setButtonText(chatAIConfig.config.promptNames,"customEngine"+i)
-    chatAIConfig.setCurrentPrompt("customEngine"+i)
-    self.refreshLayout()
-    chatAIConfig.save("MNChatglm_prompts")
-    if (config.vision) {
-      self.visionButton.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
-    }else{
-      self.visionButton.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
-    }
-    self.scrollview.setContentOffsetAnimated({x:0,y:self.scrollview.contentSize.height-self.scrollview.frame.height}, true)
+    // let prompts = chatAIConfig.prompts
+    // prompts["customEngine"+i] = config
+    // chatAIConfig.prompts = prompts
+    // chatAIConfig.config.promptNames = chatAIConfig.config.promptNames.concat(("customEngine"+i))
+    // self.setButtonText(chatAIConfig.config.promptNames,"customEngine"+i)
+    // chatAIConfig.setCurrentPrompt("customEngine"+i)
+    // self.refreshLayout()
+    // chatAIConfig.save("MNChatglm_prompts")
+    // if (config.vision) {
+    //   self.visionButton.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+    // }else{
+    //   self.visionButton.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
+    // }
+    // self.scrollview.setContentOffsetAnimated({x:0,y:self.scrollview.contentSize.height-self.scrollview.frame.height}, true)
 
       
     } catch (error) {
@@ -1320,6 +1315,7 @@ try {
     let menu = new Menu(button,self)
     menu.addMenuItem("📥  Paste API Key","pasteApiKey:")
     menu.addMenuItem("📋  Copy API Key","copyApiKey:")
+    menu.addMenuItem("🔑  Get API Key","openAPIURL:")
     menu.preferredPosition = 0
     menu.show()
     } catch (error) {
@@ -1370,44 +1366,65 @@ try {
     chatAIConfig.save("MNChatglm_config")
     // MNButton.setTitle(self.imageCompressionButton, "Image Compression for vision mode: "+(chatAIConfig.getConfig("imageCompression")?"✅":"❌"))
   },
-  openAPIURL:function (params) {
-    MNUtil.showHUD("Open API URL")
+  openAPIURL:async function (params) {
+    self.showHUD("Open API Platform")
+    Menu.dismissCurrentMenu()
+    let confirm = false
     switch (chatAIConfig.config.source) {
       case "ChatGPT":
-        MNUtil.openURL("https://platform.openai.com/docs/overview")
+        self.openURL("https://platform.openai.com/docs/overview")
         break;
       case "Gemini":
-        MNUtil.openURL("https://aistudio.google.com/apikey")
+        self.openURL("https://aistudio.google.com/apikey")
         break;
       case "Claude":
-        MNUtil.openURL("https://docs.anthropic.com/en/api/")
+        self.openURL("https://docs.anthropic.com/en/api/")
         break;
       case "KimiChat":
-        MNUtil.openURL("https://platform.moonshot.cn/console/api-keys")
+        self.openURL("https://platform.moonshot.cn/console/api-keys")
         break;
       case "Minimax":
-        MNUtil.openURL("https://platform.minimaxi.com/user-center/basic-information/interface-key")
+        self.openURL("https://platform.minimaxi.com/user-center/basic-information/interface-key")
         break;
       case "Deepseek":
-        MNUtil.openURL("https://platform.deepseek.com/api_keys")
+        self.openURL("https://platform.deepseek.com/api_keys")
         break;
       case "Github":
-        MNUtil.openURL("https://github.com/settings/personal-access-tokens")
+        self.openURL("https://github.com/settings/personal-access-tokens")
         break;
       case "Qwen":
-        MNUtil.openURL("https://bailian.console.aliyun.com/?tab=model#/api-key")
+        self.openURL("https://bailian.console.aliyun.com/?tab=model#/api-key")
         break;
       case "Volcengine":
-        MNUtil.openURL("https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey")
+        self.openURL("https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey")
         break;
       case "SiliconFlow":
-        MNUtil.openURL("https://cloud.siliconflow.cn/account/ak")
+        confirm = await MNUtil.confirm("MN ChatAI", "是否已注册SiliconFlow？",["未注册","已注册"])
+        if (confirm) {
+          self.openURL("https://cloud.siliconflow.cn/account/ak")
+        }else{
+          self.openURL("https://cloud.siliconflow.cn/i/Jj66Qvv1")
+        }
         break;
       case "ChatGLM":
-        MNUtil.openURL("https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys")
+        confirm = await MNUtil.confirm("MN ChatAI", "是否已注册ChatGLM？",["未注册","已注册"])
+        if (confirm) {
+          self.openURL("https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys")
+        }else{
+          self.openURL("https://www.bigmodel.cn/invite?icode=8sa1hLdemfigJAPEbzFQ233uFJ1nZ0jLLgipQkYjpcA%3D")
+        }
+        break;
+        break;
+      case "PPIO":
+        confirm = await MNUtil.confirm("MN ChatAI", "是否已注册PPIO？",["未注册","已注册"])
+        if (confirm) {
+          self.openURL("https://ppio.com/settings/key-management")
+        }else{
+          self.openURL("https://ppio.com/user/register?invited_by=4QHT31")
+        }
         break;
       default:
-        MNUtil.showHUD("Unsupported source: "+chatAIConfig.config.source)
+        self.showHUD("Unsupported source: "+chatAIConfig.config.source)
         return;
     }
     // MNUtil.openURL(chatAIConfig.config.url)
@@ -1493,19 +1510,19 @@ try {
   saveConfig: async function (params) {
     switch (chatAIConfig.config.source) {
       case "Built-in":
-        MNUtil.showHUD("Refreshing...")
+        self.waitHUD("Refreshing...")
         let keys = await chatAINetwork.fetchKeys0()
         if (keys) {
           chatAIConfig.keys = keys 
           if (keys.message) {
-            MNUtil.showHUD(keys.message)
+            self.waitHUD(keys.message)
             chatAIConfig.save('MNChatglm_builtInKeys')
             self.refreshView("modelView")
+            MNUtil.stopHUD(1)
             // self.refreshButton.setTitleForState(`1️⃣: ${keys.key0.keys.length}, 2️⃣: ${keys.key1.keys.length}, 3️⃣: ${keys.key2.keys.length}, 4️⃣: ${keys.key3.keys.length}`,0)
             return
           }
         }
-        MNUtil.showHUD("error")
         return;
       case "ChatGLM":
         chatAIConfig.config.apikey = self.apiKeyInput.text.trim()
@@ -1535,6 +1552,9 @@ try {
         break
       case "SiliconFlow":
         chatAIConfig.config.siliconFlowKey = self.apiKeyInput.text.trim()
+        break
+      case "PPIO":
+        chatAIConfig.config.ppioKey = self.apiKeyInput.text.trim()
         break
       case "Volcengine":
         chatAIConfig.config.volcengineKey = self.apiKeyInput.text.trim()
@@ -1573,6 +1593,7 @@ try {
         self.tableItem("▶️   Excute prompt", 'promptAction:', "Excute"),
         self.tableItem("💬   Begin Chat", 'promptAction:', "Chat"),
         self.tableItem("📄   Copy prompt", 'promptAction:', "Copy"),
+        self.tableItem("📤   Share prompt", 'promptAction:', "Share"),
         self.tableItem("🗑   Delete prompt", 'promptAction:', "Delete"),
         self.tableItem("🔝   Move to top", 'promptAction:', "Top"),
         self.tableItem("👇   Move to bottom", 'promptAction:', "Bottom"),
@@ -1666,6 +1687,7 @@ try {
           }
           let confirm = await MNUtil.confirm("MN ChatAI\nDelete this prompt?", "删除这个prompt？")
           if (confirm) {
+            let prompt = chatAIConfig.prompts[currentPrompt]
             delete chatAIConfig.prompts[currentPrompt]
             chatAIConfig.config.promptNames = promptNames.filter(item=>item !== chatAIConfig.config.currentPrompt)
             chatAIConfig.setCurrentPrompt(chatAIConfig.config.promptNames[0])
@@ -1673,7 +1695,17 @@ try {
             self.refreshLayout()
             chatAIConfig.save(["MNChatglm_config","MNChatglm_prompts"])
             self.scrollview.setContentOffsetAnimated({x:0,y:0}, true)
+            MNUtil.log({message:"Delete Prompt: "+prompt.title,source:"MN ChatAI",detail:prompt})
           }
+          break;
+        case "Share":
+          let config = JSON.stringify(prompt,undefined,2)
+          let url =  `[➕导入](marginnote4app://addon/mnchatai?action=importprompt&promptconfig=${encodeURIComponent(config)})
+\`\`\`json
+${config}
+\`\`\`
+`
+          MNUtil.copy(url)
           break;
         case "Top":
           chatAIUtils.moveElement(promptNames, currentPrompt, "top")
@@ -1710,6 +1742,7 @@ try {
             let systemMessage = await chatAIUtils.render(system,opt)
             // MNUtil.confirm("System Prompt", systemMessage.slice(0, 2000))
             if (systemMessage && systemMessage.trim()) {
+              MNUtil.log({message:"Test Prompt: "+self.titleInput.text,source:"MN ChatAI",detail:systemMessage})
               MNUtil.copy(systemMessage)
               self.showHUD("Copy system message")
             }else{
@@ -1727,6 +1760,7 @@ try {
             let opt = {noteId:MNNote.getFocusNote()?.noteId,vision:!!vision}
             let contextMessage = await chatAIUtils.render(context,opt)
             if (contextMessage && contextMessage.trim()) {
+              MNUtil.log({message:"Test Prompt: "+self.titleInput.text,source:"MN ChatAI",detail:contextMessage})
               MNUtil.copy(contextMessage)
               self.showHUD("Copy context message")
             }else{
@@ -1885,15 +1919,17 @@ try {
     chatAIConfig.save("MNChatglm_config")
   },
   changeDelay: function(sender) {
-    if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
-    var commandTable = [
-      {title:'2.0s',object:self,selector:'changeDelayTo:',param:2.0},
-      {title:'1.5s',object:self,selector:'changeDelayTo:',param:1.5},
-      {title:'1.0s',object:self,selector:'changeDelayTo:',param:1.0},
-      {title:'0.5s',object:self,selector:'changeDelayTo:',param:0.5},
-      {title:'0s',object:self,selector:'changeDelayTo:',param:0}
-    ];
-    self.popoverController = MNUtil.getPopoverAndPresent(sender,commandTable,100)
+    Menu.dismissCurrentMenu()
+    let menu = new Menu(sender,self,100,1)
+    menu.preferredPosition = 1
+    menu.width = 100
+    let selector = 'changeDelayTo:'
+    menu.addMenuItem("2.0s",selector,2.0)
+    menu.addMenuItem("1.5s",selector,1.5)
+    menu.addMenuItem("1.0s",selector,1.0)
+    menu.addMenuItem("0.5s",selector,0.5)
+    menu.addMenuItem("0s",selector,0)
+    menu.show()
   },
   changeDelayTo: function(delay) {
     chatAIConfig.config.delay = delay
@@ -1918,16 +1954,29 @@ try {
     let autoClear = chatAIConfig.getConfig("autoClear")
     let dynamic = chatAIConfig.getConfig("dynamic")
     let temperature = chatAIConfig.getConfig("dynamicTemp")
-    var commandTable = [
-        {title:"✏️  Edit Prompt",object:self,selector:'editDynamicPrompt:',param:"Excute"},
-        {title:(dynamic?"✅":"❌")+"  Dynamic",object:self,selector:'toggleDynamic:',param:"Copy"},
-        {title:(autoClear?"✅":"❌")+"  Auto Clear Input",object:self,selector:'toggleAutoClear:',param:"Copy"},
-        {title:"▶️  Test Prompt (Vision)",object:self,selector:'testDynamicPrompt:',param:"Vision"},
-        {title:"▶️  Test Prompt (Text)",object:self,selector:'testDynamicPrompt:',param:"Text"},
-        self.tableItem("🌡️   Temperature: "+temperature, 'changeDynamicTemp:', "")
-      ]
-    self.popoverController = MNUtil.getPopoverAndPresent(button,commandTable,190,1)
-    return
+    let autoImage = chatAIConfig.getConfig("autoImage")
+    let autoOCR = chatAIConfig.getConfig("autoOCR")
+    let menu = new Menu(button,self,190,1)
+    menu.addMenuItem("✏️  Edit Prompt", 'editDynamicPrompt:')
+    menu.addMenuItem((dynamic?"✅":"❌")+"  Dynamic", 'toggleDynamic:')
+    menu.addMenuItem((autoClear?"✅":"❌")+"  Auto Clear Input", 'toggleAutoClear:')
+    menu.addMenuItem((autoImage?"✅":"❌")+"  Auto Vision", 'toggleAutoImage:')
+    menu.addMenuItem((autoOCR?"✅":"❌")+"  Auto OCR", 'toggleAutoOCR:')
+    menu.addMenuItem("▶️  Test Prompt (Vision)", 'testDynamicPrompt:', "Vision")
+    menu.addMenuItem("▶️  Test Prompt (Text)", 'testDynamicPrompt:', "Text")
+    menu.addMenuItem("🌡️   Temperature: "+temperature, 'changeDynamicTemp:')
+    menu.show()
+    // var commandTable = [
+    //     {title:"✏️  Edit Prompt",object:self,selector:'editDynamicPrompt:',param:"Excute"},
+    //     {title:(dynamic?"✅":"❌")+"  Dynamic",object:self,selector:'toggleDynamic:',param:"Copy"},
+    //     {title:(autoClear?"✅":"❌")+"  Auto Clear Input",object:self,selector:'toggleAutoClear:',param:"Copy"},
+    //     {title:(autoImage?"✅":"❌")+"  Auto Vision",object:self,selector:'toggleAutoImage:',param:"Copy"},
+    //     {title:"▶️  Test Prompt (Vision)",object:self,selector:'testDynamicPrompt:',param:"Vision"},
+    //     {title:"▶️  Test Prompt (Text)",object:self,selector:'testDynamicPrompt:',param:"Text"},
+    //     self.tableItem("🌡️   Temperature: "+temperature, 'changeDynamicTemp:', "")
+    //   ]
+    // self.popoverController = MNUtil.getPopoverAndPresent(button,commandTable,190,1)
+    // return
   },
   changeDynamicTemp: async function (param) {
     let self = getChatglmController()
@@ -1968,6 +2017,7 @@ try {
       systemMessage = await chatAIUtils.getTextVarInfo(system,userInput)
     }
     if (systemMessage) {
+      MNUtil.log({message:"Test Dynamic Prompt",source:"MN ChatAI",detail:systemMessage})
       MNUtil.copy(systemMessage)
       MNUtil.showHUD("Copy system message")
     }else{
@@ -2024,13 +2074,14 @@ try {
     }
   },
   toggleIgnoreShortText:function (button) {
+    Menu.dismissCurrentMenu()
     chatAIConfig.config.ignoreShortText = !chatAIConfig.config.ignoreShortText
-    button.setTitleForState("Ignore short text: "+(chatAIConfig.config.ignoreShortText?"✅":"🚫"))
-    if (chatAIConfig.config.ignoreShortText) {
-      self.ignoreButton.backgroundColor = MNUtil.hexColorAlpha("#457bd3",0.8)
-    }else{
-      self.ignoreButton.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
-    }
+    MNUtil.showHUD("Ignore short text: "+(chatAIConfig.config.ignoreShortText?"✅":"🚫"))
+    // if (chatAIConfig.config.ignoreShortText) {
+    //   self.ignoreButton.backgroundColor = MNUtil.hexColorAlpha("#457bd3",0.8)
+    // }else{
+    //   self.ignoreButton.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
+    // }
     chatAIConfig.save("MNChatglm_config")
 
   },
@@ -2066,7 +2117,6 @@ try {
     if (modifiedTime) {
       let dateObj = new Date(modifiedTime)
       let dateString = dateObj.toLocaleString()
-      // MNButton.setTitle(this.restoreConfigButton, "Last Sync Time: "+dateObj.toLocaleString())
       let confirm = await MNUtil.confirm("Restore Config", "恢复上次配置\n\n将会恢复到上次导入前的配置\n\n上次配置的修改时间："+dateString )
       if (confirm) {
         // MNUtil.copy(chatAIConfig.previousConfig)
@@ -2246,7 +2296,7 @@ try {
         break;
     }
   } catch (error) {
-    MNUtil.showHUD("Error in focusConfigNoteId: "+error)
+    chatAIUtils.addErrorLog(error, "focusConfigNoteId")
   }
   }
 });
@@ -2256,7 +2306,6 @@ chatglmController.prototype.init = function () {
   //  */
   // let ctr = this
   this.reloadImage = MNUtil.getImage(chatAIConfig.mainPath + `/reload.png`)
-  this.stopImage = MNUtil.getImage(chatAIConfig.mainPath + `/stop.png`)
   this.settingImage = MNUtil.getImage(chatAIConfig.mainPath + `/setting.png`)
   this.visionImage = MNUtil.getImage(chatAIConfig.mainPath + `/vision.png`,1.5)
   this.searchedText = '';
@@ -2446,8 +2495,7 @@ chatglmController.prototype.settingViewLayout = function (){
       this.autoSpeechButton.frame = MNUtil.genFrame(105,45,130,35)
       this.speechSpeedButton.frame = MNUtil.genFrame(240,45,width-245,35)
       this.speechVoiceButton.frame = MNUtil.genFrame(5,85,width-10,35)
-      this.allowEditButton.frame = MNUtil.genFrame(5,45,(width-15)*0.5-25,35)
-      this.autoImageButton.frame = MNUtil.genFrame((width-15)*0.5-15,45,(width-15)*0.5+25,35)
+      this.allowEditButton.frame = MNUtil.genFrame(5,45,width-10,35)
       this.windowLocationButton.frame = MNUtil.genFrame(5,85,width-10,35)
       this.autoThemeButton.frame = MNUtil.genFrame(5,125,width-10,35)
       this.pdfExtractModeButton.frame = MNUtil.genFrame(5,165,width-10,35)
@@ -2488,7 +2536,6 @@ chatglmController.prototype.settingViewLayout = function (){
       this.allowEditButton.frame = MNUtil.genFrame(5,45,350,35)
       this.windowLocationButton.frame = MNUtil.genFrame(5,85,350,35)
       this.autoThemeButton.frame = MNUtil.genFrame(5,125,350,35)
-      this.autoImageButton.frame = MNUtil.genFrame(5,165,350,35)
       // configView
       this.scrollview.frame = {x:5,y:5,width:350,height:height-75}
       // this.scrollview.contentSize = {width:350,height:height};
@@ -2535,8 +2582,9 @@ chatglmController.prototype.settingViewLayout = function (){
     this.modelScrollview.frame = MNUtil.genFrame(5, 5, 145, height-75)
     this.sourceButton.frame = MNUtil.genFrame(realX,5,realWidth-100,35)
     this.saveConfigButton.frame = MNUtil.genFrame(width-90,5,85,35)
-    this.saveCustomButton.frame = MNUtil.genFrame(width-62.5,2.5,60,30)
-    this.resetCustomButton.frame = MNUtil.genFrame(width-125,2.5,60,30)
+    this.saveCustomButton.frame = MNUtil.genFrame(width-65,height-100,60,30)
+    this.resetCustomButton.frame = MNUtil.genFrame(width-130,height-100,60,30)
+    this.showNotificationButton.frame = MNUtil.genFrame(width-195,height-100,60,30)
     this.apiKeyInput.frame = MNUtil.genFrame(realX,50,realWidth-10,75)
     this.pasteApiKeyButton.frame = MNUtil.genFrame(width-40,90,30,30)
     this.URLInput.frame = MNUtil.genFrame(realX,130,realWidth-10,40)
@@ -2666,7 +2714,7 @@ try {
 
   this.createButton("closeButton","closeButtonTapped:","view")
   this.closeButton.layer.cornerRadius = 10;
-  MNButton.setImage(this.closeButton, this.stopImage)
+  MNButton.setImage(this.closeButton, chatAIConfig.closeImage)
   MNButton.setColor(this.closeButton, "#e06c75")
   targetView = "tabView"
   //创建切换按钮
@@ -2771,9 +2819,6 @@ try {
   this.createButton("autoThemeButton","toggleAutoTheme:",targetView)
   MNButton.setConfig(this.autoThemeButton, {opacity:1.0,color:"#457bd3",alpha:0.8})
 
-  this.createButton("autoImageButton","toggleAutoImage:",targetView)
-  MNButton.setConfig(this.autoImageButton, {opacity:1.0,color:"#457bd3",alpha:0.8})
-
   this.createButton("pdfExtractModeButton","choosePDFExtractMode:",targetView)
   MNButton.setConfig(this.pdfExtractModeButton, {opacity:1.0,color:"#457bd3",alpha:0.8})
 
@@ -2810,12 +2855,16 @@ try {
   targetView = "customButtonView"
   this.createWebviewInput("customButtonView")
   this.createButton("saveCustomButton","saveCustomButtonConfig:","customButtonView")
-  MNButton.setConfig(this.saveCustomButton, {opacity:0.8,color:"#e06c75",title:"Save",bold:true})
+  MNButton.setConfig(this.saveCustomButton, {opacity:0.75,color:"#e06c75",title:"Save",bold:true})
   MNButton.setRadius(this.saveCustomButton,11)
 
   this.createButton("resetCustomButton","resetCustomButtonConfig:","customButtonView")
-  MNButton.setConfig(this.resetCustomButton, {opacity:0.8,color:"#457bd3",title:"Reset",bold:true})
+  MNButton.setConfig(this.resetCustomButton, {opacity:0.75,color:"#457bd3",title:"Reset",bold:true})
   MNButton.setRadius(this.resetCustomButton,11)
+
+  this.createButton("showNotificationButton","showNotification:","customButtonView")
+  MNButton.setConfig(this.showNotificationButton, {opacity:0.75,color:"#457bd3",title:"Show",bold:true})
+  MNButton.setRadius(this.showNotificationButton,11)
 
   //autoActionView
 
@@ -2903,7 +2952,7 @@ try {
   MNButton.setRadius(this.importSubscriptionButton,11)
 
   this.createButton("openAPIURLButton","openAPIURL:","modelView")
-  MNButton.setTitle(this.openAPIURLButton, "Open URL")
+  MNButton.setTitle(this.openAPIURLButton, "Open API Platform")
   MNButton.setColor(this.openAPIURLButton, "#457bd3",0.8)
   MNButton.setRadius(this.openAPIURLButton,11)
 
@@ -3374,6 +3423,7 @@ chatglmController.prototype.setModel = function (source) {
     case "ChatGLM":
     case "Claude":
     case "SiliconFlow":
+    case "PPIO":
     case "Volcengine":
     case "Github":
     case "Gemini":
@@ -3408,6 +3458,7 @@ chatglmController.prototype.setModel = function (source) {
     case "Claude":
     case "KimiChat":
     case "SiliconFlow":
+    case "PPIO":
     case "Volcengine":
     case "Github":
     case "Minimax":
@@ -3486,7 +3537,6 @@ try {
       let locNames = ["Left","Right"]
       MNButton.setTitle(this.windowLocationButton, "Notification: "+locNames[locInd])
       MNButton.setTitle(this.autoThemeButton, "Auto Theme: "+(chatAIConfig.getConfig("autoTheme")?"✅":"❌"))
-      MNButton.setTitle(this.autoImageButton, "Auto Select Image: "+(chatAIConfig.getConfig("autoImage")?"✅":"❌"))
       switch (chatAIConfig.getConfig("PDFExtractMode")) {
         case "local":
           MNButton.setTitle(this.pdfExtractModeButton, "PDF Extract Mode: PDF.js")
@@ -3643,7 +3693,7 @@ try {
       break;
   }
 } catch (error) {
-  MNUtil.showHUD("Error in refreshView: "+error)
+  chatAIUtils.addErrorLog(error, "chatglmController.refreshView")
 }
 }
 /**
@@ -3803,15 +3853,15 @@ chatglmController.prototype.createWebviewInput = function (superView) {
   this.webviewInput.layer.borderWidth = 0
   this.webviewInput.layer.opacity = 0.85
   this.webviewInput.scrollEnabled = false
-  this.webviewInput.scrollView.scrollEnabled = false
+  // this.webviewInput.scrollView.scrollEnabled = false
+  // this.webviewInput.loadFileURLAllowingReadAccessToURL(
+  //   NSURL.fileURLWithPath(chatAIUtils.mainPath + '/jsoneditor.html'),
+  //   NSURL.fileURLWithPath(chatAIUtils.mainPath + '/')
+  // );
   this.webviewInput.loadFileURLAllowingReadAccessToURL(
-    NSURL.fileURLWithPath(chatAIUtils.mainPath + '/jsoneditor.html'),
+    NSURL.fileURLWithPath(chatAIUtils.mainPath + '/buttonEditor.html'),
     NSURL.fileURLWithPath(chatAIUtils.mainPath + '/')
   );
-  // this.webviewInput.loadFileURLAllowingReadAccessToURL(
-  //   NSURL.fileURLWithPath(this.mainPath + '/jsoneditor.html'),
-  //   NSURL.fileURLWithPath(MNUtil.mainPath + '/')
-  // );
     } catch (error) {
     MNUtil.showHUD(error)
   }
@@ -3832,7 +3882,9 @@ chatglmController.prototype.loadWebviewContent = function () {
  * @param {object|string} content
  * @this {chatglmController}
  */
-chatglmController.prototype.setWebviewContent = function (content) {
+chatglmController.prototype.setWebviewContent = async function (content) {
+try {
+
   if (typeof content === "object") {
     let button1 = content.button1
     if (!("autoClose" in button1)) {
@@ -3860,6 +3912,8 @@ chatglmController.prototype.setWebviewContent = function (content) {
     }
     let button7 = content.button7 ?? {click:"reAsk",longPress:"reAskWithMenu",autoClose:false}
     let button8 = content.button8 ?? {click:"openChat",longPress:"none",autoClose:true}
+
+
     let sortedContent = {
       button1: button1,
       button2: button2,
@@ -3870,27 +3924,33 @@ chatglmController.prototype.setWebviewContent = function (content) {
       button7: button7,
       button8: button8
     }
-    this.runJavaScript(`setContent('${encodeURIComponent(JSON.stringify(sortedContent))}')`)
+    if (typeof toolbarUtils === "undefined") {
+      await this.runJavaScript(`setContent("${encodeURIComponent(JSON.stringify(sortedContent))}")`)
+    }else{
+      let actionKey = toolbarConfig.getAllActions()
+      let buttonConfigs = actionKey.map(key=>{
+        return {value:"toolbar:"+key,text:"🔨  "+toolbarConfig.getAction(key).name}
+      })
+      // MNUtil.copy(`updateAction("${encodeURIComponent(JSON.stringify(buttonConfigs))}")`)
+      await this.runJavaScript(`
+      updateAction("${encodeURIComponent(JSON.stringify(buttonConfigs))}")
+      setContent("${encodeURIComponent(JSON.stringify(sortedContent))}")
+      `)
+    }
+    // MNUtil.copy(`setContent("${encodeURIComponent(JSON.stringify(sortedContent))}")`)
+    // await this.runJavaScript(`setContent("${encodeURIComponent(JSON.stringify(sortedContent))}")`)
     return
   }
   if (!MNUtil.isValidJSON(content)) {
     content = "{}"
   }
   this.runJavaScript(`setContent('${encodeURIComponent(content)}')`)
+  
+} catch (error) {
+  chatAIUtils.addErrorLog(error, "setWebviewContent")
 }
-/**
- * @this {chatglmController}
- */
-chatglmController.prototype.updateWebviewContent = function (content) {
-  if (typeof content === "object") {
-    this.runJavaScript(`updateContent('${encodeURIComponent(JSON.stringify(content))}')`)
-    return
-  }
-  if (!MNUtil.isValidJSON(content)) {
-    content = "{}"
-  }
-  this.runJavaScript(`updateContent('${encodeURIComponent(content)}')`)
 }
+
 /**
  * @this {chatglmController}
  */
@@ -3902,7 +3962,7 @@ chatglmController.prototype.setJSContent = function (content) {
  * @this {chatglmController}
  */
 chatglmController.prototype.blur = async function () {
-  this.runJavaScript(`removeFocus()`)
+  this.runJavaScript(`document.activeElement.blur();`)
   this.webviewInput.endEditing(true)
 }
 
@@ -3911,7 +3971,8 @@ chatglmController.prototype.blur = async function () {
  */
 chatglmController.prototype.getWebviewContent = async function () {
   // let content = await this.runJavaScript(`updateContent(); document.body.innerText`)
-  let content = await this.runJavaScript(`getContent()`)
+  await this.runJavaScript(`document.activeElement.blur();`)
+  let content = await this.runJavaScript(`getContent();`)
   let tem = decodeURIComponent(content)
   this.webviewInput.endEditing(true)
   return tem
@@ -3939,8 +4000,72 @@ chatglmController.prototype.refreshCustomButton = function (){
  * @param {number} duration 
  * @param {UIView} view 
  */
-chatglmController.prototype.showHUD = function (title,duration = 1.5,view = self.view) {
+chatglmController.prototype.showHUD = function (title,duration = 1.5,view = this.view) {
   MNUtil.showHUD(title,duration,view)
+}
+
+/**
+ * @this {chatglmController}
+ * @param {string} url 
+ * @param {string} mode 
+ */
+chatglmController.prototype.openURL = function (url, mode = "auto") {
+  switch (mode) {
+    case "auto":
+      if (typeof browserUtils !== "undefined") {
+        this.showHUD("Open in browser")
+        MNUtil.postNotification("openInBrowser", {url:url})
+      }else{
+        this.showHUD("Open in external browser")
+        MNUtil.openURL(url)
+      }
+      break;
+    case "mnbrowser":
+    case "mn":
+      if (typeof browserUtils !== "undefined") {
+        this.showHUD("Open in browser")
+        MNUtil.postNotification("openInBrowser", {url:url})
+      }else{
+        MNUtil.showHUD("Please install MN Browser First")
+      }
+      break;
+    case "external":
+      this.showHUD("Open in external browser")
+      MNUtil.openURL(url)
+      break;
+    default:
+      break;
+  }
+}
+
+/**
+ * 
+ * @param {string} title 
+ * @param {number} duration 
+ * @param {UIView} view 
+ */
+chatglmController.prototype.waitHUD = function (title,view = this.view) {
+  MNUtil.waitHUD(title,view)
+}
+
+chatglmController.prototype.importNewPrompt = async function (promptConfig,key) {
+    chatAIUtils.chatController.titleInput.text = promptConfig.title
+    chatAIUtils.chatController.contextInput.text = promptConfig.context
+    chatAIUtils.chatController.systemInput.text = promptConfig.system
+    let prompts = chatAIConfig.prompts
+    prompts[key] = promptConfig
+    chatAIConfig.prompts = prompts
+    chatAIConfig.config.promptNames = chatAIConfig.config.promptNames.concat((key))
+    this.setButtonText(chatAIConfig.config.promptNames,key)
+    chatAIConfig.setCurrentPrompt(key)
+    this.refreshLayout()
+    chatAIConfig.save("MNChatglm_prompts")
+    if (config.vision) {
+      this.visionButton.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+    }else{
+      this.visionButton.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
+    }
+    this.scrollview.setContentOffsetAnimated({x:0,y:this.scrollview.contentSize.height-self.scrollview.frame.height}, true)
 }
 /** @type {UITextView} */
 chatglmController.prototype.contextInput

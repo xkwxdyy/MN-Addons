@@ -542,6 +542,15 @@ function registerAllMenuTemplates() {
       action: "menu",
       menuWidth: 300,
       menuItems: [
+        "🔢 带序号的评论",
+        {
+          action: "addCaseComment",
+          menuTitle: "    📋 添加 Case 评论（自动编号）",
+        },
+        {
+          action: "addStepComment",
+          menuTitle: "    👣 添加 Step 评论（自动编号）",
+        },
         {
           action: "changeHtmlMarkdownCommentTypeByPopup",
           menuTitle: "🔄 修改某条 HtmlMD 评论的类型",
@@ -549,6 +558,19 @@ function registerAllMenuTemplates() {
         {
           action: "renewContentsToHtmlMarkdownCommentType",
           menuTitle: "🔄 更新文本内容为 HtmlMD 评论",
+        },
+        "📊 批量调整层级",
+        {
+          action: "adjustHtmlMDLevelsUp",
+          menuTitle: "    ⬆️ 所有层级上移一级",
+        },
+        {
+          action: "adjustHtmlMDLevelsDown",
+          menuTitle: "    ⬇️ 所有层级下移一级",
+        },
+        {
+          action: "adjustHtmlMDLevelsByHighest",
+          menuTitle: "    🎯 指定最高级别调整层级",
         },
       ],
     },
@@ -619,22 +641,80 @@ function registerAllMenuTemplates() {
     onLongPress: {
       // 长按：显示菜单
       action: "menu",
-      menuWidth: 300,
+      menuWidth: 350,
       menuItems: [
+        "🔍 搜索功能",
         {
           action: "showSearchBoard",
-          menuTitle: "📋 打开搜索看板",
+          menuTitle: "    📋 打开搜索看板",
         },
         {
           action: "searchDefinition",
-          menuTitle: "📚 搜索上层定义卡片的目录",
+          menuTitle: "    📚 搜索上层定义卡片的目录",
         },
+        "⚙️ 基础配置",
         {
           action: "manageSearchRoots",
-          menuTitle: "📁 管理搜索根目录",
+          menuTitle: "    📁 管理搜索根目录",
+        },
+        {
+          action: "showSearchSettings",
+          menuTitle: "    🎯 搜索设置",
+        },
+        "📝 同义词管理",
+        {
+          action: "manageSynonymGroups",
+          menuTitle: "    （包含导入导出功能）",
+        },
+        "🚫 排除词管理",
+        {
+          action: "manageExclusionGroups",
+          menuTitle: "    （智能过滤搜索结果）",
+        },
+        "📊 配置同步",
+        {
+          action: "exportSearchConfig",
+          menuTitle: "    📤 导出搜索配置",
+        },
+        {
+          action: "importSearchConfig",
+          menuTitle: "    📥 导入搜索配置",
         },
       ],
     },
+  });
+
+  // 代码学习菜单
+  global.registerMenuTemplate("menu_codeLearning", {
+    action: "menu",
+    menuWidth: 350,
+    menuItems: [
+      {
+        action: "codeMergeTemplate",
+        menuTitle: "📚 代码卡片合并模板"
+      },
+      {
+        action: "codeLearning",
+        menuTitle: "📚 代码卡片标题制卡"
+      },
+      {
+        action: "codeAnalysisWithAI", 
+        menuTitle: "🤖 AI 代码分析（OCR）"
+      },
+      {
+        action: "codeAnalysisFromComment",
+        menuTitle: "📝 AI 代码分析（评论）"
+      },
+      "⚙️ 设置",
+      {
+        action: "switchCodeAnalysisModel",
+        menuTitle: "    ⚙️ 切换 AI 分析模型"
+      },
+      {
+        action: "switchOCRSource",
+        menuTitle: "    ⚙️ 切换 OCR 源"
+      }
+    ]
   });
 
   if (typeof MNUtil !== "undefined" && MNUtil.log) {

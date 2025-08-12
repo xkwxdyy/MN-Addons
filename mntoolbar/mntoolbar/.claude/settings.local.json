@@ -30,7 +30,10 @@
       "Bash(--body-file /tmp/issue_body.md )",
       "Bash(--label \"bug\")",
       "Bash(gh issue view:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(pgrep:*)",
+      "Bash(networksetup:*)",
+      "Bash(env)"
     ],
     "deny": []
   }

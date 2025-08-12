@@ -326,6 +326,36 @@ class TaskFieldUtils {
     
     return null
   }
+  
+  /**
+   * 获取指定字段的索引位置
+   * @param {MNNote} note - 任务卡片
+   * @param {string} fieldName - 要查找的字段名
+   * @returns {number} 字段索引，如果没找到则返回 -1
+   */
+  static getFieldIndex(note, fieldName) {
+    if (!note || !note.MNComments) return -1
+    
+    // 遍历所有评论查找匹配的字段
+    for (let i = 0; i < note.MNComments.length; i++) {
+      const comment = note.MNComments[i]
+      if (!comment || !comment.text) continue
+      
+      const text = comment.text
+      
+      // 检查是否是任务字段
+      if (this.isTaskField(text)) {
+        const parsed = this.getFieldNameAndContent(text)
+        
+        // 检查字段名是否匹配
+        if (parsed.fieldName === fieldName) {
+          return i
+        }
+      }
+    }
+    
+    return -1
+  }
 }
 
 /**
@@ -484,9 +514,23 @@ class MNTaskManager {
     MNUtil.log(`🆔 卡片ID: ${focusNote.noteId}`)
     MNUtil.log(`📋 指定任务类型: ${taskType || '未指定'}`)
     
+    // 检查是否是非任务看板卡片（需要创建临时任务）
+    const parentNote = focusNote.parentNote
+    const isParentTaskCard = parentNote ? this.isTaskCard(parentNote) : false
+    const isFocusTaskCard = this.isTaskCard(focusNote)
+    
+    // 判断是否需要创建临时任务
+    // 条件：1. 不是任务卡片 且 2. (没有父卡片 或 父卡片不是任务卡片)
+    const needCreateTemporary = !isFocusTaskCard && (!parentNote || !isParentTaskCard)
+    
+    if (needCreateTemporary) {
+      MNUtil.log('🆕 检测到非任务看板卡片，触发临时任务创建流程...')
+      return await this.createTemporaryTask(focusNote)
+    }
+    
     try {
-      // 获取父卡片
-      const parentNote = focusNote.parentNote
+      // 原有的制卡逻辑
+      let shouldTransformParentToProject = false
       
       if (parentNote) {
         MNUtil.log(`👪 检测到父卡片:`)
@@ -494,7 +538,6 @@ class MNTaskManager {
         MNUtil.log(`  - ID: ${parentNote.noteId}`)
         
         // 详细检查父卡片是否是任务卡片
-        const isParentTaskCard = this.isTaskCard(parentNote)
         MNUtil.log(`👪 父卡片任务卡片检查结果: ${isParentTaskCard ? '✅ 是' : '❌ 否'}`)
         
         if (isParentTaskCard) {
@@ -502,6 +545,14 @@ class MNTaskManager {
           MNUtil.log(`  - 父任务类型: ${parentParts.type}`)
           MNUtil.log(`  - 父任务状态: ${parentParts.status}`)
           MNUtil.log(`  - 父任务内容: ${parentParts.content}`)
+          
+          // 检查是否需要自动推断类型
+          if (!taskType && parentParts.type === '动作' && !isFocusTaskCard) {
+            // 父卡片是动作类型，子卡片不是任务卡片，自动设置子卡片为动作类型
+            MNUtil.log(`🎯 自动推断：父卡片是动作类型，子卡片设为动作类型，父卡片将转为项目类型`)
+            taskType = '动作'
+            shouldTransformParentToProject = true
+          }
         }
       } else {
         MNUtil.log(`👪 没有父卡片`)
@@ -524,6 +575,11 @@ class MNTaskManager {
         // 已经是任务格式，只需要添加字段
         MNUtil.log(`📋 已是任务格式，开始添加/更新字段`)
         
+        // 解析任务标题获取当前状态
+        const titleParts = this.parseTaskTitle(noteToConvert.noteTitle)
+        const currentStatus = titleParts.status
+        MNUtil.log(`📊 当前任务状态: ${currentStatus}`)
+        
         // 检查是否缺少所属字段
         const parsed = this.parseTaskComments(noteToConvert)
         MNUtil.log(`🔍 当前卡片字段情况:`)
@@ -535,6 +591,33 @@ class MNTaskManager {
         let hasChanges = false
         
         MNUtil.undoGrouping(() => {
+          // 根据当前状态设置对应的颜色
+          let newColorIndex = 12  // 默认白色
+          switch (currentStatus) {
+            case "已完成":
+              newColorIndex = 1  // 绿色
+              break
+            case "进行中":
+              newColorIndex = 3  // 粉色
+              break
+            case "暂停":
+              newColorIndex = 8  // 蓝色
+              break
+            case "未开始":
+              newColorIndex = 12  // 白色
+              break
+            case "已归档":
+              newColorIndex = 13  // 灰色
+              break
+          }
+          
+          // 只有颜色不同时才更新
+          if (noteToConvert.colorIndex !== newColorIndex) {
+            MNUtil.log(`🎨 更新颜色: ${noteToConvert.colorIndex} → ${newColorIndex}`)
+            noteToConvert.colorIndex = newColorIndex
+            hasChanges = true
+          }
+          
           // 先清理失效链接
           MNUtil.log(`🧹 开始清理失效链接...`)
           const removedLinksCount = this.cleanupBrokenLinks(noteToConvert)
@@ -551,6 +634,13 @@ class MNTaskManager {
           // 添加任务字段（信息字段和状态字段）
           MNUtil.log(`📝 调用 addTaskFieldsWithStatus`)
           this.addTaskFieldsWithStatus(noteToConvert)
+          
+          // 检查和补充缺失的字段（如进展字段等）
+          MNUtil.log(`🔄 检查是否需要升级旧任务卡片...`)
+          if (this.upgradeOldTaskCard(noteToConvert)) {
+            MNUtil.log(`✅ 补充了缺失的字段`)
+            hasChanges = true
+          }
           
           // 检查是否有新字段被添加
           if (noteToConvert.MNComments.length > beforeFieldCount) {
@@ -641,7 +731,20 @@ class MNTaskManager {
           // 添加任务字段（信息字段和状态字段）
           MNUtil.log(`📝 调用 addTaskFieldsWithStatus`)
           this.addTaskFieldsWithStatus(noteToConvert)
-          
+        })
+        
+        // 如果需要将父卡片从动作转为项目，先进行转换
+        if (shouldTransformParentToProject) {
+          MNUtil.log(`\n🔄 === 开始转换父卡片类型 ===`)
+          const transformResult = this.transformActionToProject(parentNote)
+          if (transformResult) {
+            MNUtil.log(`✅ 父卡片已成功从动作转换为项目类型`)
+          } else {
+            MNUtil.log(`❌ 父卡片转换失败`)
+          }
+        }
+        
+        MNUtil.undoGrouping(() => {
           // 执行链接操作（处理所属字段和父子链接）
           if (parentNote && this.isTaskCard(parentNote)) {
             MNUtil.log(`🔗 父卡片是任务卡片，执行链接操作`)
@@ -920,7 +1023,49 @@ class MNTaskManager {
       contains: null,       // 包含字段
       progress: null,       // 进展字段
       launch: null,         // 启动字段
-      otherComments: []     // 其他评论
+      description: '',      // 描述（从纯文本评论中提取）
+      otherComments: [],    // 其他评论
+      plainTextComments: [], // 纯文本评论（用于提取描述）
+      fields: [],           // 统一的字段数组（用于数据提取）
+      
+      // 扩展字段 - 日期和时间相关
+      todayMarker: null,        // 📅 今日 字段
+      dueDateField: null,       // 📅 截止日期 字段
+      overdueMarker: null,      // ⚠️ 过期 字段
+      scheduledTime: null,      // ⏰ 计划时间 字段
+      
+      // 扩展字段 - 优先级和状态
+      priorityField: null,      // 🔥 优先级 字段
+      progressField: null,      // 📊 进度 字段
+      taskLogField: null,       // 📝 任务记录 字段
+      
+      // 扩展字段 - 任务分类
+      preconditions: null,      // 前置条件 字段
+      dependencies: null,       // 依赖关系 字段
+      resources: null,          // 资源 字段
+      notes: null,              // 备注 字段
+      
+      // 扩展字段 - 项目管理
+      milestone: null,          // 里程碑 字段
+      deliverables: null,       // 交付物 字段
+      stakeholders: null,       // 利益相关者 字段
+      risks: null,              // 风险 字段
+      
+      // 扩展字段 - 学习和知识管理
+      concepts: null,           // 概念 字段
+      references: null,         // 参考资料 字段
+      examples: null,           // 示例 字段
+      questions: null,          // 问题 字段
+      
+      // 扩展字段 - 自定义标签
+      tags: null,               // 标签 字段
+      category: null,           // 分类 字段
+      
+      // 扩展字段 - 特殊字段识别
+      customFields: [],         // 其他自定义字段的集合
+      
+      // 进展记录管理
+      progressRecords: []       // 进展记录列表，包含 {id, commentIndex, timestamp, content}
     }
     
     if (!note || !note.MNComments) return result
@@ -950,21 +1095,7 @@ class MNTaskManager {
         MNUtil.log(`⚠️ 评论 ${index} 属性访问失败: ` + e.message)
         return
       }
-      
-      // Debug logging for field content extraction issue - commented out to reduce log spam
-      // if (index < 5) {  // Only log first 5 to avoid spam
-      //   MNUtil.log(`🔍 DEBUG parseTaskComments - Comment ${index}:`)
-      //   MNUtil.log(`  - Raw text: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`)
-      //   MNUtil.log(`  - Comment type: ${commentType}`)
-      //   MNUtil.log(`  - Is task field: ${TaskFieldUtils.isTaskField(text)}`)
-      //   if (TaskFieldUtils.isTaskField(text)) {
-      //     const fieldContent = TaskFieldUtils.extractFieldText(text)
-      //     MNUtil.log(`  - Field content extracted: "${fieldContent}"`)
-      //   }
-      // }
-      
-      // 注释掉详细日志
-      // MNUtil.log(`🔍 评论 ${index}: type=${commentType}, text=${text.substring(0, 50) + (text.length > 50 ? '...' : '')}, isTaskField=${TaskFieldUtils.isTaskField(text)}`)
+    
       
       // 检查是否是任务字段（MNComment 对象的 type 已经是处理后的类型）
       if ((commentType === 'textComment' || commentType === 'markdownComment') && TaskFieldUtils.isTaskField(text)) {
@@ -972,16 +1103,14 @@ class MNTaskManager {
         // 注意：extractFieldText 实际上提取的是 <span> 标签内的文本，这是字段名
         const fieldName = TaskFieldUtils.extractFieldText(text)
         
-        // 注释掉详细日志
-        // MNUtil.log(`✅ 识别为任务字段: fieldType=${fieldType}, fieldName=${fieldName}`)
-        
         result.taskFields.push({
           index: index,
           text: text,
           fieldType: fieldType,
           content: fieldName,  // 存储字段名
           isMainField: fieldType === 'mainField',
-          isStatusField: fieldType === 'stateField'
+          isStatusField: fieldType === 'stateField',
+          isSubField: fieldType === 'subField',
         })
         
         // 记录特定字段
@@ -1009,7 +1138,7 @@ class MNTaskManager {
             text: text,
             comment: comment
           }
-        } else if (fieldName === '启动') {
+        } else if (fieldName === '启动' || fieldName.includes('[启动]')) {
           result.launch = {
             index: index,
             text: text,
@@ -1049,7 +1178,149 @@ class MNTaskManager {
           index: index,
           comment: comment
         })
+        
+        // 如果是纯文本评论，添加到 plainTextComments
+        if ((commentType === 'textComment' || commentType === 'markdownComment') && text && !TaskFieldUtils.isTaskField(text)) {
+          result.plainTextComments.push({
+            index: index,
+            text: text,
+            comment: comment
+          })
+        }
       }
+    })
+    
+    // 构建统一的 fields 数组，用于数据提取
+    let currentFieldName = null
+    let inProgressSection = false
+    
+    comments.forEach((comment, index) => {
+      if (!comment) return
+      
+      const text = comment.text || ''
+      const commentType = comment.type || ''
+      
+      // 处理任务字段
+      if (TaskFieldUtils.isTaskField(text)) {
+        const fieldName = TaskFieldUtils.extractFieldText(text)
+        currentFieldName = fieldName
+        
+        // 如果是"进展"字段，标记开始进展部分
+        if (fieldName === '进展') {
+          inProgressSection = true
+        } else {
+          inProgressSection = false
+        }
+        
+        result.fields.push({
+          type: 'field',
+          name: fieldName,
+          value: null,
+          index: index
+        })
+      }
+      // 处理所属字段的值（紧跟在"所属"字段后的评论）
+      else if (currentFieldName === '所属' && index > 0 && 
+               result.fields.length > 0 && 
+               result.fields[result.fields.length - 1].name === '所属') {
+        // 尝试从整个评论文本中提取链接
+        const linkMatch = text.match(/\[([^\]]+)\]\(([^)]+)\)/)
+        if (linkMatch) {
+          result.fields[result.fields.length - 1].value = linkMatch[0]
+        }
+      }
+      // 处理启动字段的值
+      else if (text.includes('[启动]')) {
+        const linkMatch = text.match(/\[启动\]\(([^)]+)\)/)
+        if (linkMatch) {
+          // 更新启动字段或创建新的
+          const launchField = result.fields.find(f => f.name === '启动')
+          if (launchField) {
+            launchField.value = linkMatch[0]
+          } else {
+            result.fields.push({
+              type: 'field',
+              name: '[启动]',  // 保持原始格式
+              value: linkMatch[0],
+              index: index
+            })
+          }
+        }
+      }
+      // 处理进展部分的内容
+      else if (inProgressSection && (commentType === 'textComment' || commentType === 'markdownComment')) {
+        result.fields.push({
+          type: 'plainText',
+          text: text,
+          index: index
+        })
+      }
+      // 处理普通纯文本评论
+      else if ((commentType === 'textComment' || commentType === 'markdownComment') && !TaskFieldUtils.isTaskField(text)) {
+        result.fields.push({
+          type: 'plainText',
+          text: text,
+          index: index
+        })
+      }
+    })
+    
+    // 解析进展记录ID和相关信息
+    comments.forEach((comment, index) => {
+      if (!comment) return
+      
+      const text = comment.text || ''
+      const commentType = comment.type || ''
+      
+      // 检查是否是带有 data-progress-id 的进展记录
+      if ((commentType === 'textComment' || commentType === 'markdownComment')) {
+        const progressIdMatch = text.match(/data-progress-id="([^"]+)"/)
+        if (progressIdMatch) {
+          const progressId = progressIdMatch[1]
+          
+          // 提取时间戳
+          const timestampMatch = text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)
+          const timestamp = timestampMatch ? timestampMatch[1] : null
+          
+          // 提取内容（去除HTML标签后的部分）
+          const contentMatch = text.match(/<\/div>\s*(.+)$/s)
+          const content = contentMatch ? contentMatch[1].trim() : ''
+          
+          result.progressRecords.push({
+            id: progressId,
+            commentIndex: index,
+            timestamp: timestamp,
+            content: content
+          })
+        }
+        // 处理旧格式的进展记录（没有ID的），为其生成临时ID
+        else if (text.match(/^\s*<div[^>]*style="[^"]*position:\s*relative[^"]*padding-left:\s*28px/)) {
+          // 这是旧格式的进展记录，生成临时ID
+          const timestampMatch = text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)
+          if (timestampMatch) {
+            const timestamp = timestampMatch[1]
+            const timestampForId = timestamp.replace(/[- :]/g, '')
+            const tempId = `legacy_progress_${timestampForId}_${index}`
+            
+            const contentMatch = text.match(/<\/div>\s*(.+)$/s)
+            const content = contentMatch ? contentMatch[1].trim() : ''
+            
+            result.progressRecords.push({
+              id: tempId,
+              commentIndex: index,
+              timestamp: timestamp,
+              content: content,
+              isLegacy: true  // 标记为旧格式记录
+            })
+          }
+        }
+      }
+    })
+    
+    // 按时间戳排序进展记录（最新的在前）
+    result.progressRecords.sort((a, b) => {
+      if (!a.timestamp || !b.timestamp) return 0
+      return new Date(b.timestamp) - new Date(a.timestamp)
     })
     
     return result
@@ -1359,7 +1630,7 @@ class MNTaskManager {
         this.moveCommentToField(parent, linkIndexInParent, "信息", true)
       } else {
         MNUtil.log(`📋 父任务是${parentTitleParts.type}类型，将链接移动到"${status}"字段下`)
-        this.moveCommentToField(parent, linkIndexInParent, status, true)
+        this.moveCommentToField(parent, linkIndexInParent, status, false)
       }
       
       // 5. 在子任务中更新所属字段（这已经包含了父任务的链接）
@@ -1486,8 +1757,16 @@ class MNTaskManager {
    * @param {string} newStatus - 新状态
    * @param {boolean} skipParentUpdate - 是否跳过父任务更新（内部使用，避免循环）
    */
-  static updateTaskStatus(note, newStatus, skipParentUpdate = false) {
-    if (!this.isTaskCard(note)) return
+  static async updateTaskStatus(note, newStatus, skipParentUpdate = false) {
+    // 首先检查是否有绑定的任务卡片
+    if (!this.isTaskCard(note)) {
+      // 不是任务卡片，检查是否有绑定的任务
+      const bindedResult = await this.applyStatusToBindedCard(note, newStatus)
+      if (bindedResult) {
+        return bindedResult
+      }
+      return
+    }
     
     const titleParts = this.parseTaskTitle(note.noteTitle)
     const oldStatus = titleParts.status
@@ -1505,6 +1784,9 @@ class MNTaskManager {
         break
       case "进行中":
         colorIndex = 3  // 粉色
+        break
+      case "暂停":
+        colorIndex = 8  // 蓝色
         break
       case "未开始":
         colorIndex = 12  // 白色
@@ -1530,6 +1812,10 @@ class MNTaskManager {
           progressContent = `完成「${taskContent}」`
         } else if (oldStatus === '已完成' && newStatus === '进行中') {
           progressContent = `重新进行「${taskContent}」`
+        } else if (oldStatus === '进行中' && newStatus === '暂停') {
+          progressContent = `暂停「${taskContent}」`
+        } else if (oldStatus === '暂停' && newStatus === '进行中') {
+          progressContent = `继续「${taskContent}」`
         } else if (newStatus === '已归档') {
           progressContent = `归档「${taskContent}」`
         } else {
@@ -4614,9 +4900,42 @@ class MNTaskManager {
       return false;
     }
     
+    // 检查是否是任务卡片，如果不是，尝试处理绑定的任务
     if (!this.isTaskCard(note)) {
-      MNUtil.showHUD("请选择一个任务卡片");
-      return false;
+      const bindedTasks = this.getBindedTaskCards(note);
+      
+      if (bindedTasks.length === 0) {
+        MNUtil.showHUD("请选择一个任务卡片");
+        return false;
+      }
+      
+      // 有绑定的任务，获取下一个状态
+      let nextStatus = "进行中";  // 默认
+      
+      if (bindedTasks.length === 1) {
+        // 只有一个绑定任务，根据其当前状态决定下一个状态
+        const currentStatus = bindedTasks[0].status;
+        switch (currentStatus) {
+          case "未开始":
+            nextStatus = "进行中";
+            break;
+          case "暂停":
+            nextStatus = "进行中";
+            break;
+          case "进行中":
+            nextStatus = "已完成";
+            break;
+          case "已完成":
+            nextStatus = "已归档";
+            break;
+          default:
+            nextStatus = "进行中";
+        }
+      }
+      
+      // 应用状态到绑定的任务
+      const result = await this.applyStatusToBindedCard(note, nextStatus);
+      return result && result.type === 'applied';
     }
     
     const titleParts = this.parseTaskTitle(note.noteTitle);
@@ -4625,6 +4944,9 @@ class MNTaskManager {
     let newStatus = currentStatus;
     switch (currentStatus) {
       case "未开始":
+        newStatus = "进行中";
+        break;
+      case "暂停":
         newStatus = "进行中";
         break;
       case "进行中":
@@ -4741,6 +5063,38 @@ class MNTaskManager {
     });
     
     MNUtil.showHUD(`↩️ 状态已退回：${currentStatus} → ${newStatus}`);
+    return true;
+  }
+  
+  /**
+   * 暂停任务
+   * @param {MNNote} note - 要暂停的任务卡片
+   * @returns {boolean} 是否成功暂停
+   */
+  static async pauseTask(note) {
+    if (!note || !this.isTaskCard(note)) {
+      MNUtil.showHUD("请先选择一个任务卡片");
+      return false;
+    }
+    
+    const titleParts = this.parseTaskTitle(note.noteTitle);
+    const currentStatus = titleParts.status;
+    
+    // 只有进行中的任务可以暂停
+    if (currentStatus !== "进行中") {
+      MNUtil.showHUD("只有进行中的任务可以暂停");
+      return false;
+    }
+    
+    MNUtil.undoGrouping(() => {
+      this.updateTaskStatus(note, "暂停");
+      note.refresh();
+      if (note.parentNote && this.isTaskCard(note.parentNote)) {
+        note.parentNote.refresh();
+      }
+    });
+    
+    MNUtil.showHUD(`⏸️ 任务已暂停`);
     return true;
   }
 
@@ -4928,6 +5282,148 @@ class MNTaskManager {
         }
       );
     });
+  }
+
+  /**
+   * 将动作类型的卡片转换为项目类型
+   * @param {MNNote} note - 要转换的动作卡片
+   * @returns {boolean} 是否成功转换
+   */
+  static transformActionToProject(note) {
+    if (!note || !this.isTaskCard(note)) {
+      MNUtil.log(`❌ 卡片无效或不是任务卡片`)
+      return false
+    }
+    
+    const titleParts = this.parseTaskTitle(note.noteTitle)
+    if (titleParts.type !== '动作') {
+      MNUtil.log(`❌ 卡片不是动作类型，无需转换`)
+      return false
+    }
+    
+    MNUtil.log(`🔄 开始将动作卡片转换为项目类型`)
+    MNUtil.log(`📝 原标题: ${note.noteTitle}`)
+    
+    try {
+      MNUtil.undoGrouping(() => {
+        // 1. 修改标题中的类型
+        let newTitle
+        if (titleParts.path) {
+          newTitle = `【项目 >> ${titleParts.path}｜${titleParts.status}】${titleParts.content}`
+        } else {
+          newTitle = `【项目｜${titleParts.status}】${titleParts.content}`
+        }
+        note.noteTitle = newTitle
+        MNUtil.log(`✅ 标题已更新: ${newTitle}`)
+        
+        // 2. 解析当前字段
+        const parsed = this.parseTaskComments(note)
+        
+        // 3. 查找参考位置（启动字段或信息字段）
+        const launchField = parsed.taskFields.find(f => 
+          f.content && f.content.includes('[启动]')
+        )
+        const referenceField = launchField || parsed.taskFields.find(f => f.content === '信息')
+        
+        if (!referenceField) {
+          MNUtil.log(`❌ 找不到参考字段位置`)
+          return
+        }
+        
+        MNUtil.log(`📍 参考字段"${launchField ? '启动' : '信息'}"位置：${referenceField.index}`)
+        
+        // 4. 添加"包含"字段
+        const containsFieldHtml = TaskFieldUtils.createFieldHtml('包含', 'mainField')
+        note.appendMarkdownComment(containsFieldHtml)
+        const containsIndex = note.MNComments.length - 1
+        MNUtil.log(`📝 添加"包含"字段到索引 ${containsIndex}`)
+        
+        // 移动到参考字段后面
+        note.moveComment(containsIndex, referenceField.index + 1, false)
+        MNUtil.log(`🔄 移动"包含"字段到位置 ${referenceField.index + 1}`)
+        
+        // 5. 重新解析以获取更新后的位置
+        const updatedParsed = this.parseTaskComments(note)
+        const updatedContainsField = updatedParsed.taskFields.find(f => f.content === '包含')
+        
+        if (updatedContainsField) {
+          // 6. 添加状态字段
+          const statuses = ['未开始', '进行中', '已完成', '已归档']
+          let targetPosition = updatedContainsField.index + 1
+          
+          statuses.forEach((status, idx) => {
+            const statusHtml = TaskFieldUtils.createStatusField(status)
+            note.appendMarkdownComment(statusHtml)
+            const statusIndex = note.MNComments.length - 1
+            MNUtil.log(`📝 添加"${status}"字段到索引 ${statusIndex}`)
+            
+            // 移动到正确位置
+            note.moveComment(statusIndex, targetPosition, false)
+            MNUtil.log(`🔄 移动"${status}"字段到位置 ${targetPosition}`)
+            
+            targetPosition++
+          })
+          
+          // 7. 处理已有的子卡片链接位置
+          MNUtil.log(`\n📎 开始调整子卡片链接位置...`)
+          const finalParsed = this.parseTaskComments(note)
+          
+          // 找到所有在"信息"字段下的链接
+          const infoField = finalParsed.taskFields.find(f => f.content === '信息')
+          if (infoField) {
+            // 找到信息字段的结束位置（下一个主字段的位置）
+            let infoEndIndex = note.MNComments.length
+            for (let field of finalParsed.taskFields) {
+              if (field.isMainField && field.index > infoField.index) {
+                infoEndIndex = field.index
+                break
+              }
+            }
+            
+            const linksToMove = []
+            
+            for (let link of finalParsed.links) {
+              if (link.index > infoField.index && link.index < infoEndIndex) {
+                // 获取子卡片信息
+                const childNote = MNNote.new(link.linkedNoteId)
+                if (childNote && this.isTaskCard(childNote)) {
+                  const childParts = this.parseTaskTitle(childNote.noteTitle)
+                  const childStatus = childParts.status || '未开始'
+                  linksToMove.push({
+                    index: link.index,
+                    status: childStatus,
+                    childTitle: childNote.noteTitle
+                  })
+                }
+              }
+            }
+            
+            // 从后往前移动，避免索引变化问题
+            linksToMove.sort((a, b) => b.index - a.index)
+            
+            linksToMove.forEach(linkInfo => {
+              MNUtil.log(`📍 移动链接到"${linkInfo.status}"字段下: ${linkInfo.childTitle}`)
+              this.moveCommentToField(note, linkInfo.index, linkInfo.status, false)
+            })
+            
+            if (linksToMove.length > 0) {
+              MNUtil.log(`✅ 已调整 ${linksToMove.length} 个子卡片链接位置`)
+            } else {
+              MNUtil.log(`ℹ️ 没有需要调整的子卡片链接`)
+            }
+          }
+          
+          MNUtil.log(`✅ 成功将动作卡片转换为项目类型`)
+        } else {
+          MNUtil.log(`❌ 无法找到更新后的"包含"字段位置`)
+        }
+      })
+      
+      return true
+    } catch (error) {
+      MNUtil.log(`❌ 转换失败: ${error.message || error}`)
+      return false
+    }
   }
 
   /**
@@ -5505,15 +6001,1433 @@ ${content.trim()}`
     }
     return null;
   }
-}
 
-// 确认 MNTaskManager 类已定义
-if (typeof MNUtil !== 'undefined' && MNUtil.log) {
-  MNUtil.log("✅ MNTaskManager 类已成功定义")
+  /**
+   * 修改任务评论内容 - 基于 parseTaskComments 解析结果的通用评论修改函数
+   * @param {MNNote} note - 任务卡片
+   * @param {Object} selector - 评论选择器
+   * @param {number} selector.index - 按索引定位（优先级最高）
+   * @param {string} selector.fieldName - 按字段名定位（如"进展"、"信息"等）
+   * @param {string} selector.contentMatch - 按内容关键词匹配定位
+   * @param {string} selector.type - 按评论类型定位（需配合 fieldContext）
+   * @param {string} selector.fieldContext - 类型定位时的字段上下文
+   * @param {string} newContent - 新的评论内容
+   * @param {Object} options - 配置选项
+   * @param {boolean} options.forceMarkdown - 强制使用 Markdown 格式（默认根据原内容判断）
+   * @param {boolean} options.preserveFieldFormat - 保持字段格式不变（默认 true）
+   * @param {boolean} options.logDetails - 记录详细日志（默认 true）
+   * @returns {Object} 修改结果 {success: boolean, message: string, modifiedIndex?: number}
+   */
+  static modifyTaskComment(note, selector, newContent, options = {}) {
+    // 参数验证
+    if (!note || !note.MNComments) {
+      return { success: false, message: "无效的笔记对象或无评论" };
+    }
+    
+    if (!selector || typeof selector !== 'object') {
+      return { success: false, message: "无效的选择器参数" };
+    }
+    
+    if (typeof newContent !== 'string') {
+      return { success: false, message: "新内容必须为字符串" };
+    }
+
+    // 默认选项
+    const opts = {
+      forceMarkdown: false,
+      preserveFieldFormat: true,
+      logDetails: true,
+      ...options
+    };
+
+    const logPrefix = opts.logDetails ? "🔧 modifyTaskComment" : null;
+    
+    if (logPrefix) {
+      MNUtil.log(`${logPrefix} 开始修改评论`);
+      MNUtil.log(`  - 笔记标题: ${note.noteTitle}`);
+      MNUtil.log(`  - 选择器: ${JSON.stringify(selector)}`);
+      MNUtil.log(`  - 新内容: ${newContent.substring(0, 50)}${newContent.length > 50 ? '...' : ''}`);
+    }
+
+    try {
+      // 解析任务评论结构
+      const parsed = this.parseTaskComments(note);
+      
+      // 获取 MNComment 对象数组
+      const mnComments = MNComment.from(note);
+      if (!mnComments || mnComments.length === 0) {
+        return { success: false, message: "无法获取评论对象" };
+      }
+
+      // 根据不同选择器定位目标评论
+      let targetIndex = -1;
+      let targetComment = null;
+
+      // 策略1: 按索引定位（优先级最高）
+      if (typeof selector.index === 'number') {
+        if (selector.index >= 0 && selector.index < mnComments.length) {
+          targetIndex = selector.index;
+          targetComment = mnComments[targetIndex];
+          if (logPrefix) {
+            MNUtil.log(`${logPrefix} 按索引定位: ${targetIndex}`);
+          }
+        } else {
+          return { success: false, message: `索引 ${selector.index} 超出范围 (0-${mnComments.length-1})` };
+        }
+      }
+      
+      // 策略2: 按字段名定位
+      else if (selector.fieldName) {
+        const fieldName = selector.fieldName;
+        let foundField = null;
+        
+        // 查找特定字段
+        if (fieldName === '所属' && parsed.belongsTo) {
+          foundField = parsed.belongsTo;
+        } else if (fieldName === '信息' && parsed.info) {
+          foundField = parsed.info;
+        } else if (fieldName === '包含' && parsed.contains) {
+          foundField = parsed.contains;
+        } else if (fieldName === '进展' && parsed.progress) {
+          foundField = parsed.progress;
+        } else if ((fieldName === '启动' || fieldName === '[启动]' || fieldName.includes('启动')) && parsed.launch) {
+          foundField = parsed.launch;
+        } else {
+          // 在任务字段中查找
+          foundField = parsed.taskFields.find(field => 
+            field.content === fieldName || 
+            (fieldName.includes('启动') && field.content && field.content.includes('[启动]'))
+          );
+        }
+
+        if (foundField) {
+          targetIndex = foundField.index;
+          targetComment = mnComments[targetIndex];
+          if (logPrefix) {
+            MNUtil.log(`${logPrefix} 按字段名定位: ${fieldName} -> 索引 ${targetIndex}`);
+          }
+        } else {
+          return { success: false, message: `未找到字段: ${fieldName}` };
+        }
+      }
+      
+      // 策略3: 按内容匹配定位
+      else if (selector.contentMatch) {
+        const keyword = selector.contentMatch;
+        for (let i = 0; i < mnComments.length; i++) {
+          const comment = mnComments[i];
+          if (comment.text && comment.text.includes(keyword)) {
+            targetIndex = i;
+            targetComment = comment;
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按内容匹配定位: "${keyword}" -> 索引 ${targetIndex}`);
+            }
+            break;
+          }
+        }
+        
+        if (targetIndex === -1) {
+          return { success: false, message: `未找到包含内容 "${keyword}" 的评论` };
+        }
+      }
+      
+      // 策略4: 按类型和字段上下文定位
+      else if (selector.type && selector.fieldContext) {
+        // 先找到字段上下文
+        const fieldContext = selector.fieldContext;
+        let fieldStartIndex = -1;
+        
+        // 在 parsed.fields 中查找字段
+        for (let field of parsed.fields) {
+          if (field.type === 'field' && field.name === fieldContext) {
+            fieldStartIndex = field.index;
+            break;
+          }
+        }
+        
+        if (fieldStartIndex === -1) {
+          return { success: false, message: `未找到字段上下文: ${fieldContext}` };
+        }
+        
+        // 在字段之后查找指定类型的评论
+        for (let i = fieldStartIndex + 1; i < parsed.fields.length; i++) {
+          const field = parsed.fields[i];
+          if (field.type === 'field') break; // 遇到下一个字段则停止
+          if (field.type === selector.type) {
+            targetIndex = field.index;
+            targetComment = mnComments[targetIndex];
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按类型和上下文定位: ${selector.type} in ${fieldContext} -> 索引 ${targetIndex}`);
+            }
+            break;
+          }
+        }
+        
+        if (targetIndex === -1) {
+          return { success: false, message: `在字段 "${fieldContext}" 中未找到类型 "${selector.type}" 的评论` };
+        }
+      }
+      
+      // 策略5: 按进展记录ID定位
+      else if (selector.progressId) {
+        const progressId = selector.progressId;
+        
+        // 处理特殊关键字
+        if (progressId === 'latest') {
+          // 获取最新的进展记录（时间戳最大的）
+          if (parsed.progressRecords.length > 0) {
+            const latestRecord = parsed.progressRecords[0]; // 已按时间戳排序，最新的在前
+            targetIndex = latestRecord.commentIndex;
+            targetComment = mnComments[targetIndex];
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按最新进展定位: ${latestRecord.id} -> 索引 ${targetIndex}`);
+            }
+          } else {
+            return { success: false, message: "未找到任何进展记录" };
+          }
+        } else if (progressId === 'oldest') {
+          // 获取最早的进展记录（时间戳最小的）
+          if (parsed.progressRecords.length > 0) {
+            const oldestRecord = parsed.progressRecords[parsed.progressRecords.length - 1]; // 最早的在最后
+            targetIndex = oldestRecord.commentIndex;
+            targetComment = mnComments[targetIndex];
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按最早进展定位: ${oldestRecord.id} -> 索引 ${targetIndex}`);
+            }
+          } else {
+            return { success: false, message: "未找到任何进展记录" };
+          }
+        } else {
+          // 按具体的进展ID查找
+          const progressRecord = parsed.progressRecords.find(record => record.id === progressId);
+          if (progressRecord) {
+            targetIndex = progressRecord.commentIndex;
+            targetComment = mnComments[targetIndex];
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 按进展ID定位: ${progressId} -> 索引 ${targetIndex}`);
+            }
+          } else {
+            return { success: false, message: `未找到进展记录ID: ${progressId}` };
+          }
+        }
+      }
+      
+      // 策略6: 按进展记录索引定位
+      else if (typeof selector.progressIndex === 'number') {
+        const progressIndex = selector.progressIndex;
+        if (progressIndex >= 0 && progressIndex < parsed.progressRecords.length) {
+          const progressRecord = parsed.progressRecords[progressIndex];
+          targetIndex = progressRecord.commentIndex;
+          targetComment = mnComments[targetIndex];
+          if (logPrefix) {
+            MNUtil.log(`${logPrefix} 按进展索引定位: ${progressIndex} (${progressRecord.id}) -> 索引 ${targetIndex}`);
+          }
+        } else {
+          return { success: false, message: `进展索引 ${progressIndex} 超出范围 (0-${parsed.progressRecords.length-1})` };
+        }
+      }
+      
+      else {
+        return { success: false, message: "无效的选择器：必须提供 index、fieldName、contentMatch、type+fieldContext、progressId 或 progressIndex" };
+      }
+
+      // 执行修改
+      if (targetComment) {
+        const originalText = targetComment.text || '';
+        
+        // 判断是否为字段评论，需要保持格式
+        const isFieldComment = TaskFieldUtils.isTaskField(originalText);
+        let finalContent = newContent;
+        
+        if (isFieldComment && opts.preserveFieldFormat) {
+          // 保持字段格式，只替换字段内容
+          const fieldMatch = originalText.match(/<span[^>]*>(.*?)<\/span>(.*)/);
+          if (fieldMatch) {
+            const fieldTag = fieldMatch[0].replace(fieldMatch[2], ''); // 保留span标签部分
+            finalContent = fieldTag + newContent;
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 保持字段格式: ${fieldTag}`);
+            }
+          }
+        }
+        
+        // 使用 MNComment 的 text setter 进行修改
+        targetComment.text = finalContent;
+        
+        if (logPrefix) {
+          MNUtil.log(`${logPrefix} 修改完成`);
+          MNUtil.log(`  - 原内容: ${originalText.substring(0, 50)}${originalText.length > 50 ? '...' : ''}`);
+          MNUtil.log(`  - 新内容: ${finalContent.substring(0, 50)}${finalContent.length > 50 ? '...' : ''}`);
+        }
+        
+        return { 
+          success: true, 
+          message: "评论修改成功", 
+          modifiedIndex: targetIndex,
+          originalContent: originalText,
+          newContent: finalContent
+        };
+      }
+      
+      return { success: false, message: "未找到目标评论" };
+      
+    } catch (error) {
+      const errorMsg = `修改评论时发生错误: ${error.message}`;
+      if (logPrefix) {
+        MNUtil.log(`${logPrefix} 错误: ${errorMsg}`);
+      }
+      
+      // 记录错误到系统日志
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "modifyTaskComment", {
+          selector: selector,
+          newContent: newContent.substring(0, 100),
+          noteTitle: note.noteTitle
+        });
+      }
+      
+      return { success: false, message: errorMsg };
+    }
+  }
+
+  /**
+   * 批量修改任务评论内容 - 支持一次修改多个评论
+   * @param {MNNote} note - 任务卡片
+   * @param {Array} modifications - 修改操作数组
+   * @param {Object} modifications[].selector - 评论选择器（同 modifyTaskComment）
+   * @param {string} modifications[].newContent - 新内容
+   * @param {Object} modifications[].options - 选项（可选）
+   * @param {Object} globalOptions - 全局配置选项
+   * @param {boolean} globalOptions.useUndoGrouping - 使用撤销分组（默认 true）
+   * @param {boolean} globalOptions.stopOnError - 遇到错误时停止（默认 false）
+   * @param {boolean} globalOptions.logDetails - 记录详细日志（默认 true）
+   * @returns {Object} 批量修改结果 {success: boolean, message: string, results: Array, successCount: number, errorCount: number}
+   */
+  static modifyTaskComments(note, modifications, globalOptions = {}) {
+    // 参数验证
+    if (!note || !note.MNComments) {
+      return { 
+        success: false, 
+        message: "无效的笔记对象或无评论",
+        results: [],
+        successCount: 0,
+        errorCount: 0
+      };
+    }
+    
+    if (!Array.isArray(modifications) || modifications.length === 0) {
+      return { 
+        success: false, 
+        message: "无效的修改操作数组",
+        results: [],
+        successCount: 0,
+        errorCount: 0
+      };
+    }
+
+    // 默认全局选项
+    const opts = {
+      useUndoGrouping: true,
+      stopOnError: false,
+      logDetails: true,
+      ...globalOptions
+    };
+
+    const logPrefix = opts.logDetails ? "🔧 modifyTaskComments" : null;
+    
+    if (logPrefix) {
+      MNUtil.log(`${logPrefix} 开始批量修改评论`);
+      MNUtil.log(`  - 笔记标题: ${note.noteTitle}`);
+      MNUtil.log(`  - 修改操作数量: ${modifications.length}`);
+      MNUtil.log(`  - 使用撤销分组: ${opts.useUndoGrouping}`);
+    }
+
+    const results = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    // 执行批量修改的核心函数
+    const executeBatchModifications = () => {
+      for (let i = 0; i < modifications.length; i++) {
+        const modification = modifications[i];
+        
+        // 验证每个修改操作的格式
+        if (!modification || !modification.selector || typeof modification.newContent !== 'string') {
+          const errorResult = {
+            index: i,
+            success: false,
+            message: `修改操作 ${i} 格式无效：必须包含 selector 和 newContent`,
+            selector: modification?.selector,
+            newContent: modification?.newContent
+          };
+          results.push(errorResult);
+          errorCount++;
+          
+          if (opts.stopOnError) {
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 遇到错误停止执行: ${errorResult.message}`);
+            }
+            break;
+          }
+          continue;
+        }
+
+        // 合并选项（局部选项覆盖全局选项）
+        const modificationOptions = {
+          logDetails: opts.logDetails,
+          ...modification.options
+        };
+
+        try {
+          // 调用单个修改函数
+          const result = this.modifyTaskComment(
+            note, 
+            modification.selector, 
+            modification.newContent, 
+            modificationOptions
+          );
+          
+          // 记录结果
+          const operationResult = {
+            index: i,
+            success: result.success,
+            message: result.message,
+            selector: modification.selector,
+            newContent: modification.newContent,
+            modifiedIndex: result.modifiedIndex,
+            originalContent: result.originalContent
+          };
+          
+          results.push(operationResult);
+          
+          if (result.success) {
+            successCount++;
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 操作 ${i} 成功: 索引 ${result.modifiedIndex}`);
+            }
+          } else {
+            errorCount++;
+            if (logPrefix) {
+              MNUtil.log(`${logPrefix} 操作 ${i} 失败: ${result.message}`);
+            }
+            
+            if (opts.stopOnError) {
+              if (logPrefix) {
+                MNUtil.log(`${logPrefix} 遇到错误停止执行`);
+              }
+              break;
+            }
+          }
+          
+        } catch (error) {
+          const errorResult = {
+            index: i,
+            success: false,
+            message: `修改操作 ${i} 执行异常: ${error.message}`,
+            selector: modification.selector,
+            newContent: modification.newContent,
+            error: error.message
+          };
+          results.push(errorResult);
+          errorCount++;
+          
+          if (logPrefix) {
+            MNUtil.log(`${logPrefix} 操作 ${i} 异常: ${error.message}`);
+          }
+          
+          // 记录错误到系统日志
+          if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+            MNUtil.addErrorLog(error, "modifyTaskComments", {
+              operationIndex: i,
+              selector: modification.selector,
+              newContent: modification.newContent.substring(0, 100),
+              noteTitle: note.noteTitle
+            });
+          }
+          
+          if (opts.stopOnError) {
+            break;
+          }
+        }
+      }
+    };
+
+    // 根据是否使用撤销分组来执行
+    try {
+      if (opts.useUndoGrouping) {
+        MNUtil.undoGrouping(() => {
+          executeBatchModifications();
+        });
+      } else {
+        executeBatchModifications();
+      }
+      
+      const overallSuccess = errorCount === 0;
+      const message = overallSuccess 
+        ? `批量修改完成：成功 ${successCount} 个操作`
+        : `批量修改完成：成功 ${successCount} 个，失败 ${errorCount} 个操作`;
+      
+      if (logPrefix) {
+        MNUtil.log(`${logPrefix} ${message}`);
+      }
+      
+      return {
+        success: overallSuccess,
+        message: message,
+        results: results,
+        successCount: successCount,
+        errorCount: errorCount
+      };
+      
+    } catch (error) {
+      const errorMsg = `批量修改过程中发生错误: ${error.message}`;
+      
+      if (logPrefix) {
+        MNUtil.log(`${logPrefix} 错误: ${errorMsg}`);
+      }
+      
+      // 记录错误到系统日志
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "modifyTaskComments", {
+          modificationsCount: modifications.length,
+          noteTitle: note.noteTitle,
+          completedOperations: results.length
+        });
+      }
+      
+      return {
+        success: false,
+        message: errorMsg,
+        results: results,
+        successCount: successCount,
+        errorCount: errorCount + 1
+      };
+    }
+  }
+
+  /**
+   * 获取任务卡片的所有进展记录
+   * @param {MNNote} note - 任务卡片笔记
+   * @returns {Array} 进展记录数组，格式：[{id, commentIndex, timestamp, content, isLegacy?}]
+   */
+  static getProgressRecords(note) {
+    if (!note || !note.MNComments) {
+      return [];
+    }
+    
+    const parsed = this.parseTaskComments(note);
+    return parsed.progressRecords || [];
+  }
+
+  /**
+   * 修改特定的进展记录
+   * @param {MNNote} note - 任务卡片笔记
+   * @param {string} progressId - 进展记录ID，支持具体ID、'latest'、'oldest'
+   * @param {string} newContent - 新的进展内容
+   * @param {Object} options - 修改选项
+   * @returns {Object} 修改结果 {success: boolean, message: string, modifiedIndex?: number}
+   */
+  static modifyProgressRecord(note, progressId, newContent, options = {}) {
+    if (!note || !note.MNComments) {
+      return { success: false, message: "无效的笔记对象或无评论" };
+    }
+    
+    if (!progressId || typeof progressId !== 'string') {
+      return { success: false, message: "无效的进展记录ID" };
+    }
+    
+    if (typeof newContent !== 'string') {
+      return { success: false, message: "新内容必须为字符串" };
+    }
+
+    // 使用现有的 modifyTaskComment 方法，通过 progressId 选择器
+    const selector = { progressId: progressId };
+    
+    // 构造完整的进展记录HTML（保持原有格式，只修改内容部分）
+    const parsed = this.parseTaskComments(note);
+    let targetRecord = null;
+    
+    if (progressId === 'latest' && parsed.progressRecords.length > 0) {
+      targetRecord = parsed.progressRecords[0];
+    } else if (progressId === 'oldest' && parsed.progressRecords.length > 0) {
+      targetRecord = parsed.progressRecords[parsed.progressRecords.length - 1];
+    } else {
+      targetRecord = parsed.progressRecords.find(record => record.id === progressId);
+    }
+    
+    if (!targetRecord) {
+      return { success: false, message: `未找到进展记录: ${progressId}` };
+    }
+
+    // 构建新的完整HTML内容（保持时间戳和样式，只修改文本内容）
+    const originalComment = note.MNComments[targetRecord.commentIndex];
+    const originalText = originalComment.text || '';
+    
+    // 提取HTML部分和内容部分
+    const htmlMatch = originalText.match(/^(<div[^>]*>.*?<\/div>)\s*(.*)$/s);
+    if (htmlMatch) {
+      const htmlPart = htmlMatch[1];  // HTML时间戳部分
+      const newFullContent = htmlPart + '\n' + newContent.trim();
+      
+      // 使用 modifyTaskComment 进行实际修改
+      return this.modifyTaskComment(note, selector, newFullContent, {
+        ...options,
+        preserveFieldFormat: false  // 不保持字段格式，因为这是完整内容替换
+      });
+    } else {
+      return { success: false, message: "无法解析进展记录格式" };
+    }
+  }
+
+  /**
+   * 删除特定的进展记录
+   * @param {MNNote} note - 任务卡片笔记  
+   * @param {string} progressId - 进展记录ID，支持具体ID、'latest'、'oldest'
+   * @returns {Object} 删除结果 {success: boolean, message: string, deletedIndex?: number}
+   */
+  static deleteProgressRecord(note, progressId) {
+    if (!note || !note.MNComments) {
+      return { success: false, message: "无效的笔记对象或无评论" };
+    }
+    
+    if (!progressId || typeof progressId !== 'string') {
+      return { success: false, message: "无效的进展记录ID" };
+    }
+
+    const parsed = this.parseTaskComments(note);
+    let targetRecord = null;
+    
+    if (progressId === 'latest' && parsed.progressRecords.length > 0) {
+      targetRecord = parsed.progressRecords[0];
+    } else if (progressId === 'oldest' && parsed.progressRecords.length > 0) {
+      targetRecord = parsed.progressRecords[parsed.progressRecords.length - 1];
+    } else {
+      targetRecord = parsed.progressRecords.find(record => record.id === progressId);
+    }
+    
+    if (!targetRecord) {
+      return { success: false, message: `未找到进展记录: ${progressId}` };
+    }
+
+    try {
+      const targetIndex = targetRecord.commentIndex;
+      const mnComments = MNComment.from(note);
+      
+      if (!mnComments || targetIndex >= mnComments.length) {
+        return { success: false, message: "无法获取评论对象或索引超出范围" };
+      }
+
+      // 删除评论
+      mnComments[targetIndex].remove();
+      
+      MNUtil.log(`✅ 删除进展记录成功: ${progressId} (索引 ${targetIndex})`);
+      
+      return {
+        success: true,
+        message: "进展记录删除成功",
+        deletedIndex: targetIndex,
+        deletedRecord: targetRecord
+      };
+      
+    } catch (error) {
+      MNUtil.log(`❌ 删除进展记录失败: ${error.message}`);
+      return { success: false, message: `删除失败: ${error.message}` };
+    }
+  }
+
+  /**
+   * 在特定位置插入新的进展记录
+   * @param {MNNote} note - 任务卡片笔记
+   * @param {string} content - 进展内容
+   * @param {string} afterProgressId - 在指定进展记录后插入，可选参数
+   * @returns {Object} 插入结果 {success: boolean, message: string, insertedIndex?: number, progressId?: string}
+   */
+  static insertProgressRecord(note, content, afterProgressId = null) {
+    if (!note || !note.MNComments) {
+      return { success: false, message: "无效的笔记对象或无评论" };
+    }
+    
+    if (typeof content !== 'string' || !content.trim()) {
+      return { success: false, message: "进展内容不能为空" };
+    }
+
+    try {
+      // 生成新的进展记录
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      
+      // 生成唯一ID
+      const timestampForId = timestamp.replace(/[- :]/g, '');
+      const randomSuffix = Math.random().toString(36).substr(2, 6);
+      const progressId = `progress_${timestampForId}_${randomSuffix}`;
+      
+      // 构建HTML内容
+      const timestampHtml = `<div data-progress-id="${progressId}" style="position:relative; padding-left:28px; margin:14px 0; color:#1E40AF; font-weight:500; font-size:0.92em">
+  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); 
+              width:18px; height:18px; background:conic-gradient(#3B82F6 0%, #60A5FA 50%, #3B82F6 100%); 
+              border-radius:50%; display:flex; align-items:center; justify-content:center">
+    <div style="width:8px; height:8px; background:white; border-radius:50%"></div>
+  </div>
+  ${timestamp}
+</div>
+${content.trim()}`;
+
+      let insertIndex = -1;
+      
+      if (afterProgressId) {
+        // 在指定进展记录后插入
+        const parsed = this.parseTaskComments(note);
+        const afterRecord = parsed.progressRecords.find(record => record.id === afterProgressId);
+        
+        if (afterRecord) {
+          insertIndex = afterRecord.commentIndex + 1;
+        } else {
+          return { success: false, message: `未找到指定的进展记录: ${afterProgressId}` };
+        }
+      }
+      
+      if (insertIndex === -1) {
+        // 添加到卡片末尾
+        note.appendMarkdownComment(timestampHtml);
+        insertIndex = note.MNComments.length - 1;
+      } else {
+        // 在指定位置插入
+        note.insertMarkdownComment(timestampHtml, insertIndex);
+      }
+      
+      // 刷新卡片显示
+      note.refresh();
+      
+      MNUtil.log(`✅ 插入进展记录成功: ${progressId} (索引 ${insertIndex})`);
+      
+      return {
+        success: true,
+        message: "进展记录插入成功", 
+        insertedIndex: insertIndex,
+        progressId: progressId
+      };
+      
+    } catch (error) {
+      MNUtil.log(`❌ 插入进展记录失败: ${error.message}`);
+      return { success: false, message: `插入失败: ${error.message}` };
+    }
+  }
+
+  // ============================================================================
+  // 使用示例和最佳实践
+  // ============================================================================
+  
+  /**
+   * 使用示例：演示如何使用 modifyTaskComment 和 modifyTaskComments
+   * 
+   * // === 单个评论修改示例 ===
+   * 
+   * // 示例1: 按索引修改评论
+   * const result1 = MNTaskManager.modifyTaskComment(note, {index: 2}, "新的进展内容");
+   * if (result1.success) {
+   *   MNUtil.log(`修改成功：索引 ${result1.modifiedIndex}`);
+   * }
+   * 
+   * // 示例2: 按字段名修改（推荐）
+   * const result2 = MNTaskManager.modifyTaskComment(note, {fieldName: "进展"}, "更新的进展信息");
+   * 
+   * // 示例3: 按内容匹配修改
+   * const result3 = MNTaskManager.modifyTaskComment(note, {contentMatch: "旧的关键词"}, "新的内容");
+   * 
+   * // 示例4: 按类型和字段上下文修改
+   * const result4 = MNTaskManager.modifyTaskComment(note, {
+   *   type: "plainText", 
+   *   fieldContext: "进展"
+   * }, "在进展字段中的新文本");
+   * 
+   * // 示例5: 带选项的修改
+   * const result5 = MNTaskManager.modifyTaskComment(note, 
+   *   {fieldName: "信息"}, 
+   *   "新的信息内容", 
+   *   {
+   *     preserveFieldFormat: true,  // 保持字段格式
+   *     logDetails: false          // 不记录详细日志
+   *   }
+   * );
+   * 
+   * // === 批量修改示例 ===
+   * 
+   * // 示例6: 批量修改多个字段
+   * const batchResult = MNTaskManager.modifyTaskComments(note, [
+   *   {selector: {fieldName: "进展"}, newContent: "新的进展"},
+   *   {selector: {fieldName: "信息"}, newContent: "更新的信息"},
+   *   {selector: {index: 5}, newContent: "修改索引5的评论"}
+   * ]);
+   * 
+   * MNUtil.log(`批量修改结果：成功 ${batchResult.successCount}，失败 ${batchResult.errorCount}`);
+   * 
+   * // 示例7: 带撤销分组的批量修改
+   * const batchResult2 = MNTaskManager.modifyTaskComments(note, 
+   *   [
+   *     {selector: {contentMatch: "待办"}, newContent: "已完成"},
+   *     {selector: {fieldName: "进展"}, newContent: "100%完成"}
+   *   ],
+   *   {
+   *     useUndoGrouping: true,  // 支持一次撤销所有修改
+   *     stopOnError: true,      // 遇到错误时停止
+   *     logDetails: true        // 记录详细日志
+   *   }
+   * );
+   * 
+   * // 示例8: 遍历批量结果
+   * batchResult2.results.forEach((result, index) => {
+   *   if (result.success) {
+   *     MNUtil.log(`操作 ${index} 成功: 修改了索引 ${result.modifiedIndex}`);
+   *   } else {
+   *     MNUtil.log(`操作 ${index} 失败: ${result.message}`);
+   *   }
+   * });
+   * 
+   * // === 错误处理示例 ===
+   * 
+   * // 示例9: 完整的错误处理
+   * try {
+   *   const result = MNTaskManager.modifyTaskComment(note, {fieldName: "不存在的字段"}, "内容");
+   *   if (!result.success) {
+   *     MNUtil.showHUD(`修改失败: ${result.message}`);
+   *   }
+   * } catch (error) {
+   *   MNUtil.showHUD(`修改异常: ${error.message}`);
+   * }
+   * 
+   * // === 与现有代码集成示例 ===
+   * 
+   * // 示例10: 在任务状态更新中使用
+   * static updateTaskStatus(note, newStatus) {
+   *   // 先解析当前状态
+   *   const parsed = this.parseTaskComments(note);
+   *   if (!parsed.progress) {
+   *     MNUtil.showHUD("该卡片没有进展字段");
+   *     return false;
+   *   }
+   *   
+   *   // 修改状态字段
+   *   const result = this.modifyTaskComment(note, 
+   *     {fieldName: "进展"}, 
+   *     `状态已更新为：${newStatus}`
+   *   );
+   *   
+   *   return result.success;
+   * }
+   */
+
+  /**
+   * 测试函数：验证 modifyTaskComment 和 modifyTaskComments 的功能
+   * 注意：这是一个内部测试函数，仅用于开发验证，正式使用时可以删除
+   * @param {MNNote} note - 测试用的任务卡片
+   * @returns {Object} 测试结果统计
+   */
+  static testModifyTaskCommentFunctions(note) {
+    if (!note || !note.MNComments) {
+      return { success: false, message: "需要一个有效的任务卡片进行测试" };
+    }
+
+    const testResults = [];
+    let passCount = 0;
+    let failCount = 0;
+
+    const addTestResult = (testName, success, message, details = null) => {
+      testResults.push({ testName, success, message, details });
+      if (success) {
+        passCount++;
+        MNUtil.log(`✅ ${testName}: ${message}`);
+      } else {
+        failCount++;
+        MNUtil.log(`❌ ${testName}: ${message}`);
+      }
+    };
+
+    MNUtil.log("🧪 开始测试 modifyTaskComment 系列函数");
+    MNUtil.log(`📋 测试卡片: ${note.noteTitle}`);
+
+    try {
+      // 先解析当前结构
+      const parsed = this.parseTaskComments(note);
+      MNUtil.log(`📊 卡片结构: ${parsed.taskFields.length} 个字段, ${note.MNComments.length} 个评论`);
+
+      // 测试1: 参数验证
+      const test1 = this.modifyTaskComment(null, {index: 0}, "测试");
+      addTestResult("参数验证测试", !test1.success && test1.message.includes("无效的笔记对象"), "正确拒绝了无效参数");
+
+      // 测试2: 无效选择器
+      const test2 = this.modifyTaskComment(note, {}, "测试");
+      addTestResult("无效选择器测试", !test2.success && test2.message.includes("无效的选择器"), "正确拒绝了无效选择器");
+
+      // 测试3: 超出范围的索引
+      const test3 = this.modifyTaskComment(note, {index: 999}, "测试");
+      addTestResult("索引超出范围测试", !test3.success && test3.message.includes("超出范围"), "正确处理了超出范围的索引");
+
+      // 测试4: 不存在的字段名
+      const test4 = this.modifyTaskComment(note, {fieldName: "不存在的字段"}, "测试");
+      addTestResult("不存在字段测试", !test4.success && test4.message.includes("未找到字段"), "正确处理了不存在的字段");
+
+      // 测试5: 按索引修改（如果有评论的话）
+      if (note.MNComments.length > 0) {
+        const originalText = note.MNComments[0].text;
+        const testContent = `测试内容_${Date.now()}`;
+        const test5 = this.modifyTaskComment(note, {index: 0}, testContent);
+        
+        if (test5.success) {
+          // 验证是否真的修改了
+          const newText = note.MNComments[0].text;
+          if (newText.includes(testContent)) {
+            addTestResult("按索引修改测试", true, `成功修改索引0的评论`, {originalText, newText});
+            
+            // 恢复原始内容
+            this.modifyTaskComment(note, {index: 0}, originalText);
+          } else {
+            addTestResult("按索引修改测试", false, "修改后内容不匹配");
+          }
+        } else {
+          addTestResult("按索引修改测试", false, test5.message);
+        }
+      }
+
+      // 测试6: 按字段修改（如果有进展字段）
+      if (parsed.progress) {
+        const originalText = parsed.progress.comment.text;
+        const testContent = `进展测试_${Date.now()}`;
+        const test6 = this.modifyTaskComment(note, {fieldName: "进展"}, testContent);
+        
+        if (test6.success) {
+          addTestResult("按字段修改测试", true, "成功修改进展字段", {originalText});
+          
+          // 恢复原始内容
+          this.modifyTaskComment(note, {fieldName: "进展"}, originalText);
+        } else {
+          addTestResult("按字段修改测试", false, test6.message);
+        }
+      }
+
+      // 测试7: 批量修改空数组
+      const test7 = this.modifyTaskComments(note, []);
+      addTestResult("批量修改空数组测试", !test7.success && test7.message.includes("无效的修改操作数组"), "正确处理了空数组");
+
+      // 测试8: 批量修改格式错误
+      const test8 = this.modifyTaskComments(note, [{selector: null}]);
+      addTestResult("批量修改格式错误测试", test8.errorCount > 0, "正确处理了格式错误的批量操作");
+
+      // 测试9: 批量修改成功案例（如果有足够的评论）
+      if (note.MNComments.length >= 2) {
+        const modifications = [
+          {selector: {index: 0}, newContent: `批量测试1_${Date.now()}`},
+          {selector: {index: 1}, newContent: `批量测试2_${Date.now()}`}
+        ];
+        
+        const test9 = this.modifyTaskComments(note, modifications, {useUndoGrouping: false});
+        if (test9.successCount === 2) {
+          addTestResult("批量修改成功测试", true, `成功批量修改了 ${test9.successCount} 个评论`);
+        } else {
+          addTestResult("批量修改成功测试", false, `批量修改结果异常: 成功${test9.successCount}, 失败${test9.errorCount}`);
+        }
+      }
+
+      // 测试10: MNComment 集成测试
+      try {
+        const mnComments = MNComment.from(note);
+        if (mnComments && mnComments.length > 0) {
+          addTestResult("MNComment集成测试", true, `成功获取 ${mnComments.length} 个 MNComment 对象`);
+        } else {
+          addTestResult("MNComment集成测试", false, "无法获取 MNComment 对象");
+        }
+      } catch (error) {
+        addTestResult("MNComment集成测试", false, `MNComment 集成失败: ${error.message}`);
+      }
+
+    } catch (error) {
+      addTestResult("总体测试异常", false, `测试过程中发生异常: ${error.message}`);
+      
+      // 记录测试异常
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "testModifyTaskCommentFunctions", {
+          noteTitle: note.noteTitle,
+          completedTests: testResults.length
+        });
+      }
+    }
+
+    const summary = {
+      success: failCount === 0,
+      totalTests: testResults.length,
+      passCount: passCount,
+      failCount: failCount,
+      testResults: testResults
+    };
+
+    MNUtil.log(`🏁 测试完成: 总计 ${summary.totalTests} 项，通过 ${passCount} 项，失败 ${failCount} 项`);
+    
+    if (summary.success) {
+      MNUtil.log("🎉 所有测试通过！modifyTaskComment 系列函数工作正常");
+    } else {
+      MNUtil.log("⚠️ 部分测试失败，请检查实现");
+    }
+
+    return summary;
+  }
+
+  /**
+   * 获取所有进行中的任务
+   * @param {Object} options - 选项
+   * @returns {Array<MNNote>} 进行中的任务列表
+   */
+  static getInProgressTasks(options = {}) {
+    const {
+      boardKeys = ['project', 'action'],  // 默认只搜索项目和动作看板
+      includeCompleted = false
+    } = options
+    
+    MNUtil.log('🔍 开始搜索进行中的任务...')
+    const results = []
+    
+    for (const boardKey of boardKeys) {
+      const boardNoteId = taskConfig.getBoardNoteId(boardKey)
+      if (!boardNoteId) continue
+      
+      const boardNote = MNNote.new(boardNoteId)
+      if (!boardNote) continue
+      
+      const tasks = MNTaskManager.filterTasksFromBoard(boardNote, {
+        statuses: includeCompleted ? ['进行中', '已完成'] : ['进行中']
+      })
+      
+      results.push(...tasks)
+    }
+    
+    MNUtil.log(`✅ 找到 ${results.length} 个进行中的任务`)
+    return results
+  }
+  
+  /**
+   * 获取底层任务（没有子项目的项目或动作）
+   * @param {Object} options - 选项
+   * @returns {Array<MNNote>} 底层任务列表
+   */
+  static getBottomLevelTasks(options = {}) {
+    const {
+      boardKeys = ['project', 'action'],
+      statuses = ['进行中']
+    } = options
+    
+    MNUtil.log('🔍 开始搜索底层任务...')
+    const results = []
+    
+    for (const boardKey of boardKeys) {
+      const boardNoteId = taskConfig.getBoardNoteId(boardKey)
+      if (!boardNoteId) continue
+      
+      const boardNote = MNNote.new(boardNoteId)
+      if (!boardNote) continue
+      
+      const tasks = MNTaskManager.filterTasksFromBoard(boardNote, { statuses })
+      
+      // 筛选底层任务
+      for (const task of tasks) {
+        const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+        
+        // 动作类型的任务都是底层任务
+        if (titleParts.type === '动作') {
+          results.push(task)
+          continue
+        }
+        
+        // 项目类型的任务，检查是否有子项目
+        if (titleParts.type === '项目') {
+          let hasSubProject = false
+          
+          if (task.childNotes && task.childNotes.length > 0) {
+            for (const child of task.childNotes) {
+              if (MNTaskManager.isTaskCard(child)) {
+                const childParts = MNTaskManager.parseTaskTitle(child.noteTitle)
+                if (childParts.type === '项目') {
+                  hasSubProject = true
+                  break
+                }
+              }
+            }
+          }
+          
+          // 没有子项目的项目是底层任务
+          if (!hasSubProject) {
+            results.push(task)
+          }
+        }
+      }
+    }
+    
+    MNUtil.log(`✅ 找到 ${results.length} 个底层任务`)
+    return results
+  }
+  
+  /**
+   * 智能查找合适的父任务
+   * @param {MNNote} currentNote - 当前卡片
+   * @returns {Array<Object>} 父任务候选列表 [{note, reason, priority}]
+   */
+  static findSuitableParentTasks(currentNote) {
+    MNUtil.log('🎯 开始智能查找合适的父任务...')
+    const candidates = []
+    
+    // 1. 检查当前启动的任务
+    const launchedState = taskConfig.getLaunchedTaskState()
+    if (launchedState.isTaskLaunched && launchedState.currentLaunchedTaskId) {
+      const launchedTask = MNNote.new(launchedState.currentLaunchedTaskId)
+      if (launchedTask && MNTaskManager.isTaskCard(launchedTask)) {
+        const titleParts = MNTaskManager.parseTaskTitle(launchedTask.noteTitle)
+        
+        // 如果启动的是动作，获取其父任务和兄弟任务
+        if (titleParts.type === '动作') {
+          // 添加其父任务
+          if (launchedTask.parentNote && MNTaskManager.isTaskCard(launchedTask.parentNote)) {
+            candidates.push({
+              note: launchedTask.parentNote,
+              reason: '当前启动任务的父项目',
+              priority: 100
+            })
+          }
+          
+          // 添加启动任务本身（会转为项目）
+          candidates.push({
+            note: launchedTask,
+            reason: '当前启动的任务',
+            priority: 95
+          })
+          
+          // 添加兄弟任务中的进行中任务
+          if (launchedTask.parentNote) {
+            const siblings = launchedTask.parentNote.childNotes || []
+            for (const sibling of siblings) {
+              if (sibling.noteId === launchedTask.noteId) continue
+              if (MNTaskManager.isTaskCard(sibling)) {
+                const siblingParts = MNTaskManager.parseTaskTitle(sibling.noteTitle)
+                if (siblingParts.status === '进行中') {
+                  candidates.push({
+                    note: sibling,
+                    reason: '当前启动任务的兄弟任务',
+                    priority: 85
+                  })
+                }
+              }
+            }
+          }
+        } else {
+          // 启动的是项目或其他类型，直接添加
+          candidates.push({
+            note: launchedTask,
+            reason: '当前启动的项目',
+            priority: 100
+          })
+          
+          // 添加其子任务（进行中的）
+          const children = launchedTask.childNotes || []
+          for (const child of children) {
+            if (MNTaskManager.isTaskCard(child)) {
+              const childParts = MNTaskManager.parseTaskTitle(child.noteTitle)
+              if (childParts.status === '进行中') {
+                candidates.push({
+                  note: child,
+                  reason: '启动项目的子任务',
+                  priority: 90
+                })
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 2. 获取所有底层任务
+    const bottomTasks = MNTaskManager.getBottomLevelTasks({
+      statuses: ['进行中', '未开始']
+    })
+    
+    // 过滤掉已经在候选列表中的任务
+    const existingIds = new Set(candidates.map(c => c.note.noteId))
+    
+    for (const task of bottomTasks) {
+      if (existingIds.has(task.noteId)) continue
+      
+      const titleParts = MNTaskManager.parseTaskTitle(task.noteTitle)
+      const priority = titleParts.status === '进行中' ? 70 : 60
+      
+      candidates.push({
+        note: task,
+        reason: titleParts.status === '进行中' ? '进行中的任务' : '未开始的任务',
+        priority: priority
+      })
+    }
+    
+    // 按优先级排序
+    candidates.sort((a, b) => b.priority - a.priority)
+    
+    MNUtil.log(`✅ 找到 ${candidates.length} 个候选父任务`)
+    return candidates
+  }
+  
+  /**
+   * 创建临时任务
+   * @param {MNNote} sourceNote - 源卡片（非任务卡片）
+   * @returns {Object} 创建结果
+   */
+  static async createTemporaryTask(sourceNote) {
+    MNUtil.log('\n🚀 === 开始创建临时任务 ===')
+    MNUtil.log(`📝 源卡片: ${sourceNote.noteTitle}`)
+    
+    try {
+      // 1. 查找合适的父任务
+      const candidates = MNTaskManager.findSuitableParentTasks(sourceNote)
+      
+      if (candidates.length === 0) {
+        MNUtil.showHUD('❌ 没有找到合适的父任务，请先创建项目或动作')
+        return {
+          type: 'failed',
+          error: '没有合适的父任务'
+        }
+      }
+      
+      // 2. 构建选择列表
+      const selectOptions = candidates.map(c => {
+        const titleParts = MNTaskManager.parseTaskTitle(c.note.noteTitle)
+        return `【${titleParts.type}】${titleParts.content} (${c.reason})`
+      })
+      
+      // 3. 让用户选择父任务
+      const selectedIndex = await MNUtil.userSelect(
+        '选择父任务',
+        '将新任务添加到哪个任务下？',
+        selectOptions
+      )
+      
+      if (selectedIndex === 0) {
+        return {
+          type: 'cancelled',
+          reason: '用户取消选择'
+        }
+      }
+      
+      const selectedCandidate = candidates[selectedIndex - 1]
+      const parentTask = selectedCandidate.note
+      
+      MNUtil.log(`✅ 选择的父任务: ${parentTask.noteTitle}`)
+      
+      // 4. 输入新任务标题
+      const newTaskTitle = await MNUtil.userInputSingleLine(
+        '新任务标题',
+        '请输入新任务的标题',
+        sourceNote.noteTitle || '新任务'
+      )
+      
+      if (!newTaskTitle) {
+        return {
+          type: 'cancelled',
+          reason: '用户取消输入'
+        }
+      }
+      
+      // 5. 创建新任务卡片
+      let newTaskNote
+      
+      MNUtil.undoGrouping(() => {
+        // 创建子卡片
+        newTaskNote = MNNote.createChildNote(
+          parentTask,
+          safeSpacing(`【动作｜进行中】${newTaskTitle}`)
+        )
+        
+        // 设置颜色（粉色=进行中）
+        newTaskNote.colorIndex = 3
+        
+        // 添加任务字段
+        MNTaskManager.addTaskFieldsWithStatus(newTaskNote)
+        
+        // 创建双向链接
+        sourceNote.appendNoteLink(newTaskNote, "To")
+        newTaskNote.appendNoteLink(sourceNote, "From")
+        
+        // 如果源卡片是知识点卡片，移动链接
+        try {
+          if (typeof MNMath !== 'undefined' && MNMath.isKnowledgeCard) {
+            if (MNMath.isKnowledgeCard(sourceNote)) {
+              MNUtil.log('📚 检测到知识点卡片，移动任务链接...')
+              if (MNMath.moveTaskCardLink) {
+                MNMath.moveTaskCardLink(sourceNote, newTaskNote)
+              }
+            }
+          }
+        } catch (e) {
+          MNUtil.log(`⚠️ 处理知识点卡片链接时出错: ${e.message}`)
+        }
+      })
+      
+      // 6. 检查是否需要转换父任务类型
+      const parentParts = MNTaskManager.parseTaskTitle(parentTask.noteTitle)
+      if (parentParts.type === '动作') {
+        MNUtil.log('🔄 父任务是动作类型，需要转换为项目...')
+        const transformResult = MNTaskManager.transformActionToProject(parentTask)
+        if (transformResult) {
+          MNUtil.log('✅ 父任务已成功转换为项目类型')
+        }
+      }
+      
+      // 7. 显示创建结果
+      MNUtil.showHUD(`✅ 临时任务创建成功`)
+      
+      // 8. 打开新任务卡片
+      MNUtil.openNote(newTaskNote)
+      
+      return {
+        type: 'created',
+        noteId: newTaskNote.noteId,
+        title: newTaskNote.noteTitle,
+        parentId: parentTask.noteId,
+        parentTitle: parentTask.noteTitle
+      }
+      
+    } catch (error) {
+      MNUtil.log(`❌ 创建临时任务失败: ${error.message}`)
+      return {
+        type: 'failed',
+        error: error.message
+      }
+    }
+  }
+  
+  /**
+   * 获取卡片中绑定的任务卡片
+   * @param {MNNote} note - 要检查的卡片
+   * @returns {Array<Object>} 任务卡片信息数组 [{noteId, note, status}]
+   */
+  static getBindedTaskCards(note) {
+    const bindedTasks = []
+    
+    if (!note || !note.MNComments) return bindedTasks
+    
+    // 遍历所有评论，查找任务卡片链接
+    for (const comment of note.MNComments) {
+      if (!comment || !comment.text) continue
+      
+      // 匹配任务卡片链接格式：【类型｜状态】标题
+      const linkMatch = comment.text.match(/\[【(目标|关键结果|项目|动作)[^】]*｜([^】]+)】[^\]]*\]\(marginnote4app:\/\/note\/([^)]+)\)/)
+      if (linkMatch) {
+        const [, type, status, noteId] = linkMatch
+        
+        try {
+          const linkedNote = MNNote.new(noteId)
+          if (linkedNote && MNTaskManager.isTaskCard(linkedNote)) {
+            bindedTasks.push({
+              noteId: noteId,
+              note: linkedNote,
+              status: status,
+              type: type
+            })
+          }
+        } catch (e) {
+          MNUtil.log(`⚠️ 无法获取链接的任务卡片: ${noteId}`)
+        }
+      }
+    }
+    
+    return bindedTasks
+  }
+  
+  /**
+   * 应用状态到绑定的任务卡片
+   * @param {MNNote} note - 源卡片
+   * @param {string} newStatus - 新状态
+   * @returns {Object} 应用结果
+   */
+  static async applyStatusToBindedCard(note, newStatus) {
+    const bindedTasks = MNTaskManager.getBindedTaskCards(note)
+    
+    if (bindedTasks.length === 0) {
+      // 没有绑定的任务，按原流程处理
+      return null
+    }
+    
+    if (bindedTasks.length === 1) {
+      // 只有一个绑定任务，直接应用
+      const task = bindedTasks[0]
+      MNTaskManager.updateTaskStatus(task.note, newStatus)
+      MNUtil.showHUD(`✅ 已更新绑定任务状态: ${newStatus}`)
+      return {
+        type: 'applied',
+        taskId: task.noteId,
+        newStatus: newStatus
+      }
+    }
+    
+    // 多个绑定任务，优先处理非完成/归档状态的
+    const activeTasks = bindedTasks.filter(t => 
+      t.status !== '已完成' && t.status !== '已归档'
+    )
+    
+    if (activeTasks.length === 1) {
+      // 只有一个活跃任务，直接应用
+      const task = activeTasks[0]
+      MNTaskManager.updateTaskStatus(task.note, newStatus)
+      MNUtil.showHUD(`✅ 已更新绑定任务状态: ${newStatus}`)
+      return {
+        type: 'applied',
+        taskId: task.noteId,
+        newStatus: newStatus
+      }
+    }
+    
+    if (activeTasks.length > 1) {
+      // 多个活跃任务，让用户选择
+      const options = activeTasks.map(t => {
+        const titleParts = MNTaskManager.parseTaskTitle(t.note.noteTitle)
+        return `【${titleParts.type}｜${titleParts.status}】${titleParts.content}`
+      })
+      
+      const selectedIndex = await MNUtil.userSelect(
+        '选择要更新的任务',
+        `发现 ${activeTasks.length} 个绑定的任务`,
+        options
+      )
+      
+      if (selectedIndex === 0) {
+        return {
+          type: 'cancelled',
+          reason: '用户取消选择'
+        }
+      }
+      
+      const selectedTask = activeTasks[selectedIndex - 1]
+      MNTaskManager.updateTaskStatus(selectedTask.note, newStatus)
+      MNUtil.showHUD(`✅ 已更新任务状态: ${newStatus}`)
+      return {
+        type: 'applied',
+        taskId: selectedTask.noteId,
+        newStatus: newStatus
+      }
+    }
+    
+    // 没有活跃任务，都是已完成/归档的
+    MNUtil.showHUD('⚠️ 所有绑定的任务都已完成或归档')
+    return {
+      type: 'skipped',
+      reason: '所有任务都已完成或归档'
+    }
+  }
 }
 
 /**
- * TaskFilterEngine - 任务筛选引擎
+ * MNTaskManager 类结束
+ */
+
+/**
+ * TaskFilterEngine 类 - 任务筛选引擎
  * 提供多维度的任务筛选和排序功能
  */
 class TaskFilterEngine {
@@ -6778,9 +8692,8 @@ class TaskFilterEngine {
       { name: "Files", scheme: "shareddocuments:" }
     ];
   }
+
 }
-
-
 /**
  * 初始化扩展
  * 需要在 taskUtils 定义后调用
@@ -6854,6 +8767,413 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     initXDYYExtensions,
     extendTaskConfigInit
+  }
+}
+
+/**
+ * TaskDataExtractor - 任务数据提取和转换类
+ * 用于从看板卡片中提取任务数据并转换为元数据格式
+ */
+class TaskDataExtractor {
+  // ========== 性能优化：调试模式控制 ==========
+  static debugMode = false  // 默认关闭详细日志
+  
+  /**
+   * 切换调试模式
+   * @param {boolean} enable - 是否启用调试模式
+   */
+  static setDebugMode(enable) {
+    this.debugMode = enable
+    MNUtil.log(`⚙️ TaskDataExtractor 调试模式: ${enable ? '开启' : '关闭'}`)
+  }
+  
+  /**
+   * 从看板卡片中提取所有任务卡片
+   * @param {string} boardNoteId - 看板卡片的 ID
+   * @returns {Array} 任务元数据数组
+   */
+  static async extractTasksFromBoard(boardNoteId) {
+    if (this.debugMode) {
+      MNUtil.log(`🔍 开始从看板提取任务: ${boardNoteId}`)
+    }
+    
+    if (!boardNoteId) {
+      MNUtil.log("❌ 看板 ID 为空")
+      return []
+    }
+    
+    try {
+      const boardNote = MNNote.new(boardNoteId)
+      if (!boardNote) {
+        MNUtil.log(`❌ 看板卡片不存在: ${boardNoteId}`)
+        return []
+      }
+      
+      // 获取看板卡片的所有子卡片
+      const childNotes = boardNote.childNotes || []
+      
+      const allTasks = []
+      const errors = []
+      let processedCards = 0  // 统计处理的卡片数
+      
+      // 递归函数：遍历卡片树，提取所有任务卡片
+      const collectAllTasksRecursively = async (note, depth = 0) => {
+        processedCards++
+        try {
+          // 判断是否是任务卡片
+          if (MNTaskManager.isTaskCard(note)) {
+            if (this.debugMode) {
+              const indent = '  '.repeat(depth)
+              MNUtil.log(`${indent}📋 处理任务: ${note.noteTitle}`)
+            }
+            
+            // 转换当前任务并清除 including 字段（因为我们已经递归收集所有任务）
+            const taskData = await this.convertTaskToMetadata(note)
+            if (taskData) {
+              // 清除 including 字段，避免重复（所有任务都会被递归收集）
+              taskData.including = []
+              allTasks.push(taskData)
+            }
+          }
+          
+          // 递归处理所有子卡片（不管当前卡片是否是任务卡片）
+          const childNotes = note.childNotes || []
+          if (childNotes.length > 0) {
+            for (let i = 0; i < childNotes.length; i++) {
+              await collectAllTasksRecursively(childNotes[i], depth + 1)
+            }
+          }
+        } catch (error) {
+          errors.push(`处理卡片时出错 (层级 ${depth}): ${error.message}`)
+          if (this.debugMode) {
+            MNUtil.log(`⚠️ 处理卡片时出错 (层级 ${depth}): ${error.message}`)
+          }
+        }
+      }
+      
+      // 遍历所有直接子卡片，递归收集所有任务
+      for (let i = 0; i < childNotes.length; i++) {
+        const childNote = childNotes[i]
+        await collectAllTasksRecursively(childNote, 0)
+      }
+      
+      // ========== 性能优化：仅输出摘要信息 ==========
+      MNUtil.log(`✅ 提取完成: ${allTasks.length} 个任务 / ${processedCards} 张卡片${errors.length > 0 ? ` (⚠️ ${errors.length} 个错误)` : ''}`)
+      
+      if (this.debugMode && errors.length > 0) {
+        errors.forEach(err => MNUtil.log(`  - ${err}`))
+      }
+      
+      return allTasks
+      
+    } catch (error) {
+      MNUtil.log(`❌ 提取任务失败: ${error.message}`)
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "TaskDataExtractor.extractTasksFromBoard", {
+          boardNoteId,
+          message: error.message
+        })
+      }
+      return []
+    }
+  }
+  
+  /**
+   * 将任务卡片转换为元数据格式
+   * @param {MNNote} note - 任务卡片对象
+   * @returns {Object|null} 任务元数据对象
+   */
+  static async convertTaskToMetadata(note) {
+    if (!note || !note.noteTitle) {
+      return null
+    }
+    
+    try {
+      // 解析任务标题
+      const titleInfo = MNTaskManager.parseTaskTitle(note.noteTitle)
+      
+      // 解析任务评论获取字段信息
+      const parsedData = MNTaskManager.parseTaskComments(note)
+      
+      // 如果标题解析失败，尝试从评论中识别任务类型
+      let taskType = titleInfo?.type
+      let taskStatus = titleInfo?.status || '未开始'
+      let taskContent = titleInfo?.content || note.noteTitle
+      let taskPath = titleInfo?.path || ''
+      
+      if (!taskType) {
+        // 检查是否有任务字段（信息、包含等）来判断是否是任务卡片
+        if (parsedData.info || parsedData.contains || parsedData.taskFields.length > 0) {
+          // 尝试从评论中识别任务类型
+          if (parsedData.contains) {
+            taskType = '项目'  // 有"包含"字段的通常是项目
+          } else if (note.childNotes && note.childNotes.length > 0) {
+            taskType = '目标'  // 有子卡片的可能是目标
+          } else {
+            taskType = '动作'  // 默认为动作
+          }
+          MNUtil.log(`⚠️ 从字段推断任务类型: ${taskType}`)
+        } else {
+          // 不是任务卡片
+          return null
+        }
+      }
+      
+      MNUtil.log(`📝 转换任务: ${note.noteTitle}`)
+      
+      // 构建任务元数据（与 testData.js 格式保持一致）
+      const metadata = {
+        id: note.noteId,
+        url: `marginnote4app://note/${note.noteId}`,
+        type: taskType,  // 保持中文类型，不进行转换
+        title: taskContent,  // 使用 title 而非 titleContent
+        path: taskPath,  // 使用 path 而非 titlePath
+        status: taskStatus,
+        priority: '低',  // 默认优先级为低
+        description: '',
+        launchLink: '',
+        parentTitle: '',
+        parentURL: '',
+        progresses: [],
+        including: [],
+        // 为了兼容性，同时保留原始字段名
+        titleContent: taskContent,
+        titlePath: taskPath,
+        // 添加 fields 对象以支持 HTML 端的筛选功能
+        fields: {
+          priority: '低',  // 默认优先级
+          tags: [],  // 标签数组
+          project: '',  // 项目名称
+          progressLog: [],  // 进展日志
+          plannedDate: null,
+          today: false,
+          startTime: null,
+          endTime: null
+        }
+      }
+      
+      // 提取任务描述（信息字段后的第一个纯文本评论）
+      if (parsedData.info && parsedData.plainTextComments && parsedData.plainTextComments.length > 0) {
+        // 查找信息字段后的第一个纯文本评论
+        const infoIndex = parsedData.info.index
+        for (const textComment of parsedData.plainTextComments) {
+          if (textComment.index > infoIndex) {
+            metadata.description = textComment.text
+            break
+          }
+        }
+      }
+      
+      // 使用 getLaunchLink 方法提取启动链接
+      const launchLink = MNTaskManager.getLaunchLink(note)
+      if (launchLink) {
+        metadata.launchLink = launchLink
+        MNUtil.log(`  - 启动链接: ${launchLink}`)
+      }
+      
+      // 提取所属信息（使用 getIncludingCommentIndex 查找）
+      const belongsIndex = note.getIncludingCommentIndex("所属")
+      if (belongsIndex !== -1 && belongsIndex + 1 < note.MNComments.length) {
+        // 所属字段的下一个评论通常包含父任务链接
+        const nextComment = note.MNComments[belongsIndex + 1]
+        if (nextComment && nextComment.text) {
+          const match = nextComment.text.match(/\[([^\]]+)\]\(([^)]+)\)/)
+          if (match) {
+            metadata.parentTitle = match[1]
+            metadata.parentURL = match[2]
+            MNUtil.log(`  - 所属: ${metadata.parentTitle}`)
+            
+            // 如果父任务是项目类型，设置 project 字段
+            const parentTitleInfo = MNTaskManager.parseTaskTitle(metadata.parentTitle)
+            if (parentTitleInfo && parentTitleInfo.type === '项目') {
+              metadata.fields.project = parentTitleInfo.content
+              MNUtil.log(`  - 项目: ${metadata.fields.project}`)
+            }
+          }
+        }
+      }
+      
+      // 提取进展信息
+      if (parsedData.progress) {
+        const progressIndex = parsedData.progress.index
+        const progresses = []
+        
+        // 收集进展字段后的所有文本评论，直到遇到下一个字段
+        for (let i = progressIndex + 1; i < note.MNComments.length; i++) {
+          const comment = note.MNComments[i]
+          if (!comment) continue
+          
+          const text = comment.text || ''
+          // 如果遇到新的字段，停止收集
+          if (TaskFieldUtils.isTaskField(text)) break
+          
+          // 只收集纯文本评论
+          if (comment.type === 'textComment' || comment.type === 'markdownComment') {
+            if (text && !TaskFieldUtils.isTaskField(text)) {
+              progresses.push(text)
+            }
+          }
+        }
+        
+        metadata.progresses = progresses
+        // 同时更新 fields.progressLog 以支持 HTML 端
+        metadata.fields.progressLog = progresses.map(text => ({
+          date: new Date().toLocaleString('zh-CN'),
+          note: text
+}))
+      }
+      
+      // 提取优先级信息
+      const priority = TaskFieldUtils.getFieldContent(note, '优先级')
+      if (priority) {
+        metadata.priority = priority
+        metadata.fields.priority = priority
+      }
+      
+      // 提取标签信息
+      const tags = TaskFieldUtils.getFieldContent(note, '标签')
+      if (tags) {
+        // 标签可能是逗号、空格或其他分隔符分隔的字符串
+        metadata.fields.tags = tags.split(/[,，\s]+/).filter(tag => tag.trim().length > 0)
+        MNUtil.log(`  - 标签: ${metadata.fields.tags.join(', ')}`)
+      }
+      
+      // 如果是项目或目标类型，递归提取子任务
+      if (taskType === '项目' || taskType === '目标') {
+        const childNotes = note.childNotes || []
+        for (let i = 0; i < childNotes.length; i++) {
+          try {
+            const childNote = childNotes[i]
+            const childData = await this.convertTaskToMetadata(childNote)
+            if (childData) {
+              metadata.including.push(childData)
+            }
+          } catch (error) {
+            MNUtil.log(`⚠️ 处理子任务 ${i} 时出错: ${error.message}`)
+          }
+        }
+      }
+      
+      // 数据验证日志
+      MNUtil.log(`✅ 任务元数据构建完成:`)
+      MNUtil.log(`  - ID: ${metadata.id}`)
+      MNUtil.log(`  - 类型: ${metadata.type}`)
+      MNUtil.log(`  - 标题: ${metadata.title}`)
+      MNUtil.log(`  - 状态: ${metadata.status}`)
+      MNUtil.log(`  - 优先级: ${metadata.priority}`)
+      MNUtil.log(`  - 路径: ${metadata.path || '(无)'}`)
+      MNUtil.log(`  - 子任务数: ${metadata.including.length}`)
+      
+      // 验证必要字段
+      if (!metadata.id || !metadata.type || !metadata.title) {
+        MNUtil.log(`⚠️ 任务数据缺少必要字段:`)
+        MNUtil.log(`  - ID: ${metadata.id ? '✓' : '✗'}`)
+        MNUtil.log(`  - 类型: ${metadata.type ? '✓' : '✗'}`)
+        MNUtil.log(`  - 标题: ${metadata.title ? '✓' : '✗'}`)
+      }
+      
+      return metadata
+      
+    } catch (error) {
+      MNUtil.log(`❌ 转换任务元数据失败: ${error.message}`)
+      MNUtil.log(`任务标题: ${note.noteTitle}`)
+      if (typeof MNUtil !== 'undefined' && MNUtil.addErrorLog) {
+        MNUtil.addErrorLog(error, "TaskDataExtractor.convertTaskToMetadata", {
+          noteId: note.noteId,
+          noteTitle: note.noteTitle,
+          message: error.message
+        })
+      }
+      return null
+    }
+  }
+  
+  /**
+   * 标准化任务类型
+   * @param {string} type - 原始类型
+   * @returns {string} 标准化后的类型 (action/project/target/keyresult)
+   */
+  static normalizeTaskType(type) {
+    const typeMap = {
+      '动作': 'action',
+      '项目': 'project',
+      '目标': 'target',
+      '关键结果': 'keyresult'
+    }
+    return typeMap[type] || type.toLowerCase()
+  }
+  
+  /**
+   * 从字段中提取启动链接
+   * @param {Array} fields - 字段数组
+   * @returns {string|null} 启动链接
+   */
+  static extractLaunchLink(fields) {
+    for (const field of fields) {
+      if (field.type === 'field' && field.name && field.name.includes('[启动]')) {
+        // 从 Markdown 链接格式中提取 URL
+        const match = field.name.match(/\[启动\]\(([^)]+)\)/)
+        if (match) {
+          return match[1]
+        }
+      }
+    }
+    return null
+  }
+  
+  /**
+   * 从字段中提取所属信息
+   * @param {Array} fields - 字段数组
+   * @returns {Object|null} 包含 title 和 url 的对象
+   */
+  static extractBelongsTo(fields) {
+    for (const field of fields) {
+      if (field.type === 'field' && field.name === '所属' && field.value) {
+        // 解析 Markdown 链接格式 [标题](URL)
+        const match = field.value.match(/\[([^\]]+)\]\(([^)]+)\)/)
+        if (match) {
+          return {
+            title: match[1],
+            url: match[2]
+          }
+        }
+      }
+    }
+    return null
+  }
+  
+  /**
+   * 从字段中提取进展信息
+   * @param {Array} fields - 字段数组
+   * @returns {Array} 进展数组
+   */
+  static extractProgresses(fields) {
+    const progresses = []
+    let inProgressSection = false
+    
+    for (const field of fields) {
+      if (field.type === 'field' && field.name === '进展') {
+        inProgressSection = true
+        continue
+      }
+      
+      if (inProgressSection && field.type === 'plainText') {
+        // 解析进展格式：时间戳 + 内容
+        const timeMatch = field.text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2})/)
+        if (timeMatch) {
+          const time = timeMatch[1]
+          const content = field.text.substring(timeMatch.index + timeMatch[0].length).trim()
+          progresses.push({ time, content })
+        }
+      }
+      
+      // 遇到下一个主字段时结束进展提取
+      if (inProgressSection && field.type === 'field' && field.name !== '进展') {
+        break
+      }
+    }
+    
+    return progresses
   }
 }
 

@@ -46,7 +46,7 @@ body {
       "range": {
         "title": "range",
         "type": "string",
-        "enum": ['currentNote','currentNotes','childNotes','descendants'],
+        "enum": ['currentNotes','childNotes','descendantNotes'],
       },
       "hideMessage": {
         "type": "boolean",
@@ -114,6 +114,12 @@ body {
     return {
       "title": "string",
       "type": "string",
+    }
+  }
+  function numberType() {
+    return {
+      "title": "number",
+      "type": "number",
     }
   }
   function booleanType(defaultValue = false) {
@@ -235,7 +241,6 @@ body {
       'ExtendMargin',
       'ExtendPopup',
       'ExpandExtend',
-
       'FocusNote',
       'FocusParent',
       'FoldHighlight',
@@ -454,7 +459,7 @@ function getSchemaByActionName(actionName) {
       properties.commands = arrayType(stringEnum(commandNames))
       break;
     case "copy":
-      properties.target = stringEnum(['auto','comment','comments','excerpt','excerptOCR','menu','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','selectionText','selectionImage','title','chatAIOutput'])
+      properties.target = stringEnum(['auto','comment','textComments','excerpt','excerptOCR','menu','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','selectionText','selectionImage','title','chatAIOutput'])
       properties.index = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60])
       properties.content = stringType()
       break;
@@ -464,7 +469,7 @@ function getSchemaByActionName(actionName) {
       properties.index = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60])
       break;
     case "markdown2Mindmap":
-      properties.source = stringEnum(['currentNote','clipboard','file'])
+      properties.source = stringEnum(['currentNote','clipboard','file','chatAIOutput'])
       properties.method = stringEnum(['onlyHeading','auto'])
       break;
     case "addMarkdownLink":
@@ -497,18 +502,21 @@ function getSchemaByActionName(actionName) {
       properties.target = stringType()
       break;
     case "mergeText":
-      properties.target = stringEnum(['excerptText','title','newComment','clipboard'])
+      properties.target = stringEnum(['excerptText','title','newComment','clipboard','globalVar'])
       properties.source = arrayType(stringType())
+      properties.varName = stringType()
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
       break
     case "cloneAndMerge":
       properties.target = stringType()
       break;
     case "ocr":
-      properties.target = stringEnum(['comment','excerpt','childNote','clipboard','editor','chatModeReference','option'])
-      properties.ocrSource = stringEnum(["Doc2X","SimpleTex","GPT-4o","GPT-4o-mini","GPT-4.1","GPT-4.1-mini","GPT-4.1-nano","MiniMax-Text-01","glm-4v-plus","glm-4v-flash","claude-3-5-sonnet-20241022","claude-3-7-sonnet","gemini-2.0-flash","gemini-2.0-flash-lite","gemini-2.5-pro","gemini-2.5-flash","Moonshot-v1"])
+      properties.target = stringEnum(['menu','comment','excerpt','childNote','clipboard','editor','chatModeReference','option','globalVar'])
+      properties.ocrSource = stringEnum(["Doc2X","SimpleTex","GPT-4o","GPT-4o-mini","GPT-4.1","GPT-4.1-mini","GPT-4.1-nano","MiniMax-Text-01","abab6.5s-chat","doubao-seed-1-6","doubao-seed-1.6-flash","glm-4v-plus","glm-4v-flash","glm-4.1v-thinking-flash","claude-3-5-haiku","claude-3-7-sonnet","claude-opus-4","claude-sonnet-4","gemini-2.0-flash","gemini-2.0-flash-lite","gemini-2.5-pro","gemini-2.5-flash","gemini-2.5-flash-lite","Moonshot-v1"])
       properties.source = properties.ocrSource
       properties.method = stringEnum(["replace","append"])
       properties.followParentColor = booleanType(false)
+      properties.varName = stringType()
       break;
     case "toggleSidebar":
       properties.target = stringEnum(['chatMode'])
@@ -534,16 +542,19 @@ function getSchemaByActionName(actionName) {
       properties.name = stringType()
       break;
     case "replace":
-      properties.target = stringEnum(['excerpt','title','clipboardText'])
+      properties.target = stringEnum(['excerpt','title','clipboardText','globalVar'])
       properties.content = stringType()
       properties.from = stringType()
       properties.to = stringType()
       properties.reg = stringType()
       properties.steps = arrayType()
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
+      properties.varName = stringType()
       break;
     case "showInFloatWindow":
       properties.noteURL = stringType()
-      properties.target = stringEnum(['noteInClipboard','currentNote','currentChildMap','parentNote','currentNoteInMindMap','menu'])
+      properties.target = stringEnum(['noteInClipboard','currentNote','currentChildMap','parentNote','currentNoteInMindMap','menu','globalVar'])
+      properties.varName = stringType()
       break;
     case "export":
       properties.source = stringEnum(['noteDoc','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown'])
@@ -558,14 +569,17 @@ function getSchemaByActionName(actionName) {
       properties.target = stringEnum(["title","excerpt","appendTitle","appendExcerpt"])
       break;
     case "setContent":
-      properties.target = stringEnum(['title','excerpt','newComment'])
+      properties.target = stringEnum(['title','excerpt','newComment','globalVar'])
       properties.content = stringType()
-      properties.range = stringEnum(['currentNotes','childNotes','descendants'])
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
+      properties.varName = stringType()
       break;
     case "clearContent":
-      properties.target = stringEnum(['title','excerptText','comments'])
+      properties.target = stringEnum(['title','excerptText','comments','excerptTextAndComments'])
       properties.type = commentType()
       properties.allowDeleteNote = booleanType()
+      properties.index = numberType()
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
       break;
     case "openURL":
       properties.url = stringType()
@@ -581,6 +595,12 @@ function getSchemaByActionName(actionName) {
       properties.tags = arrayType(stringType())
       properties.tag = stringType()
       break;
+    case "snipaste":
+      properties.target = stringEnum(['auto','selectionImage','selectionText','note','pdf','audioControl'])
+      properties.page = stringEnum(['current','first','last'])
+      properties.audioAutoPlay = booleanType()
+      properties.audioAction = stringEnum(['playOrPause','toggleMute','forward15s','backward15s','play0.5x','play2x','play3x','play4x'])
+      break;
     case "searchInDict":
       properties.target = stringEnum(['eudic','MdxDictOxford','MdxDictCollins'])
       break;
@@ -588,6 +608,9 @@ function getSchemaByActionName(actionName) {
       properties.color = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
       properties.fillPattern = numberEnum([-1,0,1,2])
       properties.followAutoStyle = booleanType()
+      properties.usingCommand = booleanType()
+      properties.asTitleForNewNote = booleanType()
+      properties.wordThreshold = numberEnum([5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100])
       break;
     case "userSelect":
       properties.title = stringType()
@@ -605,8 +628,9 @@ function getSchemaByActionName(actionName) {
       properties.buttonName = stringType()
       break;
     case "focus":
-      properties.source = stringEnum(['parentNote'])
+      properties.source = stringEnum(['currentNote','childMindMap','parentNote','globalVar'])
       properties.target = stringEnum(['doc','mindmap','both','floatMindmap'])
+      properties.varName = stringType()
       properties.noteURL = stringType()
       properties.forceToFocus = booleanType()
       break;
@@ -625,6 +649,14 @@ function getSchemaByActionName(actionName) {
       properties.mainMindMap = booleanType()
       properties.noteURL = stringType()
       break;
+    case "toggleMarkdown":
+      properties.targetMode = stringEnum(["toggle","disable","enable"])
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
+
+      break;
+    case "toggleTextFirst":
+      properties.range = stringEnum(['currentNotes','childNotes','descendantNotes'])
+      break;
     case "noteHighlight":
       properties.color = numberEnum([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15])
       properties.fillPattern = numberEnum([-1,0,1,2])
@@ -640,16 +672,22 @@ function getSchemaByActionName(actionName) {
       properties.focusInFloatWindowForAllDocMode = booleanType()
       properties.markdown = booleanType()
       properties.continueExcerpt = booleanType()
+      properties.wordThreshold = numberEnum([5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100])
       break;
     case "search":
       properties.target = stringEnum(['menu'])
       properties.engine = stringType()
+      properties.followButton = booleanType()
+      break;
+    case "openInEditor":
+      properties.followButton = booleanType()
       break;
     case "chatAI":
-      properties.target = stringEnum(['menu','openFloat','currentPrompt'])
+      properties.target = stringEnum(['menu','openFloat','currentPrompt','stopOutput'])
       properties.prompt = stringType()
       properties.user = stringType()
       properties.system = stringType()
+      properties.numberOfPrompts = numberEnum([5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
       break;
     default:
       break;
@@ -982,7 +1020,7 @@ function setSchemaByAction(action) {
               case 'title':
               case 'subTitle':
                 return [
-                  '{{clipboardText}}','{{selectionText}}','{{currentDocName}}','{{currentDocAttach}}',
+                  '{{globalVar.}}','{{clipboardText}}','{{selectionText}}','{{currentDocName}}','{{currentDocAttach}}','{{chatAIOutput}}',
                   '{{note.title}}','{{note.url}}','{{note.id}}','{{note.hashTags}}','{{note.excerptText}}','{{note.allText}}','{{note.docName}}',
                   '{{note.parent.title}}','{{note.parent.url}}','{{note.parent.id}}','{{note.parent.hashTags}}','{{note.parent.excerptText}}','{{note.parent.allText}}','{{note.parent.docName}}',
                   '{{note.childMindMap.title}}','{{note.childMindMap.url}}','{{note.childMindMap.id}}','{{note.childMindMap.hashTags}}','{{note.childMindMap.excerptText}}','{{note.childMindMap.allText}}','{{note.childMindMap.docName}}',
@@ -1007,7 +1045,7 @@ function setSchemaByAction(action) {
               case 'linkType':
                 return ['Both','To','From'];
               case 'range':
-                return ['currentNotes','childNotes','descendants'];
+                return ['currentNotes','childNotes','descendantNotes'];
               case 'target':
                 return ['addonBar','appendTitle','appendExcerpt','auto','both','comment','comments','clipboard','currentNote','currentChildMap','currentPrompt','currentNoteInMindMap','clipboardText','chatMode','chatModeReference','doc','default','editor','excerpt','excerptText','excerptOCR','floatMindmap','menu','mindmap','mainMindMap','mindmapToolbar','newComment','notesText','noteId','noteURL','noteMarkdown','noteMarkdownOCR','noteWithDecendentsMarkdown','noteInClipboard','openFloat','parentNote','selectionText','selectionImage','title'];
               case 'command':
@@ -1160,6 +1198,11 @@ function setSchemaByAction(action) {
         editor.update(tem)
         editor.expandAll()
         adjustSelectWidth()
+        if ("action" in tem) {
+          setSchemaByAction(tem)
+        }else{
+          setSchema()
+        }
       }
       function getContent() {
         let tem = JSON.stringify(editor.get(),null,2)

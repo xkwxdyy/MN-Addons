@@ -30,7 +30,19 @@
       "mcp__promptx__promptx_init",
       "mcp__promptx__promptx_remember",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx js-beautify:*)",
+      "Bash(npm install:*)",
+      "Bash(js-beautify:*)",
+      "Bash(npx prettier:*)",
+      "Bash(git worktree:*)",
+      "Bash(git -C /tmp/mn-handwriting-optimize add mnutils/xdyyutils.js)",
+      "Bash(mnaddon4 build:*)",
+      "Bash(git -C /tmp/mn-handwriting-optimize log --oneline -n 5)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git reset:*)",
+      "Bash(git stash:*)",
+      "Bash(git merge-base:*)"
     ],
     "deny": []
   }

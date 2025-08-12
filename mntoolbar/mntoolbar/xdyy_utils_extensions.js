@@ -1640,11 +1640,20 @@ function extendToolbarConfigInit() {
         { role: "user", content: text },
       ];
 
+      // 解析模型名称，去除前缀（如 "Subscription: gpt-4o" -> "gpt-4o"）
+      let actualModel = model;
+      if (model.includes(":")) {
+        const parts = model.split(":").map(s => s.trim());
+        if (parts.length === 2) {
+          actualModel = parts[1]; // 提取实际模型名
+        }
+      }
+
       // 使用 Subscription 配置
       const config = {
         apiKey: subscriptionConfig.config.apikey,
         apiHost: subscriptionConfig.config.url,
-        model: model,
+        model: actualModel,  // 使用解析后的模型名
         temperature: 0.3,
         stream: false,
       };
@@ -1666,6 +1675,74 @@ function extendToolbarConfigInit() {
   };
 
   /**
+   * 通用 AI 请求（支持自定义 system 和 user 消息）
+   * @param {string} userContent - 用户输入内容
+   * @param {string} systemPrompt - 系统提示词（可选）
+   * @param {string} model - AI 模型
+   * @returns {Promise<string>} AI 响应内容
+   */
+  toolbarUtils.aiGeneralRequest = async function (
+    userContent,
+    systemPrompt = "",
+    model = "gpt-4o-mini"
+  ) {
+    try {
+      // 检查 MNUtils 是否激活
+      if (typeof subscriptionConfig === "undefined") {
+        MNUtil.showHUD("❌ 请先安装并激活 MN Utils");
+        return null;
+      }
+
+      if (!subscriptionConfig.getConfig("activated")) {
+        MNUtil.showHUD("❌ 请在 MN Utils 中配置 API Key");
+        return null;
+      }
+
+      // 构建消息数组
+      const messages = [];
+      if (systemPrompt) {
+        messages.push({ role: "system", content: systemPrompt });
+      }
+      messages.push({ role: "user", content: userContent });
+
+      // 解析模型名称，去除前缀（如 "Subscription: gpt-4o" -> "gpt-4o"）
+      let actualModel = model;
+      if (model.includes(":")) {
+        const parts = model.split(":").map(s => s.trim());
+        if (parts.length === 2) {
+          actualModel = parts[1]; // 提取实际模型名
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log(`🔧 [AI通用请求] 解析模型: ${model} -> ${actualModel}`);
+          }
+        }
+      }
+
+      // 使用 Subscription 配置
+      const config = {
+        apiKey: subscriptionConfig.config.apikey,
+        apiHost: subscriptionConfig.config.url,
+        model: actualModel,  // 使用解析后的模型名
+        temperature: 0.7,  // 通用请求使用稍高的温度
+        stream: false,
+      };
+
+      // 发送请求
+      const result = await this.sendAIRequest(messages, config);
+
+      if (result) {
+        return result.trim();
+      } else {
+        MNUtil.showHUD("❌ AI 请求失败");
+        return null;
+      }
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "aiGeneralRequest");
+      MNUtil.showHUD("❌ AI 请求出错: " + error.message);
+      return null;
+    }
+  };
+
+  /**
    * 发送 AI 请求（通用方法）
    * @param {Array} messages - 消息数组
    * @param {Object} config - 配置对象
@@ -1673,17 +1750,10 @@ function extendToolbarConfigInit() {
    */
   toolbarUtils.sendAIRequest = async function (messages, config) {
     try {
-      const headers = {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + config.apiKey,
-      };
-
-      const body = {
-        model: config.model,
-        messages: messages,
-        temperature: config.temperature,
-        stream: config.stream,
-      };
+      // 检查 MNConnection 是否可用
+      if (typeof MNConnection === "undefined") {
+        throw new Error("MNConnection 不可用，请确保 MN Utils 已安装");
+      }
 
       // 构建完整 URL
       let apiUrl = config.apiHost;
@@ -1695,37 +1765,29 @@ function extendToolbarConfigInit() {
         apiUrl += "v1/chat/completions";
       }
 
-      // 创建请求
-      const request = NSMutableURLRequest.requestWithURL(
-        NSURL.URLWithString(apiUrl),
-      );
-      request.HTTPMethod = "POST";
+      const body = {
+        model: config.model,
+        messages: messages,
+        temperature: config.temperature,
+        stream: config.stream,
+      };
 
-      // 设置请求头
-      Object.keys(headers).forEach((key) => {
-        request.setValueForHTTPHeaderField(headers[key], key);
+      // 使用 MNConnection 创建和发送请求
+      const request = MNConnection.initRequest(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + config.apiKey,
+        },
+        timeout: 30,
+        json: body,
       });
 
-      // 设置请求体
-      request.HTTPBody = NSJSONSerialization.dataWithJSONObjectOptions(body, 0);
+      // 发送请求
+      const response = await MNConnection.sendRequest(request);
 
-      // 发送同步请求
-      const response =
-        NSURLConnection.sendSynchronousRequestReturningResponseError(request);
-
-      if (response && response.length() > 0) {
-        const jsonResponse = NSJSONSerialization.JSONObjectWithDataOptions(
-          response,
-          0,
-        );
-
-        if (
-          jsonResponse &&
-          jsonResponse.choices &&
-          jsonResponse.choices.length > 0
-        ) {
-          return jsonResponse.choices[0].message.content;
-        }
+      if (response && response.choices && response.choices.length > 0) {
+        return response.choices[0].message.content;
       }
 
       return null;
@@ -1751,15 +1813,15 @@ function extendToolbarConfigInit() {
       }
 
       // 先显示 OCR 结果
-      MNUtil.showHUD("📝 OCR 完成，正在翻译...");
+      // MNUtil.showHUD("📝 OCR 完成，正在翻译...");
 
       let translatedText = null;
 
       // 优先尝试使用内置翻译 API
       if (typeof MNUtil !== "undefined" && MNUtil.log) {
-        MNUtil.log(`🔧 [OCR翻译] 尝试使用内置翻译 API`);
+        MNUtil.log(`🔧 [OCR翻译] 尝试使用翻译 API`);
       }
-      translatedText = await this.aiTranslateBuiltin(ocrText, "中文", model);
+      translatedText = await this.aiTranslate(ocrText, "中文", model);
 
       // 如果内置 API 失败，尝试使用 MN Utils 的 API（如果配置了）
       if (
@@ -1768,9 +1830,9 @@ function extendToolbarConfigInit() {
         subscriptionConfig.getConfig("activated")
       ) {
         if (typeof MNUtil !== "undefined" && MNUtil.log) {
-          MNUtil.log(`🔧 [OCR翻译] 内置 API 失败，尝试使用 MN Utils API`);
+          MNUtil.log(`🔧 [OCR翻译] API 失败，尝试使用内置API`);
         }
-        translatedText = await this.aiTranslate(ocrText, "中文", model);
+        translatedText = await this.aiTranslateBuiltin(ocrText, "中文", model);
       }
 
       if (translatedText) {
@@ -1794,6 +1856,151 @@ function extendToolbarConfigInit() {
       toolbarUtils.addErrorLog(error, "ocrWithTranslation");
       // 翻译失败时返回原始文本
       return ocrText;
+    }
+  };
+
+  toolbarUtils.ocrWithAI = async function (
+    ocrText,
+    model = "gpt-4o-mini",
+    systemPrompt = ""
+  ) {
+    try {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [AI处理] 开始处理，文本长度: ${ocrText.length}`);
+        MNUtil.log(`🔧 [AI处理] 使用模型: ${model}`);
+      }
+
+      // 处理向后兼容：如果 ocrText 包含完整提示词（没有 systemPrompt），则使用空的 systemPrompt
+      // 这样可以兼容现有的调用方式
+      const userContent = ocrText;
+      const sysPrompt = systemPrompt || "";
+
+      let aiResultText = null;
+
+      // 智能选择 API 调用方式
+      if (model.startsWith("Subscription:") || model.startsWith("ChatGPT:") || 
+          model.startsWith("ChatGLM:") || model.startsWith("Deepseek:") ||
+          model.startsWith("Claude:") || model.startsWith("Gemini:")) {
+        // 订阅模型，直接使用 MN Utils API
+        if (typeof subscriptionConfig === "undefined") {
+          MNUtil.showHUD("❌ 请先安装并激活 MN Utils");
+          return ocrText;
+        }
+        
+        if (!subscriptionConfig.getConfig("activated")) {
+          MNUtil.showHUD("❌ 请在 MN Utils 中配置 API Key");
+          return ocrText;
+        }
+
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`🔧 [AI处理] 使用订阅 API 处理模型: ${model}`);
+        }
+        aiResultText = await this.aiGeneralRequest(ocrText, systemPrompt, model);
+        
+      } else if (model === "Built-in" || model.startsWith("glm-")) {
+        // 内置模型，使用内置 API
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`🔧 [AI处理] 使用内置 AI API 处理模型: ${model}`);
+        }
+        aiResultText = await this.aiGeneralRequestBuiltin(ocrText, systemPrompt, model);
+        
+      } else {
+        // 未知模型，先尝试内置 API，失败后尝试订阅 API
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`🔧 [AI处理] 未知模型 ${model}，先尝试内置 API`);
+        }
+        aiResultText = await this.aiGeneralRequestBuiltin(ocrText, systemPrompt, model);
+
+        // 如果内置 API 失败，尝试使用 MN Utils 的 API
+        if (
+          !aiResultText &&
+          typeof subscriptionConfig !== "undefined" &&
+          subscriptionConfig.getConfig("activated")
+        ) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log(`🔧 [AI处理] 内置 API 失败，尝试使用订阅 API`);
+          }
+          aiResultText = await this.aiGeneralRequest(ocrText, systemPrompt, model);
+        }
+      }
+
+      if (aiResultText) {
+        MNUtil.showHUD("✅ AI 处理完成");
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`✅ [AI处理] 处理成功`);
+        }
+        return aiResultText;
+      } else {
+        // 如果处理失败，返回原始 OCR 文本
+        MNUtil.showHUD("⚠️ AI 处理失败，使用原始文本");
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`❌ [AI处理] 处理失败，返回原始文本`);
+        }
+        return ocrText;
+      }
+    } catch (error) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [AI处理] 异常: ${error.message}`);
+      }
+      toolbarUtils.addErrorLog(error, "ocrWithAI");
+      // 处理失败时返回原始文本
+      return ocrText;
+    }
+  };
+
+  toolbarUtils.AIWithPromptAndModel = async function (
+    prompt,
+    model = "gpt-4o-mini",
+  ) {
+    try {
+      // 检查 MNUtils 是否激活
+      if (typeof subscriptionConfig === "undefined") {
+        MNUtil.showHUD("❌ 请先安装并激活 MN Utils");
+        return null;
+      }
+
+      if (!subscriptionConfig.getConfig("activated")) {
+        MNUtil.showHUD("❌ 请在 MN Utils 中配置 API Key");
+        return null;
+      }
+
+      // 构建消息
+      const messages = [
+        { role: "system", content: prompt },
+        { role: "user", content: "" },
+      ];
+
+      // 解析模型名称，去除前缀（如 "Subscription: gpt-4o" -> "gpt-4o"）
+      let actualModel = model;
+      if (model.includes(":")) {
+        const parts = model.split(":").map(s => s.trim());
+        if (parts.length === 2) {
+          actualModel = parts[1]; // 提取实际模型名
+        }
+      }
+
+      // 使用 Subscription 配置
+      const config = {
+        apiKey: subscriptionConfig.config.apikey,
+        apiHost: subscriptionConfig.config.url,
+        model: actualModel,  // 使用解析后的模型名
+        temperature: 0.3,
+        stream: false,
+      };
+
+      // 发送请求
+      const result = await this.sendAIRequest(messages, config);
+
+      if (result) {
+        return result.trim();
+      } else {
+        MNUtil.showHUD("❌ AI 请求失败");
+        return null;
+      }
+    } catch (error) {
+      toolbarUtils.addErrorLog(error, "AIWithPromptAndModel");
+      MNUtil.showHUD("❌ AI 请求出错: " + error.message);
+      return null;
     }
   };
 
@@ -1997,6 +2204,126 @@ function extendToolbarConfigInit() {
   };
 
   /**
+   * 通用 AI 请求 - 内置 API 版本（使用智谱 AI）
+   * @param {string} userContent - 用户输入内容
+   * @param {string} systemPrompt - 系统提示词（可选）
+   * @param {string} model - AI 模型
+   * @returns {Promise<string>} AI 响应内容
+   */
+  toolbarUtils.aiGeneralRequestBuiltin = async function (
+    userContent,
+    systemPrompt = "",
+    model = "glm-4-flashx-250414"
+  ) {
+    try {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [AI内置] 开始处理: ${userContent.substring(0, 50)}...`);
+        MNUtil.log(`🔧 [AI内置] 原始模型: ${model}`);
+      }
+
+      // 检查 MNConnection 是否可用
+      if (typeof MNConnection === "undefined") {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`❌ [AI内置] MNConnection 不可用`);
+        }
+        throw new Error("MNConnection 不可用，请确保 MN Utils 已安装");
+      }
+
+      // 使用智谱 AI 的内置 API Key
+      const apiKey = "449628b94fcac030495890ee542284b8.F23PvJW4XXLJ4Lsu";
+      const apiUrl = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+
+      // 模型映射：将其他模型名称映射到智谱 AI 的模型
+      const modelMap = {
+        "gpt-4o-mini": "glm-4-flashx-250414",
+        "gpt-4o": "glm-4-flashx-250414",
+        "gpt-4.1": "glm-4-flashx-250414",
+        "claude-3-5-sonnet": "glm-4-flashx-250414",
+        "claude-3-7-sonnet": "glm-4-flashx-250414",
+        "Built-in": "glm-4-flashx-250414"
+      };
+
+      // 使用映射后的模型名称，如果没有映射则使用原始名称
+      const actualModel = modelMap[model] || model;
+
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [AI内置] 实际使用模型: ${actualModel}`);
+      }
+
+      // 构建消息数组
+      const messages = [];
+      if (systemPrompt) {
+        messages.push({ role: "system", content: systemPrompt });
+      }
+      messages.push({ role: "user", content: userContent.trim() });
+
+      // 构建请求体
+      const body = {
+        model: actualModel,
+        messages: messages,
+        temperature: 0.7,  // 通用请求使用稍高的温度
+      };
+
+      // 使用 MNConnection 创建和发送请求
+      const request = MNConnection.initRequest(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + apiKey,
+        },
+        timeout: 30,
+        json: body,
+      });
+
+      // 发送请求
+      const response = await MNConnection.sendRequest(request);
+
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(
+          `🔧 [AI内置] API 响应: ${JSON.stringify(response).substring(0, 200)}...`,
+        );
+      }
+
+      // 检查响应状态
+      if (response && response.statusCode >= 400) {
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`❌ [AI内置] API 错误: 状态码 ${response.statusCode}`);
+          if (response.data && response.data.error) {
+            MNUtil.log(
+              `❌ [AI内置] 错误详情: ${JSON.stringify(response.data.error)}`,
+            );
+          }
+        }
+        return null;
+      }
+
+      // 处理成功响应
+      if (response && response.choices && response.choices.length > 0) {
+        const resultText = response.choices[0].message.content;
+        if (resultText) {
+          if (typeof MNUtil !== "undefined" && MNUtil.log) {
+            MNUtil.log(
+              `✅ [AI内置] 处理成功: ${resultText.substring(0, 100)}...`,
+            );
+          }
+          return resultText.trim();
+        }
+      }
+
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [AI内置] 无有效响应或响应格式错误`);
+      }
+      return null;
+    } catch (error) {
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`❌ [AI内置] 异常错误: ${error.message}`);
+      }
+      toolbarUtils.addErrorLog(error, "aiGeneralRequestBuiltin");
+      return null;
+    }
+  };
+
+  /**
    * 批量翻译卡片内容
    * @param {string} text - 要翻译的文本
    * @param {string} type - 翻译类型（'basic' 或 'academic'）
@@ -2095,6 +2422,266 @@ function extendToolbarConfigInit() {
     MNUtil.postNotification("refreshToolbarButton", {});
   };
 
+  // ===== 代码学习相关功能 =====
+  // 夏大鱼羊
+
+  /**
+   * 代码学习功能模块
+   * 用于处理代码学习卡片的标题格式化
+   */
+    /**
+     * 获取代码卡片的层级路径
+     * @param {MNNote} note - 当前卡片（D级）
+     * @returns {Object} 返回 {success: boolean, data?: {plugin, file, class, path}, error?: string}
+     */
+    toolbarUtils.getCodeCardPath =  function(note) {
+      try {
+        if (!note || !note.parentNote) {
+          return {
+            success: false,
+            error: "请选择一个有父卡片的知识点卡片"
+          };
+        }
+
+        // C级：类卡片
+        const classNote = note.parentNote;
+        if (!classNote.noteTitle || !classNote.noteTitle.includes("类")) {
+          return {
+            success: false,
+            error: "父卡片不是类卡片"
+          };
+        }
+        const className = classNote.noteTitle.trim();
+
+        // B级：文件卡片（可选）
+        if (!classNote.parentNote) {
+          // 只有类，没有文件路径的情况
+          return {
+            success: true,
+            data: {
+              plugin: null,
+              file: null,
+              class: className,
+              path: className  // 路径就是类名
+            }
+          };
+        }
+        
+        const fileNote = classNote.parentNote;
+        if (!fileNote.noteTitle || !fileNote.noteTitle.match(/\.(js|ts|jsx|tsx)$/)) {
+          // 父父卡片存在但不是文件卡片，也返回只有类的情况
+          return {
+            success: true,
+            data: {
+              plugin: null,
+              file: null,
+              class: className,
+              path: className
+            }
+          };
+        }
+        const fileName = fileNote.noteTitle.trim();
+
+        // A级：插件根卡片（可选）
+        if (!fileNote.parentNote) {
+          // 有文件但没有插件根卡片
+          return {
+            success: true,
+            data: {
+              plugin: null,
+              file: fileName,
+              class: className,
+              path: `${fileName}/${className}`
+            }
+          };
+        }
+        
+        const pluginNote = fileNote.parentNote;
+        // 提取插件名，去除可能的emoji
+        const pluginTitle = pluginNote.noteTitle.trim();
+        const pluginName = pluginTitle.replace(/^[🧩📦🔧🛠️]*\s*/, "");
+
+        return {
+          success: true,
+          data: {
+            plugin: pluginName,
+            file: fileName,
+            class: className,
+            path: `${pluginName}/${fileName}/${className}`
+          }
+        };
+      } catch (error) {
+        toolbarUtils.addErrorLog(error, "getCodeCardPath");
+        return {
+          success: false,
+          error: "获取路径时出错：" + error.message
+        };
+      }
+    },
+
+    /**
+     * 根据类型生成调用方式
+     * @param {string} methodName - 方法名
+     * @param {string} type - 类型
+     * @param {string} className - 类名（不含"类"字）
+     * @param {boolean} hasFilePath - 是否有文件路径（默认true）
+     * @returns {string[]} 调用方式数组
+     */
+    toolbarUtils.generateCallMethods =  function(methodName, type, className, hasFilePath = true) {
+      // 从类名中提取纯类名（去除"类"字和空格）
+      const pureClassName = className.replace(/\s*类\s*$/, "").trim();
+      
+      // 检查类名是否包含 "Class"
+      const hasClassInName = className.includes("Class") || pureClassName.includes("Class");
+      
+      switch (type) {
+        case "staticProperty":  // 类的静态变量
+        case "staticMethod":  // 类的静态方法
+          const methods = [`${pureClassName}.${methodName}`];
+          
+          // 只有在有文件路径时才添加 this 版本
+          if (hasFilePath) {
+            methods.push(`this.${methodName}`);
+          }
+          
+          // 如果类名包含 "Class"，添加 self 版本
+          if (hasClassInName) {
+            methods.push(`self.${methodName}`);
+          }
+          
+          return methods;
+        
+        case "staticGetter":  // 类的静态 Getter
+          const staticGetterMethods = [`${pureClassName}.${methodName}`];
+          
+          // 只有在有文件路径时才添加 this 版本
+          if (hasFilePath) {
+            staticGetterMethods.push(`this.${methodName}`);
+          }
+          
+          // 如果类名包含 "Class"，添加 self 版本
+          if (hasClassInName) {
+            staticGetterMethods.push(`self.${methodName}`);
+          }
+          
+          return staticGetterMethods;
+        
+        case "staticSetter":  // 类的静态 Setter
+          const staticSetterMethods = [`${pureClassName}.${methodName}`];
+          
+          // 只有在有文件路径时才添加 this 版本
+          if (hasFilePath) {
+            staticSetterMethods.push(`this.${methodName}`);
+          }
+          
+          // 如果类名包含 "Class"，添加 self 版本
+          if (hasClassInName) {
+            staticSetterMethods.push(`self.${methodName}`);
+          }
+          
+          return staticSetterMethods;
+        
+        case "instanceMethod":  // 实例方法
+          return [
+            `${methodName}`
+          ];
+        
+        case "getter":  // 实例 Getter 方法
+          return [
+            `${methodName}`,
+            `this.${methodName}`
+          ];
+        
+        case "setter":  // 实例 Setter 方法
+          return [
+            `${methodName}`,
+            `this.${methodName}`
+          ];
+        
+        case "prototype":  // 原型链方法
+          const prototypeMethods = [`${pureClassName}.${methodName}`];
+          
+          // 如果有文件路径，添加 this 版本
+          if (hasFilePath) {
+            prototypeMethods.push(`this.${methodName}`);
+          }
+          
+          // 如果类名包含 "Class"，添加 self 版本
+          if (hasClassInName) {
+            prototypeMethods.push(`self.${methodName}`);
+          }
+          
+          return prototypeMethods;
+        
+        case "instanceProperty":  // 实例属性
+          return [
+            `${methodName}`,
+            `this.${methodName}`
+          ];
+        
+        default:
+          return [methodName];
+      }
+    },
+
+   /**
+   * 处理代码学习卡片
+   * @param {MNNote} note - 要处理的卡片
+   * @param {string} type - 选择的类型（中文）
+   * @returns {Object} 返回 {success: boolean, error?: string}
+   */
+  toolbarUtils.processCodeLearningCard = function(note, type) {
+      try {
+        // 获取路径信息
+        const pathResult = this.getCodeCardPath(note);
+        if (!pathResult.success) {
+          return {
+            success: false,
+            error: pathResult.error || "无法获取卡片路径信息"
+          };
+        }
+        const pathInfo = pathResult.data;
+
+        // 获取原始方法名
+        const originalTitle = note.noteTitle.trim();
+        const methodName = originalTitle;
+
+        // 根据类型生成前缀
+        const typePrefix = {
+          "staticProperty": "类：静态属性",
+          "staticMethod": "类：静态方法",
+          "instanceMethod": "实例方法",
+          "getter": "实例：Getter 方法",
+          "setter": "实例：Setter 方法",
+          "prototype": "类：原型链方法",
+          "instanceProperty": "实例：属性"
+        }[type];
+
+        // 检查是否有文件路径
+        const hasFilePath = pathInfo.file !== null;
+        
+        // 生成调用方式
+        const callMethods = this.generateCallMethods(methodName, type, pathInfo.class, hasFilePath);
+        
+        // 组装新标题
+        const newTitle = `【${typePrefix} >> ${pathInfo.path}】; ${callMethods.join("; ")}`;
+
+        // 更新标题
+        note.noteTitle = newTitle;
+        
+        return {
+          success: true
+        };
+
+      } catch (error) {
+        toolbarUtils.addErrorLog(error, "processCodeLearningCard");
+        return {
+          success: false,
+          error: error.message || "处理失败"
+        };
+      }
+    }
+
   // 扩展 defaultWindowState
   // 夏大鱼羊
   if (toolbarConfig.defaultWindowState) {
@@ -2140,15 +2727,174 @@ if (typeof MNUtil !== "undefined" && MNUtil.getNoteById) {
     if (note) {
       return note;
     } else {
-      if (alert) {
-        // 不复制 noteId，只显示提示
-        this.showHUD("Note not exist: " + noteid);
-      }
+      // if (alert) {
+      //   // 不复制 noteId，只显示提示
+      //   this.showHUD("Note not exist: " + noteid);
+      // }
       return undefined;
     }
   };
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log("🔧 已重写 MNUtil.getNoteById 方法，修复自动复制 ID 问题");
+  }
+}
+
+/**
+ * HtmlMarkdownUtils 扩展 - 带序号的评论支持
+ * 添加 Case、Step 等带自动序号的评论类型
+ */
+if (typeof HtmlMarkdownUtils !== "undefined") {
+  // 添加新的图标和样式（如果不存在）
+  if (!HtmlMarkdownUtils.icons.case) {
+    HtmlMarkdownUtils.icons.case = '📋';
+    HtmlMarkdownUtils.icons.step = '👣';
+  }
+  
+  if (!HtmlMarkdownUtils.prefix.case) {
+    HtmlMarkdownUtils.prefix.case = '';  // 序号将动态生成
+    HtmlMarkdownUtils.prefix.step = '';   // 序号将动态生成
+  }
+  
+  if (!HtmlMarkdownUtils.styles.case) {
+    HtmlMarkdownUtils.styles.case = 'font-weight:600;color:#2563EB;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:2px solid #3B82F6;border-radius:8px;padding:8px 16px;display:inline-block;box-shadow:0 2px 4px rgba(37,99,235,0.2);margin:4px 0;';
+    HtmlMarkdownUtils.styles.step = 'font-weight:500;color:#059669;background:#ECFDF5;border-left:4px solid #10B981;padding:6px 12px;display:inline-block;border-radius:0 4px 4px 0;margin:4px 0;';
+  }
+  
+  /**
+   * 获取笔记中某类型的下一个序号
+   * @param {MNNote} note - 笔记对象
+   * @param {string} typePrefix - 类型前缀，如 "Case", "Step" 等
+   * @returns {number} 下一个可用的序号
+   */
+  HtmlMarkdownUtils.getNextNumberForType = function(note, typePrefix) {
+    const pattern = new RegExp(`${typePrefix}\\s*(\\d+)`, 'gi');
+    let maxNumber = 0;
+    
+    // 遍历所有评论查找最大序号
+    const comments = note.comments || note.MNComments || [];
+    for (const comment of comments) {
+      if (comment && comment.text) {
+        const matches = [...comment.text.matchAll(pattern)];
+        for (const match of matches) {
+          const num = parseInt(match[1]);
+          if (num > maxNumber) maxNumber = num;
+        }
+      }
+    }
+    
+    return maxNumber + 1;
+  };
+  
+  /**
+   * 创建带序号的 HTML 文本
+   * @param {string} text - 内容文本
+   * @param {string} type - 类型（如 'case', 'step'）
+   * @param {number} number - 序号（可选，不提供则自动计算）
+   * @param {MNNote} note - 笔记对象（用于自动计算序号）
+   * @returns {string} 格式化后的 HTML 文本
+   */
+  HtmlMarkdownUtils.createNumberedHtmlText = function(text, type, number, note) {
+    // 支持的带序号类型配置
+    const numberedTypes = {
+      'case': { prefix: 'Case', icon: '📋' },
+      'step': { prefix: 'Step', icon: '👣' },
+      // 可以继续添加更多类型
+    };
+    
+    // 如果不是带序号的类型，使用原有方法
+    if (!numberedTypes[type]) {
+      return this.createHtmlMarkdownText(text, type);
+    }
+    
+    const config = numberedTypes[type];
+    
+    // 如果没有提供序号，自动计算
+    if (!number && note) {
+      number = this.getNextNumberForType(note, config.prefix);
+    }
+    
+    // 如果还是没有序号，默认为 1
+    if (!number) {
+      number = 1;
+    }
+    
+    // 构建带序号的文本
+    const formattedText = `${config.prefix} ${number}: ${typeof Pangu !== 'undefined' ? Pangu.spacing(text) : text}`;
+    
+    // 使用对应的样式
+    const style = this.styles[type] || '';
+    const icon = this.icons[type] || config.icon;
+    
+    return `<span id="${type}" style="${style}">${icon} ${formattedText}</span>`;
+  };
+  
+  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+    MNUtil.log("✨ 已添加 HtmlMarkdownUtils 带序号评论支持");
+  }
+}
+
+/**
+ * MNMath 扩展 - 带序号评论的便捷方法
+ */
+if (typeof MNMath !== "undefined") {
+  /**
+   * 为笔记添加带序号的 Case 评论
+   * @param {MNNote} note - 笔记对象
+   * @param {string} text - 评论内容
+   * @param {number} customNumber - 自定义序号（可选）
+   * @returns {number} 使用的序号
+   */
+  MNMath.addCaseComment = function(note, text, customNumber) {
+    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Case');
+    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'case', number, note);
+    note.appendMarkdownComment(htmlText);
+    return number;
+  };
+  
+  /**
+   * 为笔记添加带序号的 Step 评论
+   * @param {MNNote} note - 笔记对象
+   * @param {string} text - 评论内容
+   * @param {number} customNumber - 自定义序号（可选）
+   * @returns {number} 使用的序号
+   */
+  MNMath.addStepComment = function(note, text, customNumber) {
+    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, 'Step');
+    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, 'step', number, note);
+    note.appendMarkdownComment(htmlText);
+    return number;
+  };
+  
+  /**
+   * 通用的添加带序号评论方法（保留以防其他地方调用）
+   * @param {MNNote} note - 笔记对象
+   * @param {string} text - 评论内容
+   * @param {string} type - 类型（'case', 'step' 等）
+   * @param {number} customNumber - 自定义序号（可选）
+   * @returns {number} 使用的序号
+   */
+  MNMath.addNumberedComment = function(note, text, type, customNumber) {
+    // 获取类型对应的前缀
+    const numberedTypes = {
+      'case': 'Case',
+      'step': 'Step'
+    };
+    
+    const prefix = numberedTypes[type];
+    if (!prefix) {
+      // 如果不是带序号的类型，使用普通方法
+      note.appendMarkdownComment(HtmlMarkdownUtils.createHtmlMarkdownText(text, type));
+      return null;
+    }
+    
+    const number = customNumber || HtmlMarkdownUtils.getNextNumberForType(note, prefix);
+    const htmlText = HtmlMarkdownUtils.createNumberedHtmlText(text, type, number, note);
+    note.appendMarkdownComment(htmlText);
+    return number;
+  };
+  
+  if (typeof MNUtil !== "undefined" && MNUtil.log) {
+    MNUtil.log("✨ 已添加 MNMath 带序号评论便捷方法");
   }
 }

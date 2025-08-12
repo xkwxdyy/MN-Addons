@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<memory>
+  <item id="mem_1754928977918_mcwpmkt0n" time="2025/08/12 00:16">
+    <content>
+      为 MNMath 类添加了两个判断卡片类型的方法：
+    
+      1. `isKnowledgeNote(note)` - 判断是否为知识点卡片
+      - 知识点卡片包括：定义、命题、例子、反例、思想方法、问题、思路
+      - 返回 boolean
+    
+      2. `isClassificationNote(note)` - 判断是否为归类卡片
+      - 判断卡片类型是否为&quot;归类&quot;
+      - 返回 boolean
+    
+      文件修改：
+      - xdyyutils.js 第 2491-2513 行：添加了两个新方法
+      - xdyyutils.js 第 10702-10715 行：重构现有代码使用新方法
+    
+      使用示例：
+      ```javascript
+      // 判断是否为归类卡片
+      if (MNMath.isClassificationNote(note)) {
+      MNUtil.showHUD(&quot;归类卡片不支持此操作&quot;, 2);
+      }
+    
+      // 判断是否为知识点卡片
+      if (MNMath.isKnowledgeNote(note)) {
+      const noteType = MNMath.getNoteType(note);
+      MNUtil.showHUD(`${noteType}卡片不支持此操作`, 2);
+      }
+      ```
+    </content>
+    <tags>#其他</tags>
+  </item>
+  <item id="mem_1754933574957_fhnldhkpr" time="2025/08/12 01:32">
+    <content>
+      ## MNUtils API 关键知识：note.MNComments vs note.comments
+    
+      ### 核心区别
+      1. **note.comments** - 原始评论数组，包含 NoteComment 对象
+      - type 只有5种基础类型：TextNote, HtmlNote, LinkNote, PaintNote, AudioNote
+    
+      2. **note.MNComments** - 处理后的 MNComment 实例数组
+      - 通过 MNComment.from(note) 生成
+      - type 属性已经是15+种细分类型：drawingComment, imageCommentWithDrawing 等
+    
+      ### 常见错误
+      ❌ 对 MNComments 元素再次调用 getCommentType：
+      ```javascript
+      let commentType = MNComment.getCommentType(note.MNComments[0]); // 错误
+      ```
+    
+      ✅ 正确用法：
+      ```javascript
+      let commentType = note.MNComments[0].type; // 直接使用 type 属性
+      ```
+    
+      ### 手写评论判断示例
+      ```javascript
+      // 使用 MNComments（推荐）
+      function isHandwritingComment(note, index) {
+      let commentType = note.MNComments[index].type;
+      return commentType === &quot;drawingComment&quot; ||
+      commentType === &quot;imageCommentWithDrawing&quot; ||
+      commentType === &quot;mergedImageCommentWithDrawing&quot;;
+      }
+      ```
+    
+      ### 影响范围
+      - xdyyutils.js 中的 MNMath 类
+      - 所有评论类型判断功能
+      - 特别是手写、图片、合并内容的识别
+    
+      发现日期：2025-01-12
+      项目：MN-Addon/mnutils
+    </content>
+    <tags>#其他</tags>
+  </item>
+</memory>

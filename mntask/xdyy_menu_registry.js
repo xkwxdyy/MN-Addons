@@ -76,6 +76,10 @@ function registerAllMenuTemplates() {
       menuWidth: 280,
       menuItems: [
         {
+          action: "pauseTask",
+          menuTitle: "⏸️ 暂停任务"
+        },
+        {
           action: "toggleTaskStatusBackward",
           menuTitle: "↩️ 退回状态"
         },

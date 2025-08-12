@@ -38,6 +38,78 @@ global.executeCustomAction = async function (actionName, context) {
   return false;
 };
 
+// 全局 AI Prompt 对象，统一管理所有 AI 提示词
+const XDYY_PROMPTS = {
+  /**
+   * 代码分析 Prompt 生成函数
+   * @param {string} sourceCode - 要分析的源代码
+   * @returns {string} 完整的代码分析提示词
+   */
+  codeAnalysis: (sourceCode) => {
+    return `请直接输出结果，不要包含任何思考过程、分析过程或额外说明。从第一行开始就是代码块，不要有任何前言。
+
+你是专业的JavaScript代码分析师，请使用中文进行所有注释和说明。你的任务是为代码添加详细的中文注释和文档，但绝对不能修改任何原始代码。
+
+原始代码：
+\`\`\`javascript
+${sourceCode}
+\`\`\`
+
+**严格要求**：
+1. **绝对禁止修改任何原始代码**：
+   - 不能改变任何字符，包括引号、空格、换行等
+   - 代码中的每一个字符都必须与原始代码完全一致
+   - 特别注意：不要转义引号（如将 ' 改为 \\'）
+   - 不能改变变量名、函数名、类名
+   - 不能改变代码逻辑或结构
+   - 不能改变缩进、格式、分号使用
+   - 不能改变字符串引号类型
+   - 不能重新排列或重构代码
+   - 不能修改任何现有的代码语句
+
+2. **只允许的操作**：
+   - 删除注释掉的废弃代码（如 // 临时调试、/* 废弃代码 */ 等非解释性注释）
+   - 在函数前添加JSDoc注释
+   - 在关键代码行添加行级注释解释
+
+3. **注释要求**：
+   - 所有注释必须使用中文
+   - 添加完整JSDoc（@param、@returns、@throws等）
+   - 不要添加 @example 标签
+   - 只对复杂逻辑、算法或不明显的代码添加行级注释
+   - 避免对简单赋值或显而易见的操作添加冗余注释
+   - 重点解释代码的意图、业务逻辑和潜在风险
+
+**输出格式要求**：
+1. 直接输出，不要有任何前言、解释或思考过程
+2. 第一行必须是 \`\`\`javascript
+3. 先输出带注释的代码（使用 markdown 代码块）
+4. 代码块结束后，直接输出性能提示和安全提醒
+5. 最后一行是安全提醒，之后立即结束，不要有任何总结
+6. 不要在最后添加任何额外的 \`\`\` 符号
+
+输出格式如下：
+\`\`\`javascript
+[完全保持原始代码不变，只添加中文JSDoc和必要的行级注释]
+\`\`\`
+
+[!] 性能提示：[用中文给出具体建议]
+[!] 安全提醒：[用中文给出具体建议]
+
+**重要警告**：
+1. 如果输出了任何思考过程、分析说明，将被视为错误。
+2. 如果改变了代码中的任何一个字符（包括引号），将被视为严重错误。
+3. 如果你修改了任何原始代码（除删除废弃注释外），这将被视为严重错误。
+4. 你只能添加中文注释来解释代码，绝对不能改变代码本身的任何内容。
+5. 整个输出结束时不要添加任何额外的 \`\`\` 符号，性能提示和安全提醒之后直接结束。`;
+  }
+  
+  // 未来可扩展其他类型的 Prompt：
+  // translation: (text, targetLang) => { ... },
+  // documentation: (code) => { ... },
+  // refactoring: (code, style) => { ... }
+};
+
 // 注册所有自定义 actions
 function registerAllCustomActions() {
   // 需要的变量声明
@@ -61,6 +133,8 @@ function registerAllCustomActions() {
   const htmlSetting = [
     { title: "CHECK: 🔍", type: "check" },
     { title: "SKETCH: ✍️", type: "sketch" },
+    { title: "Case: 📋", type: "case" },
+    { title: "Step: 👣", type: "step" },
     { title: "方法: ✔", type: "method" },
     { title: "目标: 🎯", type: "goal" },
     { title: "level1: 🚩", type: "level1" },
@@ -2315,6 +2389,63 @@ function registerAllCustomActions() {
     }
   });
 
+  // addCaseComment - 添加带序号的 Case 评论
+  global.registerCustomAction("addCaseComment", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "添加 Case 评论",
+      "输入案例内容（将自动添加序号）",
+      2,
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          MNUtil.undoGrouping(() => {
+            try {
+              const inputText = alert.textFieldAtIndex(0).text;
+              if (inputText && inputText.trim()) {
+                const number = MNMath.addCaseComment(focusNote, inputText.trim());
+                MNUtil.showHUD(`✅ 已添加 Case ${number}`);
+              }
+            } catch (error) {
+              MNUtil.showHUD("添加 Case 评论失败: " + error);
+            }
+          });
+        }
+      }
+    );
+  });
+
+  // addStepComment - 添加带序号的 Step 评论
+  global.registerCustomAction("addStepComment", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "添加 Step 评论",
+      "输入步骤内容（将自动添加序号）",
+      2,
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          MNUtil.undoGrouping(() => {
+            try {
+              const inputText = alert.textFieldAtIndex(0).text;
+              if (inputText && inputText.trim()) {
+                const number = MNMath.addStepComment(focusNote, inputText.trim());
+                MNUtil.showHUD(`✅ 已添加 Step ${number}`);
+              }
+            } catch (error) {
+              MNUtil.showHUD("添加 Step 评论失败: " + error);
+            }
+          });
+        }
+      }
+    );
+  });
+
+
   // ocrAsProofTitle - OCR 识别设置为标题
   global.registerCustomAction("ocrAsProofTitle", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -2769,6 +2900,96 @@ function registerAllCustomActions() {
           MNUtil.showHUD(error);
         }
       });
+    },
+  );
+
+  // adjustHtmlMDLevelsUp - 批量上移层级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsUp",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      MNUtil.undoGrouping(() => {
+        try {
+          const adjustedCount = HtmlMarkdownUtils.adjustAllHtmlMDLevels(focusNote, "up");
+          if (adjustedCount > 0) {
+            MNUtil.showHUD(`✅ 已将 ${adjustedCount} 个层级上移一级`);
+          } else {
+            MNUtil.showHUD("没有可调整的层级评论");
+          }
+        } catch (error) {
+          MNUtil.showHUD("调整层级失败: " + error.toString());
+        }
+      });
+    },
+  );
+  
+  // adjustHtmlMDLevelsDown - 批量下移层级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsDown",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      MNUtil.undoGrouping(() => {
+        try {
+          const adjustedCount = HtmlMarkdownUtils.adjustAllHtmlMDLevels(focusNote, "down");
+          if (adjustedCount > 0) {
+            MNUtil.showHUD(`✅ 已将 ${adjustedCount} 个层级下移一级`);
+          } else {
+            MNUtil.showHUD("没有可调整的层级评论");
+          }
+        } catch (error) {
+          MNUtil.showHUD("调整层级失败: " + error.toString());
+        }
+      });
+    },
+  );
+  
+  // adjustHtmlMDLevelsByHighest - 按最高级调整层级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsByHighest",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      
+      // 定义可选的层级
+      const levelOptions = [
+        "🎯 goal（最高级）",
+        "🚩 level1",
+        "▸ level2",
+        "▪ level3",
+        "• level4",
+        "· level5"
+      ];
+      
+      const levelValues = ["goal", "level1", "level2", "level3", "level4", "level5"];
+      
+      // 弹窗让用户选择目标最高级
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择目标最高级别",
+        "当前卡片中的最高层级将调整为您选择的级别，其他层级会相应调整",
+        0,
+        "取消",
+        levelOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) return; // 用户取消
+          
+          const targetLevel = levelValues[buttonIndex - 1];
+          
+          MNUtil.undoGrouping(() => {
+            try {
+              const result = HtmlMarkdownUtils.adjustHtmlMDLevelsByHighest(focusNote, targetLevel);
+              
+              if (result.adjustedCount > 0) {
+                MNUtil.showHUD(`✅ 已调整 ${result.adjustedCount} 个层级\n最高级从 ${result.originalHighest} 改为 ${result.targetHighest}`);
+              } else if (result.originalHighest === result.targetHighest) {
+                MNUtil.showHUD(`当前最高级已经是 ${targetLevel}`);
+              } else {
+                MNUtil.showHUD("没有找到可调整的层级评论");
+              }
+            } catch (error) {
+              MNUtil.showHUD("调整层级失败: " + error.toString());
+            }
+          });
+        }
+      );
     },
   );
 
@@ -4277,6 +4498,500 @@ function registerAllCustomActions() {
       MNMath.showSearchBoard();
     } catch (error) {}
   });
+
+  // manageSynonymGroups - 管理同义词组
+  global.registerCustomAction("manageSynonymGroups", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用同义词组管理界面
+      await MNMath.manageSynonymGroups();
+    } catch (error) {
+      MNUtil.showHUD("管理同义词组失败: " + error.message);
+    }
+  });
+
+  // manageExclusionGroups - 管理排除词组
+  global.registerCustomAction("manageExclusionGroups", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用排除词组管理界面
+      await MNMath.manageExclusionGroups();
+    } catch (error) {
+      MNUtil.showHUD("管理排除词组失败: " + error.message);
+    }
+  });
+
+  // exportSearchConfig - 导出搜索配置
+  global.registerCustomAction("exportSearchConfig", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用 MNMath 中的导出配置对话框
+      await MNMath.showExportConfigDialog();
+    } catch (error) {
+      MNUtil.showHUD("导出配置失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined") {
+        toolbarUtils.addErrorLog(error, "exportSearchConfig");
+      }
+    }
+  });
+
+  // importSearchConfig - 导入搜索配置
+  global.registerCustomAction("importSearchConfig", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用 MNMath 中的导入配置对话框
+      await MNMath.showImportConfigDialog();
+    } catch (error) {
+      MNUtil.showHUD("导入配置失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined") {
+        toolbarUtils.addErrorLog(error, "importSearchConfig");
+      }
+    }
+  });
+
+  // showSearchSettings - 搜索设置
+  global.registerCustomAction("showSearchSettings", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      // 调用 MNMath 中的搜索设置对话框
+      await MNMath.showSearchSettingsDialog();
+    } catch (error) {
+      MNUtil.showHUD("搜索设置失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined") {
+        toolbarUtils.addErrorLog(error, "showSearchSettings");
+      }
+    }
+  });
+
+  global.registerCustomAction("codeMergeTemplate", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      let ifTemplateMerged = false
+      focusNote.MNComments.forEach((comment) => {
+        if (comment.type == "HtmlComment" && comment.text.includes("思考")) {
+          ifTemplateMerged = true
+        }
+      })
+      if (!ifTemplateMerged) {
+        let clonedNote = MNNote.clone("9C4F3120-9A82-440A-97FF-F08D5B53B972")
+        MNUtil.undoGrouping(()=>{
+          focusNote.merge(clonedNote.note)
+        })
+      }
+    } catch (error) {
+
+    }
+  })
+
+  // codeLearning - 代码学习功能
+  global.registerCustomAction("codeLearning", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    // 检查是否有选中的卡片
+    if (!focusNote) {
+      MNUtil.showHUD("请先选择一个代码知识卡片");
+      return;
+    }
+
+    // 代码元素类型选项
+    const codeTypes = [
+      "类：静态属性",
+      "类：静态方法",
+      "类：静态 Getter",
+      "类：静态 Setter",
+      "类：原型链方法",
+      "实例：方法",
+      "实例：Getter 方法",
+      "实例：Setter 方法",
+      "实例：属性"
+    ];
+    
+    // 显示选择对话框
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择代码类型",
+      `当前卡片：${focusNote.noteTitle}`,
+      0,
+      "取消",
+      codeTypes,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return;
+        
+        // 映射到对应的类型
+        const typeMap = {
+          1: "staticProperty",
+          2: "staticMethod",
+          3: "staticGetter",
+          4: "staticSetter",
+          5: "prototype",
+          6: "instanceMethod",
+          7: "getter",
+          8: "setter",
+          9: "instanceProperty"
+        };
+        
+        const selectedType = typeMap[buttonIndex];
+        
+        try {
+          MNUtil.undoGrouping(() => {
+            // 调用已实现的处理函数
+            toolbarUtils.processCodeLearningCard(focusNote, selectedType);
+            // MNUtil.showHUD(`✅ 已处理为${codeTypes[buttonIndex - 1]}卡片`);
+          });
+        } catch (error) {
+          MNUtil.showHUD(`❌ 处理失败: ${error.message || error}`);
+          if (typeof toolbarUtils !== "undefined" && toolbarUtils.addErrorLog) {
+            toolbarUtils.addErrorLog(error, "codeLearning");
+          }
+        }
+      }
+    );
+  });
+
+  // switchCodeAnalysisModel - 切换代码分析模型
+  global.registerCustomAction("switchCodeAnalysisModel", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+
+    // 代码分析模型选项（使用 mnai 兼容格式）
+    const analysisModels = [
+      // 🥇 顶级模型（订阅模型，需要 MN Utils）
+      "Subscription: o1-all",                // OpenAI o1 推理模型
+      "Subscription: gpt-4o",                // GPT-4o 最新版
+      "Subscription: claude-3-5-sonnet-20241022", // Claude 3.5 最新版
+      "Subscription: gpt-4o-2024-08-06",     // GPT-4o 指定版本
+      
+      // 🥈 高级模型（订阅模型）
+      "Subscription: deepseek-reasoner",     // DeepSeek 推理模型  
+      "ChatGLM: glm-4-plus",                // 智谱 AI 旗舰
+      "Subscription: gpt-4-1106-preview",   // GPT-4 Turbo
+      "Subscription: gemini-1.5-flash",     // Gemini 1.5 Flash
+      
+      // 🥉 实用模型（性价比高）
+      "Subscription: gpt-4o-mini",          // GPT-4o mini
+      "Deepseek: deepseek-chat",            // DeepSeek 通用版
+      "Subscription: claude-3-5-sonnet",    // Claude 3.5 通用版
+      "ChatGLM: glm-4-airx",               // 智谱 AI 实时版
+      
+      // 💡 内置模型（免费）
+      "Built-in"                            // 内置智谱 AI
+    ];
+    
+    const currentModel = toolbarConfig.codeAnalysisModel || "Subscription: gpt-4o";
+
+    // 显示选择对话框
+    const selectedIndex = await MNUtil.userSelect(
+      "选择代码分析模型",
+      `当前: ${currentModel}`,
+      analysisModels
+    );
+
+    if (selectedIndex === 0) {
+      // 用户取消
+      return;
+    }
+
+    // 保存选择（selectedIndex 从 1 开始）
+    const selectedModel = analysisModels[selectedIndex - 1];
+    toolbarConfig.codeAnalysisModel = selectedModel;
+    toolbarConfig.save();
+
+    MNUtil.showHUD(`✅ 代码分析模型已切换为: ${selectedModel}`);
+  });
+
+  // codeAnalysisWithAI - AI 代码分析
+  global.registerCustomAction("codeAnalysisWithAI", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 检查是否有选中的卡片
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个代码卡片");
+        return;
+      }
+
+      // 获取图片数据
+      let imageData = MNUtil.getDocImage(true, true);
+      if (!imageData && focusNote) {
+        imageData = MNNote.getImageFromNote(focusNote);
+      }
+      if (!imageData) {
+        MNUtil.showHUD("未找到可识别的图片");
+        return;
+      }
+
+      // 使用配置的 OCR 源，默认为 Doc2X
+      const ocrSource = toolbarConfig.ocrSource || toolbarConfig.defaultOCRSource || "Doc2X";
+
+      // OCR 源名称映射
+      const ocrSourceNames = {
+        Doc2X: "Doc2X - 专业文档识别",
+        SimpleTex: "SimpleTex - 数学公式",
+        "GPT-4o": "GPT-4o - OpenAI 视觉",
+        "GPT-4o-mini": "GPT-4o mini",
+        "glm-4v-plus": "glm-4v-plus - 智谱AI Plus",
+        "glm-4v-flash": "glm-4v-flash - 智谱AI Flash",
+        "claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet",
+        "claude-3-7-sonnet": "Claude 3.7 Sonnet",
+        "gemini-2.0-flash": "Gemini 2.0 Flash - Google",
+        "Moonshot-v1": "Moonshot-v1",
+      };
+
+      const sourceName = ocrSourceNames[ocrSource] || ocrSource;
+      MNUtil.showHUD(`正在使用 ${sourceName} 识别代码...`);
+
+      // 执行 OCR
+      let ocrResult;
+      if (typeof ocrNetwork !== "undefined") {
+        // 使用 MNOCR 插件
+        ocrResult = await ocrNetwork.OCR(imageData, ocrSource, true);
+      } else if (typeof toolbarUtils !== "undefined") {
+        // 使用免费 OCR（ChatGPT Vision - glm-4v-flash 模型）
+        ocrResult = await toolbarUtils.freeOCR(imageData);
+      } else {
+        MNUtil.showHUD("请先安装 MN OCR 插件");
+        return;
+      }
+
+      if (!ocrResult) {
+        MNUtil.showHUD("OCR 识别失败");
+        return;
+      }
+
+      // AI 处理
+      const analysisModel = toolbarConfig.codeAnalysisModel || "Subscription: gpt-4o";
+      MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
+
+      // 使用全局 Prompt 对象生成代码分析提示词
+      const codeAnalysisPrompt = XDYY_PROMPTS.codeAnalysis(ocrResult);
+
+      const aiAnalysisResult = await toolbarUtils.ocrWithAI(
+        ocrResult,
+        analysisModel,
+        codeAnalysisPrompt
+      );
+
+      // 检查 AI 分析是否成功
+      if (!aiAnalysisResult || aiAnalysisResult === ocrResult) {
+        // AI 分析失败，返回了原始文本或空结果
+        MNUtil.showHUD("❌ AI 代码分析失败，未能生成分析结果");
+        return;
+      }
+
+      // 结果存储（使用 appendMarkdownComment）
+      MNUtil.undoGrouping(() => {
+        let ifTemplateMerged = false
+        focusNote.MNComments.forEach((comment) => {
+          if (comment.type == "HtmlComment" && comment.text.includes("思考")) {
+            ifTemplateMerged = true
+          }
+        })
+        if (!ifTemplateMerged) {
+          let clonedNote = MNNote.clone("9C4F3120-9A82-440A-97FF-F08D5B53B972")
+          focusNote.merge(clonedNote.note)
+        }
+        focusNote.appendMarkdownComment(aiAnalysisResult);
+        MNMath.moveCommentsArrToField(focusNote,"Z", "分析");
+
+        MNUtil.showHUD("✅ AI 代码分析完成并添加到评论");
+      });
+
+    } catch (error) {
+      MNUtil.showHUD("AI 代码分析失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined" && toolbarUtils.addErrorLog) {
+        toolbarUtils.addErrorLog(error, "codeAnalysisWithAI");
+      }
+    }
+  });
+
+  // codeAnalysisFromComment - 直接分析卡片评论中的代码
+  global.registerCustomAction("codeAnalysisFromComment", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 检查是否有选中的卡片
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个包含代码的卡片");
+        return;
+      }
+
+      // 检查卡片是否有评论
+      if (!focusNote.comments || focusNote.comments.length === 0) {
+        MNUtil.showHUD("选中的卡片没有评论内容");
+        return;
+      }
+
+      // 获取第一条评论作为源代码
+      const firstComment = focusNote.comments[0];
+      let sourceCode = "";
+
+      if (firstComment.type === "TextNote") {
+        sourceCode = firstComment.text;
+      } else if (firstComment.type === "HtmlNote") {
+        // 从 HTML 中提取文本内容
+        sourceCode = firstComment.text.replace(/<[^>]*>/g, '').trim();
+      } else {
+        MNUtil.showHUD("第一条评论不是文本类型，无法分析");
+        return;
+      }
+
+      if (!sourceCode || sourceCode.trim().length === 0) {
+        MNUtil.showHUD("第一条评论为空，无法分析");
+        return;
+      }
+
+      if (typeof MNUtil !== "undefined" && MNUtil.log) {
+        MNUtil.log(`🔧 [代码分析] 从评论获取代码，长度: ${sourceCode.length}`);
+      }
+
+      // AI 处理
+      const analysisModel = toolbarConfig.codeAnalysisModel || "Subscription: gpt-4o";
+      MNUtil.showHUD(`正在使用 ${analysisModel} 分析代码...`);
+
+      // 使用全局 Prompt 对象生成代码分析提示词
+      const codeAnalysisPrompt = XDYY_PROMPTS.codeAnalysis(sourceCode);
+
+      // 调用 AI API
+      const aiAnalysisResult = await toolbarUtils.ocrWithAI(
+        sourceCode,
+        analysisModel,
+        codeAnalysisPrompt
+      );
+
+      // 检查 AI 分析是否成功
+      if (!aiAnalysisResult || aiAnalysisResult === sourceCode) {
+        // AI 分析失败，返回了原始文本或空结果
+        MNUtil.showHUD("❌ AI 代码分析失败，未能生成分析结果");
+        return;
+      }
+
+      // 获取父卡片用于添加分析结果
+      const parentNote = focusNote.parentNote;
+      if (!parentNote) {
+        MNUtil.showHUD("当前卡片没有父卡片，无法添加分析结果");
+        return;
+      }
+
+      // 结果存储到父卡片（使用 appendMarkdownComment）
+      MNUtil.undoGrouping(() => {
+        // 确保父卡片有模板结构
+        let ifTemplateMerged = false
+        parentNote.MNComments.forEach((comment) => {
+          if (comment.type == "HtmlComment" && comment.text.includes("思考")) {
+            ifTemplateMerged = true
+          }
+        })
+        if (!ifTemplateMerged) {
+          let clonedNote = MNNote.clone("9C4F3120-9A82-440A-97FF-F08D5B53B972")
+          parentNote.merge(clonedNote.note)
+        }
+
+        // 添加分析结果
+        parentNote.appendMarkdownComment(aiAnalysisResult);
+        MNMath.moveCommentsArrToField(parentNote, "Z", "分析");
+
+        // 删除包含源代码的子卡片
+        focusNote.removeFromParent();
+
+        MNUtil.showHUD("✅ AI 代码分析完成，源卡片已删除");
+        
+        if (typeof MNUtil !== "undefined" && MNUtil.log) {
+          MNUtil.log(`✅ [代码分析] 分析完成，结果已添加到父卡片`);
+        }
+      });
+
+    } catch (error) {
+      MNUtil.showHUD("AI 代码分析失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined" && toolbarUtils.addErrorLog) {
+        toolbarUtils.addErrorLog(error, "codeAnalysisFromComment");
+      }
+    }
+  });
+  
+  // ========== HtmlMarkdown 层级调整相关 ==========
+  
+  // adjustHtmlMDLevelsUp - 所有层级上移一级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsUp",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个卡片");
+        return;
+      }
+      MNUtil.undoGrouping(() => {
+        try {
+          HtmlMarkdownUtils.adjustAllHtmlMDLevels(focusNote, "up");
+        } catch (error) {
+          MNUtil.showHUD("操作失败: " + error.message);
+        }
+      });
+    }
+  );
+  
+  // adjustHtmlMDLevelsDown - 所有层级下移一级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsDown",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个卡片");
+        return;
+      }
+      MNUtil.undoGrouping(() => {
+        try {
+          HtmlMarkdownUtils.adjustAllHtmlMDLevels(focusNote, "down");
+        } catch (error) {
+          MNUtil.showHUD("操作失败: " + error.message);
+        }
+      });
+    }
+  );
+  
+  // adjustHtmlMDLevelsByHighest - 指定最高级别调整层级
+  global.registerCustomAction(
+    "adjustHtmlMDLevelsByHighest",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个卡片");
+        return;
+      }
+      
+      // 定义可选的层级
+      const levelOptions = [
+        "🎯 Goal（最高级）",
+        "🚩 Level 1",
+        "▸ Level 2",
+        "▪ Level 3",
+        "• Level 4",
+        "· Level 5"
+      ];
+      
+      const levelValues = ["goal", "level1", "level2", "level3", "level4", "level5"];
+      
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "选择目标最高级别",
+        "将调整所有层级，使最高级别变为您选择的级别",
+        0,
+        "取消",
+        levelOptions,
+        (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            return; // 用户取消
+          }
+          
+          const targetLevel = levelValues[buttonIndex - 1];
+          
+          MNUtil.undoGrouping(() => {
+            try {
+              HtmlMarkdownUtils.adjustHtmlMDLevelsByHighest(focusNote, targetLevel);
+            } catch (error) {
+              MNUtil.showHUD("操作失败: " + error.message);
+            }
+          });
+        }
+      );
+    }
+  );
 }
 
 // 立即注册

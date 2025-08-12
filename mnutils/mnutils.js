@@ -1,3 +1,4 @@
+
 class Menu{
   /**
    * 左 0, 下 1，3, 上 2, 右 4
@@ -8,16 +9,18 @@ class Menu{
    * @type {string[]}
    */
   titles = []
-  constructor(sender,delegate,width = 200,preferredPosition = 2){
+  constructor(sender,delegate,width = undefined,preferredPosition = 2){
     this.menuController = MenuController.new()
     this.delegate = delegate
     this.sender = sender
     this.commandTable = []
-    this.width = width
     this.menuController.rowHeight = 35
     this.preferredPosition = preferredPosition
+    if (width && width >100) {//宽度必须大于100,否则不允许设置,即转为自动宽度
+      this.width = width
+    }
   }
-  static new(sender,delegate,width = 200,preferredPosition = 2){
+  static new(sender,delegate,width = undefined,preferredPosition = 2){
     return new Menu(sender,delegate,width,preferredPosition)
   }
   /**
@@ -91,11 +94,12 @@ class Menu{
   }
   show(autoWidth = false){
   try {
-    if (autoWidth) {
+    if (autoWidth || !this.width) {//用autoWidth参数来控制是否自动计算宽度,如果menu实例没有width参数,也会自动计算宽度
       let titles = this.commandTable.map(item=>item.title)
-      let maxWidth = this.width
+      let maxWidth = 0
+      // let maxWidth = this.width
       titles.forEach(title=>{
-        let width = chatAIUtils.strCode(title).length*9+30
+        let width = MNUtil.strCode(title)*9+30
         if (width > maxWidth) {
           maxWidth = width
         }
@@ -146,7 +150,7 @@ class Menu{
     // this.menuController.menuTableView.dataSource = this.delegate
     Menu.popover = popoverController
   } catch (error) {
-    MNUtil.showHUD(error)
+    MNUtil.addErrorLog(error, "Menu.show")
   }
   }
   dismiss(){
@@ -163,6 +167,150 @@ class Menu{
     if (this.popover) {
       this.popover.dismissPopoverAnimated(true)
     }
+  }
+}
+
+class MNLog {
+  static logs = []
+  static updateLog(log){
+    if (subscriptionUtils.subscriptionController) {
+      subscriptionUtils.subscriptionController?.appendLog(log)
+    }
+  }
+  static showLogViewer(){
+    subscriptionUtils.subscriptionController.changeViewTo("log")
+  }
+  static getLogObject(log,defaultLevel="INFO",defaultSource="Default"){
+    if (typeof log == "string" || typeof log == "number") {
+      log = {
+        message:log,
+        level:"INFO",
+        source:"Default",
+        timestamp:Date.now()
+      }
+      return log
+    }
+    if (!("message" in log)) {
+      log.message = "See detail";
+    }
+    if ("level" in log) {
+      log.level = log.level.toUpperCase();
+    }else{
+      log.level = defaultLevel;
+    }
+    if (!("source" in log)) {
+      log.source = defaultSource;
+    }
+    if (!("timestamp" in log)) {
+      log.timestamp = Date.now();
+    }
+    if ("detail" in log) {
+      if (typeof log.detail == "object") {
+        log.detail = JSON.stringify(log.detail,null,2)
+      }
+    }else{
+      let keys = Object.keys(log)
+      if (keys.length !== 0) {
+        let keysRemain = keys.filter(key => key != "timestamp" && key != "source" && key != "level" && key != "message")
+        if (keysRemain.length) {
+          let detail = {}
+          keysRemain.forEach(key => detail[key] = log[key])
+          log.detail = JSON.stringify(detail,null,2)
+        }
+      }
+    }
+    return log
+  }
+  /**
+   * 
+   * @param {string|{message:string,level:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static log(log,detail = undefined){
+    let logObject = this.getLogObject(log)
+    if ((typeof log === "string" || typeof log === "number") && detail !== undefined) {
+      logObject.detail = detail
+    }
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  /**
+   * 
+   * @param {string|{message:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static info(log,source=undefined){
+    let logObject = this.getLogObject(log,"INFO",source)
+    // MNUtil.copy(logObject)
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  /**
+   * 
+   * @param {string|{message:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static error(log,source=undefined){
+    let logObject = this.getLogObject(log,"ERROR",source)
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  /**
+   * 
+   * @param {string|{message:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static debug(log,source=undefined){
+    let logObject = this.getLogObject(log,"DEBUG",source)
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  /**
+   * 
+   * @param {string|{message:string,source:string,timestamp:number,detail:string}} log 
+   * @returns 
+   */
+  static warn(log,source=undefined){
+    let logObject = this.getLogObject(log,"WARN",source)
+    this.logs.push(logObject)
+    this.updateLog(logObject)
+    if (this.logs.length > 1000) {
+      this.logs.shift()
+    }
+  }
+  static clearLogs(){
+    this.logs = []
+    subscriptionUtils.subscriptionController.clearLogs()
+  }
+  /**
+   * 和MNUtil.showHUD一样，但是内容会被记录
+   * Displays a Heads-Up Display (HUD) message on the specified window for a given duration.
+   * 
+   * This method shows a HUD message on the specified window for the specified duration.
+   * If no window is provided, it defaults to the current window. The duration is set to 2 seconds by default.
+   * 
+   * @param {string} message - The message to display in the HUD.
+   * @param {number} [duration=2] - The duration in seconds for which the HUD should be displayed.
+   * @param {UIWindow} [window=this.currentWindow] - The window on which the HUD should be displayed.
+   */
+  static showHUD(message, duration = 2, view = this.currentWindow) {
+    // if (this.onWaitHUD) {
+    //   this.stopHUD(view)
+    // }
+    MNUtil.app.showHUD(message, view, duration);
+    this.log(message)
   }
 }
 class MNUtil {
@@ -246,20 +394,26 @@ class MNUtil {
    * @param {string|{message:string,level:string,source:string,timestamp:number,detail:string}} log 
    * @returns 
    */
-  static log(log){
-    if (typeof log == "string") {
+  static log(log,detail = undefined){
+    if (typeof log == "string" || typeof log == "number") {
       log = {
         message:log,
         level:"INFO",
         source:"Default",
         timestamp:Date.now()
       }
-      this.logs.push(log)
+      if (detail !== undefined) {
+        log.detail = detail
+      }
+      MNLog.logs.push(log)
       // MNUtil.copy(this.logs)
         if (subscriptionUtils.subscriptionController) {
           subscriptionUtils.subscriptionController?.appendLog(log)
         }
       return
+    }
+    if (!("message" in log)) {
+      log.message = "See detail";
     }
     if ("level" in log) {
       log.level = log.level.toUpperCase();
@@ -272,14 +426,30 @@ class MNUtil {
     if (!("timestamp" in log)) {
       log.timestamp = Date.now();
     }
-    if ("detail" in log && typeof log.detail == "object") {
-      log.detail = JSON.stringify(log.detail,null,2)
+    if ("detail" in log) {
+      if (typeof log.detail == "object") {
+        log.detail = JSON.stringify(log.detail,null,2)
+      }
+    }else{
+      let keys = Object.keys(log)
+      if (keys.length !== 0) {
+        let keysRemain = keys.filter(key => key != "timestamp" && key != "source" && key != "level" && key != "message")
+        if (keysRemain.length) {
+          let detail = {}
+          keysRemain.forEach(key => detail[key] = log[key])
+          log.detail = JSON.stringify(detail,null,2)
+        }
+      }
     }
-    this.logs.push(log)
+    MNLog.logs.push(log)
     if (subscriptionUtils.subscriptionController) {
       subscriptionUtils.subscriptionController?.appendLog(log)
     }
+    if (MNLog.logs.length > 1000) {
+      MNLog.logs.shift()
+    }
   }
+
   static clearLogs(){
     this.logs = []
     subscriptionUtils.subscriptionController.clearLogs()
@@ -489,6 +659,9 @@ class MNUtil {
   static get currentNotebook() {
     return this.getNoteBookById(this.currentNotebookId)
   }
+  /**
+   * @returns {MbBook}
+   */
   static get currentDoc() {
     return this.currentDocController.document
   }
@@ -617,6 +790,7 @@ class MNUtil {
     // this.copyJSON(res)
   }
   static countWords(str) {
+    //对中文而言计算的是字数
     const chinese = Array.from(str)
       .filter(ch => /[\u4e00-\u9fa5]/.test(ch))
       .length
@@ -624,8 +798,35 @@ class MNUtil {
       .map(ch => /[a-zA-Z0-9\s]/.test(ch) ? ch : ' ')
       .join('').split(/\s+/).filter(s => s)
       .length
-
     return chinese + english
+  }
+  static removePunctuationOnlyElements(arr) {
+    // Regular expression to match strings consisting only of punctuation.
+    // This regex includes common Chinese and English punctuation marks.
+    // \p{P} matches any kind of punctuation character.
+    // \p{S} matches any kind of symbol.
+    // We also include specific Chinese punctuation not always covered by \p{P} or \p{S} in all JS environments.
+    const punctuationRegex = /^(?:[\p{P}\p{S}¡¿〽〃「」『』【】〝〞〟〰〾〿——‘’“”〝〞‵′＂＃＄％＆＇（）＊＋，－．／：；＜＝＞＠［＼］＾＿｀｛｜｝～￥িপূর্ণ！＂＃＄％＆＇（）＊＋，－．／：；＜＝＞？＠［＼］＾＿｀｛｜｝～])*$/u;
+
+    return arr.filter(item => !punctuationRegex.test(item.trim()));
+  }
+  static doSegment(str) {
+    if (!this.segmentit) {
+      this.segmentit = Segmentit.useDefault(new Segmentit.Segment());
+    }
+    let words = this.segmentit.doSegment(str,{simple:true}).filter(word=>!/^\s*$/.test(word))
+    return words
+  }
+  static wordCountBySegmentit(str) {
+    //对中文而言计算的是词数
+    if (!this.segmentit) {
+      this.segmentit = Segmentit.useDefault(new Segmentit.Segment());
+    }
+    let words = this.segmentit.doSegment(str,{simple:true}).filter(word=>!/^\s*$/.test(word))
+    //去除标点符号
+    let wordsWithoutPunctuation = this.removePunctuationOnlyElements(words)
+    // MNUtil.copy(wordsWithoutPunctuation)
+    return wordsWithoutPunctuation.length
   }
   /**
    * 
@@ -740,6 +941,31 @@ class MNUtil {
     }
     return allNotes.filter(note=>note.docMd5.endsWith("_StudySet"))
   }
+  static strCode(str) {  //获取字符串的字节数
+    var count = 0;  //初始化字节数递加变量并获取字符串参数的字符个数
+    var cn = [8211, 8212, 8216, 8217, 8220, 8221, 8230, 12289, 12290, 12296, 12297, 12298, 12299, 12300, 12301, 12302, 12303, 12304, 12305, 12308, 12309, 65281, 65288, 65289, 65292, 65294, 65306, 65307, 65311]
+    var half = [32, 33, 34, 35, 36, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 58, 59, 60, 61, 62, 63, 64, 91, 92, 93, 94, 95, 96, 123, 124, 125, 126,105,108,8211]
+    if (str) {  //如果存在字符串，则执行
+      let len = str.length;
+        for (var i = 0; i < len; i++) {  //遍历字符串，枚举每个字符
+        let charCode = str.charCodeAt(i)
+            if (charCode>=65 && charCode<=90) {
+              count += 1.5;  //大写
+        } else if (half.includes(charCode)) {
+              count +=0.45
+        } else if (cn.includes(charCode)) {
+              count +=0.8
+            }else if (charCode > 255) {  //字符编码大于255，说明是双字节字符(即是中文)
+                count += 2;  //则累加2个
+            }else{
+                count++;  //否则递加一次
+            }
+        }
+        return count;  //返回字节数
+    } else {
+        return 0;  //如果参数为空，则返回0个
+    }
+  }
 /**
  * 判断字符串是否包含符合特定语法的搜索内容。
  * 支持 .AND., .OR. 和括号 ()。
@@ -832,6 +1058,10 @@ static textMatchPhrase(text, query) {
       NSFileManager.defaultManager().createDirectoryAtPathAttributes(path, undefined)
     }
   }
+  /**
+   * 如果中间有文件夹不存在,则会创建对应文件夹
+   * @param {string} path 
+   */
   static createFolderDev(path){
     if (!this.isfileExists(path)) {
       NSFileManager.defaultManager().createDirectoryAtPathWithIntermediateDirectoriesAttributes(path, true, undefined)
@@ -947,7 +1177,7 @@ static textMatchPhrase(text, query) {
    * @param {string[]} items - The items of the confirmation dialog.
    * @returns {Promise<number|undefined>} A promise that resolves with the button index of the button clicked by the user.
    */
-  static async confirm(mainTitle,subTitle,items = ["Cancel","Confirm"]){
+  static async confirm(mainTitle,subTitle="",items = ["Cancel","Confirm"]){
     if (MNOnAlert) {
       return
     }
@@ -972,7 +1202,7 @@ static textMatchPhrase(text, query) {
    * @param {string[]} items - The items to display in the dialog.
    * @returns {Promise<number>} A promise that resolves with the button index of the button clicked by the user.
    */
-  static async userSelect(mainTitle,subTitle,items){
+  static async userSelect(mainTitle,subTitle="",items){
     if (MNOnAlert) {
       return
     }
@@ -1140,15 +1370,140 @@ static textMatchPhrase(text, query) {
   }
   /**
    *
-   * @param {string} url
+   * @param {string|NSURL} url
    */
-  static openURL(url){
-    this.app.openURL(NSURL.URLWithString(url));
+  static openURL(url,mode = "external"){
+  try {
+
+    let type = this.typeOf(url)
+    // MNUtil.log(type)
+
+    if (type === "NSURL") {
+      switch (mode) {
+        case "auto":
+          if (typeof browserUtils !== "undefined") {
+            MNUtil.postNotification("openInBrowser", {url:url.absoluteString()})
+          }else{
+            this.app.openURL(url);
+          }
+          break;
+        case "external":
+          this.app.openURL(url);
+          break;
+        case "mnbrowser":
+          if (typeof browserUtils !== "undefined") {
+            MNUtil.postNotification("openInBrowser", {url:url.absoluteString()})
+          }else{
+            MNUtil.showHUD("❌ MN Browser not installed")
+          }
+          break;
+        default:
+          break;
+      }
+      return
+    }
+    if (typeof url === "string") {
+      switch (mode) {
+        case "auto":
+          if (typeof browserUtils !== "undefined") {
+            MNUtil.postNotification("openInBrowser", {url:url})
+          }else{
+            this.app.openURL(NSURL.URLWithString(url));
+          }
+          break;
+        case "external":
+          // MNUtil.log("openURL:"+url)
+          this.app.openURL(NSURL.URLWithString(url));
+          break;
+        case "mnbrowser":
+          if (typeof browserUtils !== "undefined") {
+            MNUtil.postNotification("openInBrowser", {url:url})
+          }else{
+            MNUtil.showHUD("❌ MN Browser not installed")
+          }
+          break;
+        default:
+          break;
+      }
+      return
+    }
+  } catch (error) {
+    this.addErrorLog(error, "openURL", {url:url,mode:mode})
+  }
+  }
+  static openWith(config,addon = "external"){
+    if (addon) {
+      let mode
+      switch (addon) {
+        case "external":
+          if ("url" in config) {
+            this.openURL(config.url)
+          }
+          break;
+        case "mnbrowser":
+          mode = config.mode ?? "openURL"
+          switch (mode) {
+            case "openURL":
+              MNUtil.postNotification("openInBrowser", {url:config.url})
+              break;
+            case "search":
+              let userInfo = {}
+              if ("textToSearch" in config) {
+                userInfo.text = config.textToSearch
+              }
+              if ("noteId" in config) {
+                userInfo.noteid = config.noteId
+              }
+              if ("engine" in config) {
+                userInfo.engine = config.engine
+              }
+              MNUtil.postNotification("searchInBrowser", userInfo)
+              break;
+            default:
+              MNUtil.showHUD("mode not found")
+              break;
+          }
+          break;
+      
+        default:
+          break;
+      }
+    }else{
+      MNUtil.showHUD("addon not found")
+    }
+
+    
+  }
+  static compressImage(imageData,quality = 0.1){
+    let compressedData
+    switch (typeof imageData) {
+      case "string":
+        if (imageData.startsWith("data:image/jpeg;base64,") || imageData.startsWith("data:image/png;base64,")) {
+          let data = this.dataFromBase64(imageData)
+          compressedData = UIImage.imageWithData(data).jpegData(quality)
+          return compressedData;
+        }else{
+          let data = this.dataFromBase64(base64,"png")
+          compressedData = UIImage.imageWithData(data).jpegData(quality)
+          return compressedData;
+        }
+        break;
+      case "NSData":
+        compressedData = UIImage.imageWithData(imageData).jpegData(quality)
+        return compressedData;
+      case "UIImage":
+        compressedData = imageData.jpegData(quality)
+        return compressedData;
+        break;
+      default:
+        break;
+    }
+    return undefined
   }
   /**
    * 
    * @param {string} urlString 
-   * @returns {{url:string,scheme:string,host:string,query:string,params:Object}}
+   * @returns {{url:string,scheme:string,host:string,query:string,params:Object,pathComponents:string[],isBlank:boolean,fragment:string}}
    */
   static parseURL(urlString){
     /**
@@ -1186,6 +1541,9 @@ static textMatchPhrase(text, query) {
     }
 
     let fragment = url.fragment
+    if (fragment) {
+      config.fragment = fragment
+    }
     // 解析查询字符串
     const params = {};
     let queryString = url.query;
@@ -1254,6 +1612,25 @@ static textMatchPhrase(text, query) {
   static isNoteInReview(noteId){
     return this.studyController.isNoteInReview(noteId)
   }
+  /**
+   * 当删除学习集后,还有可能学习集本身存在,但是对应的笔记清空的情况
+   * @param {*} notebookId 
+   * @param {*} checkNotes 
+   * @returns 
+   */
+  static notebookExists(notebookId,checkNotes = false){
+    let notebook = this.db.getNotebookById(notebookId)
+    if (notebook) {
+      if (checkNotes) {
+        if (notebook.notes && notebook.notes.length > 0) {
+          return true
+        }
+        return false
+      }
+      return true
+    }
+    return false
+  }
   static noteExists(noteId){
     let note = this.db.getNoteById(noteId)
     if (note) {
@@ -1264,7 +1641,7 @@ static textMatchPhrase(text, query) {
   /**
    * 
    * @param {string} noteid 
-   * @returns 
+   * @returns {MbBookNote}
    */
   static getNoteById(noteid,alert = true) {
     let note = this.db.getNoteById(noteid)
@@ -1272,7 +1649,10 @@ static textMatchPhrase(text, query) {
       return note
     }else{
       if (alert){
-        this.copy(noteid)
+        this.log({
+          level:'error',
+          message:noteid
+        })
         this.showHUD("Note not exist!")
       }
       return undefined
@@ -1323,6 +1703,68 @@ static textMatchPhrase(text, query) {
    * @returns {string} 返回文件md5
    */
   static async importPDFFromFile(){
+    let docPath = await MNUtil.importFile("com.adobe.pdf")
+    return this.importDocument(docPath)
+  }
+  static dataFromBase64(base64,type = undefined){
+    if (type) {
+      switch (type) {
+        case "pdf":
+          if (base64.startsWith("data:application/pdf;base64,")) {
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(base64))
+            return pdfData
+          }else{
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL("data:application/pdf;base64,"+base64))
+            return pdfData
+          }
+          break;
+        case "png":
+          if (base64.startsWith("data:image/png;base64,")) {
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(base64))
+            return pdfData
+          }else{
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL("data:image/png;base64,"+base64))
+            return pdfData
+          }
+          break;
+        case "jpeg":
+          if (base64.startsWith("data:image/jpeg;base64,")) {
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL(base64))
+            return pdfData
+          }else{
+            let pdfData = NSData.dataWithContentsOfURL(MNUtil.genNSURL("data:image/jpeg;base64,"+base64))
+            return pdfData
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    return NSData.dataWithContentsOfURL(MNUtil.genNSURL(base64))
+  }
+  /**
+   * 该方法会弹出文件选择窗口以选择要导入的文档
+   * @returns {string} 返回文件md5
+   */
+  static async importPDFFromBase64(pdfBase64,option = {}){
+    let pdfData = this.dataFromBase64(pdfBase64)
+    if ("filePath" in option) {
+      pdfData.writeToFileAtomically(option.filePath, false)
+      let md5 = this.importDocument(option.filePath)
+      return md5
+    }
+    let fileName = option.fileName || ("imported_"+Date.now()+".pdf")
+    let folder = option.folder || MNUtil.tempFolder()
+    let filePath = folder.nativePath + fileName
+    pdfData.writeToFileAtomically(filePath, false)
+    let md5 = this.importDocument(filePath)
+    return md5
+  }
+  /**
+   * 该方法会弹出文件选择窗口以选择要导入的文档
+   * @returns {string} 返回文件md5
+   */
+  static async importPDFFromData(pdfData){
     let docPath = await MNUtil.importFile("com.adobe.pdf")
     return this.importDocument(docPath)
   }
@@ -1590,7 +2032,7 @@ static textMatchPhrase(text, query) {
     }
 
   } catch (error) {
-    MNUtil.showHUD(error)
+    MNUtil.addErrorLog(error, "focusNoteInMindMapById")
   }
   }
   static focusNoteInFloatMindMapById(noteId,delay = 0){
@@ -1630,33 +2072,32 @@ static textMatchPhrase(text, query) {
   }
   /**
    * 
-   * @param {string} text 
+   * @param {string} jsonString 
    * @returns {object|undefined}
    */
-  static getValidJSON(text) {
+static getValidJSON(jsonString,debug = false) {
+  try {
+    if (typeof jsonString === "object") {
+      return jsonString
+    }
+    return JSON.parse(jsonString)
+  } catch (error) {
     try {
-    if (text.endsWith(':')) {
-      text = text+'""}'
-    }
-    if (this.isValidJSON(text)) {
-      return JSON.parse(text)
-    }else if (this.isValidJSON(text+"\"}")){
-      return JSON.parse(text+"\"}")
-    }else if (this.isValidJSON(text+"}")){
-      return JSON.parse(text+"}")
-    }else if (!text.startsWith('{') && text.endsWith('}')){
-      return JSON.parse("{"+text)
-    }else{
-      // this.showHUD("no valid json")
-      // this.copy(original)
-      return undefined
-    }
+      return JSON.parse(jsonrepair(jsonString))
     } catch (error) {
-      this.showHUD("Error in getValidJSON: "+error)
-      this.copy(text)
-      return undefined
+      let errorString = error.toString()
+      try {
+        if (errorString.startsWith("Unexpected character \"{\" at position")) {
+          return JSON.parse(jsonrepair(jsonString+"}"))
+        }
+        return {}
+      } catch (error) {
+        debug && this.addErrorLog(error, "getValidJSON", jsonString)
+        return {}
+      }
     }
   }
+}
   /**
    * Merges multiple consecutive whitespace characters into a single space, except for newlines.
    * 
@@ -1705,6 +2146,19 @@ static textMatchPhrase(text, query) {
       f
     )
     this.app.refreshAfterDBChanged(notebookId)
+  }
+  static getNoteColorHex(colorIndex){
+    let theme = MNUtil.app.currentTheme
+    let colorConfig = {
+      Default:["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9edc"],
+      Dark:["#a0a071","#809f7b","#71839e","#986d77","#a0a032","#479e2c","#33759c","#921c12","#96551c","#204f2c","#0c266c","#771e14","#a0a0a0","#898989","#717171","#77638a"],
+      Gary:["#d2d294","#a8d1a1","#94accf","#c88f9d","#d2d244","#5fcf3d","#459acd","#c0281b","#c46f28","#2c683a","#12328e","#9c281c","#d2d2d2","#b4b4b4","#949494","#9c82b5"]
+    }
+    let colorHexes = (theme in colorConfig)?colorConfig[theme]:colorConfig["Default"]
+    if (colorIndex !== undefined && colorIndex >= 0) {
+      return colorHexes[colorIndex]
+    }
+    return "#ffffff"
   }
   static getImage(path,scale=2) {
     return UIImage.imageWithDataScale(NSData.dataWithContentsOfFile(path), scale)
@@ -1853,6 +2307,10 @@ static textMatchPhrase(text, query) {
    */
   static openDoc(md5,notebookId=MNUtil.currentNotebookId){
     MNUtil.studyController.openNotebookAndDocument(notebookId, md5)
+    let splitMode = MNUtil.docMapSplitMode
+    if (splitMode === 0) {
+      MNUtil.studyController.docMapSplitMode = 1
+    }
   }
   /**
    * Converts NSData to a string.
@@ -2264,7 +2722,7 @@ try {
     }
     return undefined
   } catch (error) {
-    MNUtil.showHUD(error)
+    this.addErrorLog(error, "getDocImage")
     return undefined
   }
   }
@@ -2306,13 +2764,13 @@ try {
    * @param {string[]} items - The list of items to display in the dialog.
    * @returns {Promise<{input:string,button:number}>} A promise that resolves with an object containing the input text and the button index.
    */
-  static async input(title,subTitle,items) {
+  static async input(title,subTitle="",items = ["Cancel","Confirm"],options=undefined) {
     if (MNOnAlert) {
       return
     }
     MNOnAlert = true
-    return new Promise((resolve, reject) => {
-      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+    return new Promise(async(resolve, reject) => {
+      let alertview = UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
         title,subTitle,2,items[0],items.slice(1),
         (alert, buttonIndex) => {
           let res = {input:alert.textFieldAtIndex(0).text,button:buttonIndex}
@@ -2320,6 +2778,24 @@ try {
           resolve(res)
         }
       )
+      if (options) {
+        try {
+          await MNUtil.delay(0.5)
+          let textField = alertview.textFieldAtIndex(0)
+          while (!textField) {
+            await MNUtil.delay(0.1)
+            textField = alertview.textFieldAtIndex(0)
+          }
+          if ("placeholder" in options) {
+            textField.text = options.placeholder
+          }
+          if ("default" in options) {
+            textField.text = options.default
+          }
+        } catch (error) {
+          MNUtil.addErrorLog(error, "MNUtil.input")
+        }
+      }
     })
   }
   /**
@@ -2333,26 +2809,42 @@ try {
    * @param {string[]} items - The list of items to display in the dialog.
    * @returns {Promise<{input:string,button:number}>} A promise that resolves with an object containing the input text and the button index.
    */
-  static async inputDev(title,subTitle,items) {
+  static async userInput(title,subTitle="",items = ["Cancel","Confirm"],options=undefined) {
     if (MNOnAlert) {
       return
     }
     MNOnAlert = true
     return new Promise(async (resolve, reject) => {
       let alertview = UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        title,subTitle,4,items[0],items.slice(1),
+        title,subTitle,2,items[0],items.slice(1),
         (alert, buttonIndex) => {
           let res = {input:alert.textFieldAtIndex(0).text,button:buttonIndex}
           MNOnAlert = false
           resolve(res)
         }
       )
-      await MNUtil.delay(1)
-      alertview.dismissWithClickedButtonIndexAnimated(0,true)
-      await MNUtil.delay(1)
-      alertview.show()
+      if (options) {
+        try {
+          await MNUtil.delay(0.5)
+          let textField = alertview.textFieldAtIndex(0)
+          while (!textField) {
+            await MNUtil.delay(0.1)
+            textField = alertview.textFieldAtIndex(0)
+          }
+          if ("placeholder" in options) {
+            textField.text = options.placeholder
+          }
+          if ("default" in options) {
+            textField.text = options.default
+          }
+        } catch (error) {
+          this.addErrorLog(error, "MNUtil.input")
+        }
+      }
     })
   }
+
+
   /**
    * 注意这里的code需要是字符串
    * @param {string} code
@@ -2400,14 +2892,21 @@ try {
     "507": "Insufficient Storage",
     "508": "Loop Detected",
     "510": "Not Extended",
-    "511": "Network Authentication Required"
+    "511": "Network Authentication Required",
+    "525": "SSL handshake failed",
+  }
+  if (typeof code === "number") {
+    let codeString = ""+code
+    if (codeString in des) {
+      return (codeString+": "+des[codeString])
+    }
   }
   if (code in des) {
     return (code+": "+des[code])
   }
   return undefined
   } catch (error) {
-    MNUtil.copy(error.toString())
+    this.addErrorLog(error, "getStatusCodeDescription")
   }
   }
   /**
@@ -2428,6 +2927,9 @@ try {
    * @returns {number}
    */
   static constrain(value, min, max) {
+    if (min > max) {
+      return Math.min(Math.max(value, max), min);
+    }
     return Math.min(Math.max(value, min), max);
   }
   /**
@@ -2562,19 +3064,27 @@ try {
         return false
       }
     } catch (error) {
-      MNUtil.showHUD(error)
+      this.addErrorLog(error, "isPureMNImages")
       return false
     }
   }
   static hasMNImages(markdown) {
     try {
+      if (!markdown) {
+        return false
+      }
+      if (!markdown.trim()) {
+        return false
+      }
       // 匹配 base64 图片链接的正则表达式
       const MNImagePattern = /!\[.*?\]\((marginnote4app\:\/\/markdownimg\/png\/.*?)(\))/g;
-      let link = markdown.match(MNImagePattern)[0]
+      // let link = markdown.match(MNImagePattern)
+      // console.log(link);
+      
       // MNUtil.copyJSON({"a":link,"b":markdown})
       return markdown.match(MNImagePattern)?true:false
     } catch (error) {
-      MNUtil.showHUD(error)
+      this.addErrorLog(error, "hasMNImages")
       return false
     }
   }
@@ -2592,7 +3102,7 @@ try {
       let imageData = MNUtil.getMediaByHash(hash)
       return imageData
     } catch (error) {
-      MNUtil.showHUD(error)
+      this.addErrorLog(error, "getMNImageFromMarkdown")
       return undefined
     }
   }
@@ -3217,11 +3727,11 @@ class MNConnection{
         }
         // MNUtil.showHUD("123")
 
-          const result = NSJSONSerialization.JSONObjectWithDataOptions(
+          let result = NSJSONSerialization.JSONObjectWithDataOptions(
             data,
             1<<0
           )
-          const validJson = result && NSJSONSerialization.isValidJSONObject(result)
+          let validJson = result && NSJSONSerialization.isValidJSONObject(result)
           if (err.localizedDescription){
             MNUtil.showHUD(err.localizedDescription)
             let error = {error:err.localizedDescription}
@@ -3379,6 +3889,39 @@ static async uploadWebDAVFile(url, username, password, fileContent) {
       return UIImage.imageWithDataScale(imageData,scale)
     }
     MNUtil.showHUD("Download failed")
+    return undefined
+  }
+    /**
+   * 
+   * @param {MbBookNote} note 
+   * @returns 
+   */
+  static getImageFromNote(note,checkTextFirst = false) {
+    if (note.excerptPic) {
+      if (checkTextFirst && note.textFirst) {
+        //检查发现图片已经转为文本，因此略过
+      }else{
+        return MNUtil.getMediaByHash(note.excerptPic.paint)
+      }
+    }
+    if (note.comments.length) {
+      let imageData = undefined
+      for (let i = 0; i < note.comments.length; i++) {
+        const comment = note.comments[i];
+        if (comment.type === 'PaintNote' && comment.paint) {
+          imageData = MNUtil.getMediaByHash(comment.paint)
+          break
+        }
+        if (comment.type === "LinkNote" && comment.q_hpic && comment.q_hpic.paint) {
+          imageData = MNUtil.getMediaByHash(comment.q_hpic.paint)
+          break
+        }
+        
+      }
+      if (imageData) {
+        return imageData
+      }
+    }
     return undefined
   }
 /**
@@ -4672,6 +5215,23 @@ class MNNote{
     return this.note.groupMode
   }
   /**
+   * @returns {string}
+   */
+  get getNoteColorHex(){
+    let colorIndex = this.note.colorIndex
+    let theme = MNUtil.app.currentTheme
+    let colorConfig = {
+      Default:["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9edc"],
+      Dark:["#a0a071","#809f7b","#71839e","#986d77","#a0a032","#479e2c","#33759c","#921c12","#96551c","#204f2c","#0c266c","#771e14","#a0a0a0","#898989","#717171","#77638a"],
+      Gary:["#d2d294","#a8d1a1","#94accf","#c88f9d","#d2d244","#5fcf3d","#459acd","#c0281b","#c46f28","#2c683a","#12328e","#9c281c","#d2d2d2","#b4b4b4","#949494","#9c82b5"]
+    }
+    let colorHexes = (theme in colorConfig)?colorConfig[theme]:colorConfig["Default"]
+    if (colorIndex !== undefined && colorIndex >= 0) {
+      return colorHexes[colorIndex]
+    }
+    return "#ffffff"
+  }
+  /**
    * Retrieves the child notes of the current note.
    * 
    * This method returns an array of MNNote instances representing the child notes of the current note. If the current note has no child notes, it returns an empty array.
@@ -5192,6 +5752,39 @@ class MNNote{
   get document(){
     return MNDocument.new(this.note.docMd5)
   }
+  get brotherNotes(){
+    let parentNote = this.parentNote
+    if (parentNote) {
+      return parentNote.childNotes
+    }
+    return []
+  }
+  /**在同级卡片中的索引 */
+  get indexInBrotherNotes(){
+  try {
+    let parentNote = this.parentNote
+    if (parentNote) {
+      let childNoteIds = parentNote.childNotes.map(note=>note.noteId)
+      return childNoteIds.indexOf(this.noteId)
+    }
+    return -1
+  } catch (error) {
+   MNNote.addErrorLog(error, "indexInBrotherNotes")
+   return -1
+  }
+  }
+
+  /**
+   * 笔记可能已经被删除
+   * @param {string} noteId 
+   * @returns {boolean}
+   */
+  get exist(){
+    if (this.note.noteId) {
+      return true
+    }
+    return false
+  }
   open(){
     MNUtil.openURL(this.noteURL)
   }
@@ -5232,7 +5825,7 @@ class MNNote{
   realGroupNoteForTopicId(nodebookid = MNUtil.currentNotebookId){
     let noteId = this.note.realGroupNoteIdForTopicId(nodebookid)
     if (!noteId) {
-      return this.note
+      return this
     }
     return MNNote.new(noteId)
   };
@@ -5245,7 +5838,7 @@ class MNNote{
   noteInDocForTopicId(nodebookid = MNUtil.currentNotebookId){
     let noteId = this.note.realGroupNoteIdForTopicId(nodebookid)
     if (!noteId) {
-      return this.note
+      return this
     }
     return MNNote.new(noteId)
   };
@@ -5328,7 +5921,7 @@ try {
   let content = title+"\n"+excerptText
   return content
 }catch(error){
-  MNUtil.showHUD("Error in (getMDContent): "+error.toString())
+  MNNote.addErrorLog(error, "MNNote.getMDContent", info)
   return ""
 }
   }
@@ -5369,7 +5962,10 @@ try {
         if (noteFromURL) {
           this.note.merge(noteFromURL)
         }else{
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exist!")
         }
       case "NoteId":
@@ -5378,7 +5974,10 @@ try {
         if (targetNote) {
           this.note.merge(targetNote)
         }else{
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exist!")
         }
         break
@@ -5397,12 +5996,93 @@ try {
     return this
   }
   /**
-   * 
+   * beforeNote的参数为数字时,代表在指定序号前插入,0为第一个
+   * 无论什么情况都返回自身
+   * @param {MNNote|string} note
+   * @param {MNNote|string|number|undefined} beforeNote
    * @returns {MNNote}
    */
-  insertChildBefore(){
-    this.note.insertChildBefore()
+  insertChildBefore(note,beforeNote){
+  try {
+    let childNoteSize = this.childNotes.length
+    if (childNoteSize === 0 || beforeNote === undefined) {
+    //如果没有子卡片,也就无所谓插入顺序
+    //如果没有提供beforeNote,则插入到最后
+      this.addChild(note)
+      return this
+    }
+
+    if (typeof beforeNote === "number") {
+      //限制beforeNote的值,确保能取到笔记
+      beforeNote = MNUtil.constrain(beforeNote, 0, childNoteSize-1)
+      MNUtil.log("beforeNote:"+beforeNote)
+      let targetNote = this.childNotes[beforeNote]
+      let note0 = MNNote.new(note)
+      this.note.insertChildBefore(note0.note,targetNote.note)
+      return this
+    }else{
+      let note0 = MNNote.new(note)
+      let note1 = MNNote.new(beforeNote)
+      this.note.insertChildBefore(note0.note,note1.note)
+      return this
+    }
+    
+  } catch (error) {
+    MNUtil.addErrorLog(error, "MNNote.insertChildBefore")
     return this
+  }
+  }
+  /**
+   * beforeNote的参数为数字时,代表在指定序号前插入,0为第一个
+   * 无论什么情况都返回自身
+   * @param {MNNote|string} note
+   * @param {MNNote|string|number|undefined} beforeNote
+   * @returns {MNNote}
+   */
+  insertChildAfter(note,beforeNote){
+  try {
+    let childNoteSize = this.childNotes.length
+    if (childNoteSize === 0 || beforeNote === undefined) {
+    //如果没有子卡片,也就无所谓插入顺序
+    //如果没有提供beforeNote,则插入到最后
+      this.addChild(note)
+      return this
+    }
+
+    if (typeof beforeNote === "number") {
+      //限制beforeNote的值,确保能取到笔记
+      beforeNote = MNUtil.constrain(beforeNote, 0, childNoteSize-1)
+      if (beforeNote === childNoteSize-1) {//如果是最后一个,则插入到最后
+        this.addChild(note)
+        return this
+      }
+      //插入到指定卡片的下一张卡片的前面
+      let targetNote = this.childNotes[beforeNote+1]
+      let note0 = MNNote.new(note)
+      this.note.insertChildBefore(note0.note,targetNote.note)
+      return this
+    }else{
+      let childNoteIds = this.childNotes.map(note=>note.noteId)
+      let noteIndex = childNoteIds.indexOf(beforeNote)
+      if (noteIndex === -1) {//beforeNote不在子卡片中,插入到最后
+        this.addChild(note)
+        return this
+      }
+      if (noteIndex === childNoteSize-1) {//如果是最后一个,则插入到最后
+        this.addChild(note)
+        return this
+      }
+      //插入到指定卡片的下一张卡片的前面
+      let note0 = MNNote.new(childNoteIds[noteIndex+1])
+      let note1 = MNNote.new(beforeNote)
+      this.note.insertChildBefore(note0.note,note1.note)
+      return this
+    }
+    
+  } catch (error) {
+    MNUtil.addErrorLog(error, "MNNote.insertChildAfter")
+    return this
+  }
   }
   /**
    * Deletes the current note, optionally including its descendant notes.
@@ -5421,6 +6101,60 @@ try {
     }
   }
   /**
+   * 移动卡片到目标卡片(成为目标卡片的子卡片)
+   * 如果提供的是索引,则是移动到同级卡片的目标索引
+   * @param {MNNote|MbBookNote|number} note 
+   */
+  moveTo(note){
+    if (typeof note === "number") {
+      let brotherNotes = this.brotherNotes
+      if (note >= brotherNotes.length-1) {
+        //移动到同级卡片的最后一个卡片
+        this.parentNote.addChild(this)
+        // this.moveAfter(brotherNotes[brotherNotes.length-1])
+        return
+      }
+      //移动到n就是移动到n的前面
+      this.moveBefore(note)
+      return
+    }
+    if (note.notebookId !== this.notebookId) {
+      MNNote.addErrorLog("Notes not in the same notebook", "moveTo")
+      return
+    }
+    note.addChild(this.note)
+  }
+  /**
+   * 对于同级卡片,移动到指定卡片前
+   * 如果目标卡片和当前卡片不属于同一个父卡片,则会成为目标卡片的同级卡片
+   * @param {MNNote|MbBookNote|number} note 
+   */
+  moveBefore(note){
+    if (typeof note === "number") {
+      let parentNote = this.parentNote
+      parentNote.insertChildBefore(this, note)
+      return
+    }
+    let targetNote = MNNote.new(note)
+    let parentNote = targetNote.parentNote
+    parentNote.insertChildBefore(this, targetNote)
+  }
+  /**
+   * 对于同级卡片,移动到指定卡片后
+   * @param {MNNote|MbBookNote|number} note 
+   */
+  moveAfter(note){
+    if (typeof note === "number") {
+      let parentNote = this.parentNote
+      parentNote.insertChildAfter(this.note, note)
+      return
+    }
+    let targetNote = MNNote.new(note)
+    let parentNote = targetNote.parentNote
+    //先移动到卡片前
+    parentNote.insertChildAfter(this.note, targetNote)
+  }
+  /**
    * Adds a child note to the current note.
    * 
    * This method adds a child note to the current note. The child note can be specified as an MbBookNote instance, an MNNote instance, a note URL, or a note ID.
@@ -5432,7 +6166,7 @@ try {
    */
   addChild(note){
     try {
-
+    // MNUtil.log(MNUtil.typeOf(note))
     // MNUtil.showHUD(MNUtil.typeOf(note))
     switch (MNUtil.typeOf(note)) {
       case "NoteURL":
@@ -5440,7 +6174,10 @@ try {
         if (noteFromURL) {
           this.note.addChild(noteFromURL)
         }else{
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exist!")
         }
         break;
@@ -5450,7 +6187,10 @@ try {
         if (targetNote) {
           this.note.addChild(targetNote)
         }else{
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exist!")
         }
         break;
@@ -5620,6 +6360,22 @@ try {
       }
     }
     return false
+  }
+  getImage(checkTextFirst = true){//第一个图片
+    let imageData = MNNote.getImageFromNote(this,checkTextFirst)
+    let image = imageData?UIImage.imageWithData(imageData):undefined
+    return image
+  }
+  getImageData(checkTextFirst = true){
+    return MNNote.getImageFromNote(this,checkTextFirst)
+  }
+  getImages(checkTextFirst = true){//所有图片
+    let imageDatas = MNNote.getImagesFromNote(this,checkTextFirst)
+    let images = imageDatas?imageDatas.map(imageData=>UIImage.imageWithData(imageData)):undefined
+    return images
+  }
+  getImageDatas(checkTextFirst = true){//所有图片
+    return MNNote.getImagesFromNote(this,checkTextFirst)
   }
   /**
    * Append text comments as much as you want.
@@ -6241,19 +6997,105 @@ try {
   copyURL(){
     MNUtil.copy(this.noteURL)
   }
+  /**
+   * 
+   */
+  getNoteObject(opt={first:true}) {
+    let note = this
+    try {
+    if (!note) {
+      return undefined
+    }
+      
+    let noteConfig = config
+    noteConfig.id = note.noteId
+    if (opt.first) {
+      noteConfig.notebook = {
+        id:note.notebookId,
+        name:MNUtil.getNoteBookById(note.notebookId).title,
+      }
+    }
+    noteConfig.title = note.noteTitle
+    noteConfig.url = note.noteURL
+    noteConfig.excerptText = note.excerptText
+    noteConfig.isMarkdownExcerpt = note.excerptTextMarkdown
+    noteConfig.isImageExcerpt = !!note.excerptPic
+    noteConfig.date = {
+      create:note.createDate.toLocaleString(),
+      modify:note.modifiedDate.toLocaleString(),
+    }
+    noteConfig.allText = note.allNoteText()
+    noteConfig.tags = note.tags
+    noteConfig.hashTags = note.tags.map(tag=> ("#"+tag)).join(" ")
+    noteConfig.hasTag = note.tags.length > 0
+    noteConfig.hasComment = note.comments.length > 0
+    noteConfig.hasChild = note.childNotes.length > 0
+    if (note.colorIndex !== undefined) {
+      noteConfig.colorHex = this.getNoteColorHex
+      noteConfig.color = {}
+      noteConfig.color.lightYellow = note.colorIndex === 0
+      noteConfig.color.lightGreen = note.colorIndex === 1
+      noteConfig.color.lightBlue = note.colorIndex === 2
+      noteConfig.color.lightRed = note.colorIndex === 3
+      noteConfig.color.yellow = note.colorIndex === 4
+      noteConfig.color.green = note.colorIndex === 5
+      noteConfig.color.blue = note.colorIndex === 6
+      noteConfig.color.red = note.colorIndex === 7
+      noteConfig.color.orange = note.colorIndex === 8
+      noteConfig.color.darkGreen = note.colorIndex === 9
+      noteConfig.color.darkBlue = note.colorIndex === 10
+      noteConfig.color.deepRed = note.colorIndex === 11
+      noteConfig.color.white = note.colorIndex === 12
+      noteConfig.color.lightGray = note.colorIndex === 13
+      noteConfig.color.darkGray = note.colorIndex === 14
+      noteConfig.color.purple = note.colorIndex === 15
+    }
+    if (note.docMd5 && MNUtil.getDocById(note.docMd5)) {
+      noteConfig.docName = MNUtil.getDocById(note.docMd5).docTitle
+    }
+    noteConfig.hasDoc = !!noteConfig.docName
+    if (note.childMindMap) {
+      noteConfig.childMindMap = this.getNoteObject(note.childMindMap,{first:false})
+    }
+    noteConfig.inMainMindMap = !noteConfig.childMindMap
+    noteConfig.inChildMindMap = !!noteConfig.childMindMap
+    if ("parent" in opt && opt.parent && note.parentNote) {
+      if (opt.parentLevel && opt.parentLevel > 0) {
+        noteConfig.parent = this.getNoteObject(note.parentNote,{parentLevel:opt.parentLevel-1,parent:true,first:false})
+      }else{
+        noteConfig.parent = this.getNoteObject(note.parentNote,{first:false})
+      }
+    }
+    noteConfig.hasParent = "parent" in noteConfig
+    if ("child" in opt && opt.child && note.childNotes) {
+      noteConfig.child = note.childNotes.map(note=>this.getNoteObject(note,{first:false}))
+    }
+    return noteConfig
+    } catch (error) {
+      MNNote.addErrorLog(error, "MNNote.getNoteObject")
+      return {}
+    }
+  }
   static errorLog = []
   static addErrorLog(error,source,info){
     MNUtil.showHUD("MNNote Error ("+source+"): "+error)
-    let log = {
-      error:error.toString(),
-      source:source,
-      time:(new Date(Date.now())).toString()
+    let tem = {source:source,time:(new Date(Date.now())).toString()}
+    if (error.detail) {
+      tem.error = {message:error.message,detail:error.detail}
+    }else{
+      tem.error = error.message
     }
     if (info) {
-      log.info = info
+      tem.info = info
     }
-    this.errorLog.push(log)
-    MNUtil.copyJSON(this.errorLog)
+    this.errorLog.push(tem)
+    this.copyJSON(this.errorLog)
+    MNLog.log({
+      message:source,
+      level:"ERROR",
+      source:"MNNote",
+      detail:tem
+    })
   }
   /**
    *
@@ -6339,11 +7181,18 @@ try {
     }
   }
   static get currentChildMap(){
+  try {
+
     if (MNUtil.mindmapView && MNUtil.mindmapView.mindmapNodes[0].note?.childMindMap) {
       return this.new(MNUtil.mindmapView.mindmapNodes[0].note.childMindMap.noteId)
     }else{
       return undefined
     }
+    
+  } catch (error) {
+    MNNote.addErrorLog(error, "currentChildMap")
+    return undefined
+  }
   }
   /**
    * Retrieves the currently focused note in the mind map or document.
@@ -6471,33 +7320,83 @@ try {
   static getSelectedNotes(){
     return this.getFocusNotes()
   }
+/**
+ * 
+ * @param {MNNote[]} notes 
+ * @returns 
+ */
+static buildHierarchy(notes) {
+try {
+
+  const tree = [];
+  const map = {}; // Helper to quickly find notes by their ID
+
+  // First pass: Create a map of notes and initialize a 'children' array for each.
+  notes.forEach(note => {
+    map[note.id] = { id:note.id, children: [] }; // Store a copy and add children array
+  });
+  // Second pass: Populate the 'children' arrays and identify root nodes.
+  notes.forEach(note => {
+    let parentId = note.parentNoteId
+    if (parentId && map[parentId]) {
+      // If it has a parent and the parent exists in our map, add it to parent's children
+      map[parentId].children.push(map[note.id]);
+    } else {
+      // Otherwise, it's a root node (or an orphan if parentId is invalid but present)
+      tree.push(map[note.id]);
+    }
+  });
+
+  return tree;
+  
+} catch (error) {
+  return []
+}
+}
   /**
-   * 还需要改进逻辑
+   * 
    * @param {*} range 
    * @returns {MNNote[]}
    */
   static getNotesByRange(range){
+  try {
+
     if (range === undefined) {
-      return [this.getFocusNote()]
+      return [MNNote.getFocusNote()]
     }
     switch (range) {
       case "currentNotes":
-        return this.getFocusNotes()
+        return MNNote.getFocusNotes()
       case "childNotes":
         let childNotes = []
-        this.getFocusNotes().map(note=>{
+        MNNote.getFocusNotes().map(note=>{
           childNotes = childNotes.concat(note.childNotes)
         })
         return childNotes
       case "descendants":
+      case "descendantNotes"://所有后代节点
         let descendantNotes = []
-        this.getFocusNotes().map(note=>{
+        // let descendantNotes = []
+        let focusNotes = MNNote.getFocusNotes()
+        if (focusNotes.length === 0) {
+          MNUtil.showHUD("No notes found")
+          return []
+        }
+        let topLevelNotes = this.buildHierarchy(focusNotes).map(o=>MNNote.new(o.id))
+        // let notesWithoutDescendants = focusNotes.filter(note=>!note.hasDescendantNodes)
+        topLevelNotes.map(note=>{
           descendantNotes = descendantNotes.concat(note.descendantNodes.descendant)
         })
+        MNUtil.log("descendantNotes:"+descendantNotes.length)
         return descendantNotes
       default:
-        return [this.getFocusNote()]
+        return [MNNote.getFocusNote()]
     }
+    
+  } catch (error) {
+    MNNote.addErrorLog(error, "MNNote.getNotesByRange")
+    return []
+  }
   }
   /**
    * Clones a note to the specified notebook.
@@ -6523,7 +7422,10 @@ try {
       case "NoteURL":
         let noteFromURL = MNUtil.getNoteById(MNUtil.getNoteIdByURL(note))
         if (!noteFromURL) {
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exists!")
           return undefined
         }
@@ -6533,7 +7435,10 @@ try {
       case "string":
         let targetNote = MNUtil.getNoteById(note)
         if (!targetNote) {
-          MNUtil.copy(note)
+          MNUtil.log({
+            level:'error',
+            message:note
+          })
           MNUtil.showHUD("Note not exists!")
           return undefined
         }
@@ -6555,11 +7460,11 @@ try {
    * This method checks for image data in the current document controller's selection. If no image is found, it checks the focused note within the current document controller.
    * If the document map split mode is enabled, it iterates through all document controllers to find the image data. If a pop-up selection info is available, it also checks the associated document controller.
    * 
-   * @param {boolean} [checkImageFromNote=false] - Whether to check the focused note for image data.
+   * @param {boolean} [checkImageFromNote=true] - Whether to check the focused note for image data.
    * @param {boolean} [checkDocMapSplitMode=false] - Whether to check other document controllers if the document map split mode is enabled.
    * @returns {NSData|undefined} The image data if found, otherwise undefined.
    */
-  static getImageFromNote(note,checkTextFirst = false) {
+  static getImageFromNote(note,checkTextFirst = true) {
     if (note.excerptPic) {
       if (checkTextFirst && note.textFirst) {
         //检查发现图片已经转为文本，因此略过
@@ -6681,7 +7586,7 @@ try {
     return imageDatas
   }
   /**
-   * 
+   * 笔记可能已经被删除
    * @param {string} noteId 
    * @returns {boolean}
    */
@@ -6723,6 +7628,12 @@ class MNComment {
         return undefined
     }
   }
+  get audioData(){
+    if (this.type === "audioComment") {
+      return MNUtil.getMediaByHash(this.detail.audio)
+    }
+    return undefined
+  }
 
   get text(){
     if (this.detail.text) {
@@ -6732,7 +7643,7 @@ class MNComment {
       return this.detail.q_htext
     }
     MNUtil.showHUD("No available text")
-    return undefined
+    return ""
   }
   get markdown(){
     return this.type === "markdownComment"
@@ -6748,8 +7659,6 @@ class MNComment {
         case "mergedTextComment":
         case "blankImageComment":
         case "mergedImageCommentWithDrawing":
-        case "mergedImageComment":
-        case "mergedTextComment":
         case "drawingComment":
         case "imageCommentWithDrawing":
         case "imageComment":
@@ -6799,7 +7708,7 @@ class MNComment {
           //     this.detail.text = noteURLs[0]
           //     note.replaceWithTextComment(noteURLs[0],this.index)
           //     this.addBackLink(true)
-          //   }else{
+          //   }else{be
           //     this.detail.text = noteURLs[0]
           //     note.replaceWithTextComment(noteURLs[0],this.index)
           //   }
@@ -7053,6 +7962,8 @@ class MNComment {
         }else{
           return "imageComment"
         }
+      case "AudioNote"://录音文件（可能还有其他的）
+        return "audioComment"
       default:
         return undefined
     }

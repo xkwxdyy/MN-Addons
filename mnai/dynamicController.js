@@ -100,50 +100,19 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
       self.promptInput.text = ""
     }
   },
-  addContext: function (params) {
+  addContext: async function (params) {
       if (chatAIUtils.isMN3()) {
         MNUtil.showHUD("Only available in MN4")
         return
       }
+      let info = await chatAIUtils.getInfoForReference()
       chatAIUtils.openSideOutput()
-      let userInput = ""
-      if (chatAIUtils.currentNoteId) {
-        let note = MNNote.new(chatAIUtils.currentNoteId)
-        userInput = `{{note:${chatAIUtils.currentNoteId}}}`
-        let hasImage = chatAIUtils.hasImageInNote(note)
-        if (hasImage && chatAIConfig.getConfig("autoImage")) {
-          let imageData = MNNote.getImageFromNote(note)
-          chatAIUtils.sideOutputController.addToInput(userInput,imageData)
-        }else{
-          chatAIUtils.sideOutputController.addToInput(userInput)
-        }
-        return
+      let userInput = info.userInput
+      if ("imageData" in info) {
+        chatAIUtils.sideOutputController.addToInput(userInput,imageData)
       }else{
-        let selection = MNUtil.currentSelection
-        if (selection.onSelection) {
-          userInput = MNUtil.selectionText
-          if (selection.isText || !chatAIConfig.getConfig("autoImage")) {
-            chatAIUtils.sideOutputController.addToInput(userInput)
-            return
-          }else{
-            let imageData = selection.image
-            chatAIUtils.sideOutputController.addToInput("",imageData)
-            return
-          }
-        }else{
-          let note = chatAIUtils.getFocusNote()
-          userInput = `{{note:${note.noteId}}}`
-          let hasImage = chatAIUtils.hasImageInNote(note)
-          if (hasImage) {
-            let imageData = MNNote.getImageFromNote(note)
-            chatAIUtils.sideOutputController.addToInput(userInput,imageData)
-          }else{
-            chatAIUtils.sideOutputController.addToInput(userInput)
-          }
-          return
-        }
+        chatAIUtils.sideOutputController.addToInput(userInput)
       }
-      chatAIUtils.sideOutputController.addToInput(userInput)
   },
   onLongPress: async function (gesture) {
     if (gesture.state === 1) {
@@ -261,6 +230,39 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
   toggleOCREnhanceMode:async function (params) {
     chatAIUtils.OCREnhancedMode = !chatAIUtils.OCREnhancedMode
     if (chatAIUtils.OCREnhancedMode) {
+      let autoOCR = chatAIConfig.getConfig("autoOCR")
+      if (autoOCR) {
+        if (chatAIUtils.currentNoteId) {
+          let note = MNNote.new(chatAIUtils.currentNoteId)
+          let imageData = note.imageData
+          if (imageData) {
+            chatAINetwork.getTextOCR(imageData).then(()=>{
+              self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+            })
+          }else{
+            MNUtil.showHUD("OCR Enhanced ✅")
+            self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+          }
+          return
+        }
+        let selection = MNUtil.currentSelection
+        if (selection.onSelection) {//文档上存在选区
+          let imageData = selection.image
+          chatAINetwork.getTextOCR(imageData).then(()=>{
+            self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+          })
+          return
+        }
+        let note = chatAIUtils.getFocusNote()
+        let imageData = note.imageData
+        if (imageData) {//检查是否包含图片
+          chatAINetwork.getTextOCR(imageData).then(()=>{
+            self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+          })
+          return
+        }
+
+      }
       MNUtil.showHUD("OCR Enhanced ✅")
       self.OCREnhanced.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
     }else{
@@ -288,15 +290,20 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
     }
   },
   openSetting:function (params) {
-      if (chatAIUtils.chatController.view.hidden) {
-        if (chatAIUtils.chatController.isFirst) {
+      let setting = chatAIUtils.chatController
+      if (setting.view.hidden) {
+        if (setting.isFirst) {
           let width = 330
-          chatAIUtils.chatController.view.frame = {x:self.view.frame.x-10,y:self.view.frame.y-20,width:width,height:465}
-          chatAIUtils.chatController.currentFrame = chatAIUtils.chatController.view.frame
-          chatAIUtils.chatController.show(self.view.frame)
-          chatAIUtils.chatController.isFirst = false;
+          let frame = {x:self.view.frame.x-10,y:self.view.frame.y-20,width:width,height:465}
+          if (frame.y + 465 > MNUtil.studyHeight) {
+            frame.y = MNUtil.studyHeight - 465
+          }
+          setting.view.frame = frame
+          setting.currentFrame = frame
+          setting.show(self.view.frame)
+          setting.isFirst = false;
         }else{
-          chatAIUtils.chatController.show(self.view.frame)
+          setting.show(self.view.frame)
         }
       }
   },
@@ -309,7 +316,7 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
       let currentFunc = chatAIConfig.getConfig("dynamicFunc")
       let selector = 'setDynamicFunc:'
 
-    let newOrder = chatAITool.activatedTools
+    let newOrder = chatAITool.activatedToolsExceptOld
     let menu = new Menu(button,self)
     menu.width = 250
     menu.rowHeight = 35
@@ -321,10 +328,33 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
       let tool = chatAITool.getToolByName(toolName)
       menu.addMenuItem(tool.toolTitle,        selector,toolIndex,currentFunc.includes(toolIndex))
     })
+    menu.addMenuItem("🗿 Old Tools (Free)", "showOldTools:",button)
     menu.addMenuItem("❌ None",             selector,-1,currentFunc.length === 0)
     menu.show()
     } catch (error) {
       chatAIUtils.addErrorLog(error, "changeDynamicFunc")
+    }
+  },
+  showOldTools: function(button){
+    let self = getChatglmController()
+    Menu.dismissCurrentMenu()
+    try {
+    let currentFunc = chatAIConfig.getConfig("dynamicFunc")
+    let selector = 'setDynamicFunc:'
+    let newOrder = chatAITool.oldTools
+    let menu = new Menu(button,self)
+    menu.width = 250
+    menu.rowHeight = 35
+    menu.preferredPosition = 4
+    let toolNames = chatAITool.toolNames
+    newOrder.map((toolIndex)=>{
+      let toolName = toolNames[toolIndex]
+      let tool = chatAITool.getToolByName(toolName)
+      menu.addMenuItem(tool.toolTitle,        selector,toolIndex,currentFunc.includes(toolIndex))
+    })
+    menu.show()
+    } catch (error) {
+      chatAIUtils.addErrorLog(error, "changeFunc")
     }
   },
   setDynamicFunc(param) {
@@ -458,7 +488,9 @@ try {
       return
     }
     let self = getDynamicController();
-    self.promptInput.endEditing(true)
+    MNUtil.delay(0.1).then(()=>{
+      self.promptInput.endEditing(true)
+    })
     let userInput = self.promptInput.text
     let notifyController = chatAIUtils.notifyController
     let currentNoteId = chatAIUtils.currentNoteId
@@ -644,7 +676,6 @@ dynamicController.prototype.init = function () {
     this.scrollview.autoresizingMask = (1 << 0 | 1 << 3);
     this.scrollview.id = "promptScrollView"
   this.reloadImage = MNUtil.getImage(chatAIConfig.mainPath + `/reload.png`)
-  this.stopImage = MNUtil.getImage(chatAIConfig.mainPath + `/stop.png`)
   this.bigbangImage = MNUtil.getImage(chatAIConfig.mainPath + `/bigbang.png`)
   this.copyImage = MNUtil.getImage(chatAIConfig.mainPath + `/copy.png`)
   this.titleImage = MNUtil.getImage(chatAIConfig.mainPath + `/title.png`)
@@ -703,7 +734,7 @@ dynamicController.prototype.init = function () {
   this.setCurrentModel()
 
   this.closeButton = this.createButton("closeInput:")
-  this.closeButton.setImageForState(this.stopImage,0)
+  this.closeButton.setImageForState(chatAIConfig.closeImage,0)
   this.closeButton.hidden = true
   this.closeButton.backgroundColor =  MNUtil.hexColorAlpha("#e06c75",0.8)
 
@@ -790,7 +821,7 @@ dynamicController.prototype.createButton = function (targetAction,superview,) {
 /**
  * @this {dynamicController}
  */
-dynamicController.prototype.setLayout = async function (frame) {
+dynamicController.prototype.setLayout = async function (frame = this.lastFrame) {
   MNUtil.studyView.bringSubviewToFront(this.view)
   if (frame.width !== 300) {
     frame.width = 64
@@ -877,17 +908,26 @@ dynamicController.prototype.openInput = async function () {
   this.lastFrame.height = 215
   this.aiButton.hidden = true
   this.addButton.hidden = true
-  let selection = MNUtil.currentSelection
-  if (selection.onSelection) {
-    if (!selection.isText && chatAIConfig.getConfig("autoImage")) {
+  chatAIUtils.getInfoForReference().then((info)=>{
+    if ("imageData" in info) {
       chatAIUtils.visionMode = true
     }
-  }else{
-    let focusNote = chatAIUtils.getFocusNote()
-    if (chatAIUtils.hasImageInNote(focusNote) && chatAIConfig.getConfig("autoImage")) {
-      chatAIUtils.visionMode = true
+    if (info.ocr) {
+      chatAIUtils.OCREnhancedMode = true
     }
-  }
+    this.setLayout()
+  })
+  // let selection = MNUtil.currentSelection
+  // if (selection.onSelection) {
+  //   if (!selection.isText && chatAIConfig.getConfig("autoImage")) {
+  //     chatAIUtils.visionMode = true
+  //   }
+  // }else{
+  //   let focusNote = chatAIUtils.getFocusNote()
+  //   if (chatAIUtils.hasImageInNote(focusNote) && chatAIConfig.getConfig("autoImage")) {
+  //     chatAIUtils.visionMode = true
+  //   }
+  // }
   let model = chatAIConfig.getConfig("dynamicModel")
   let modelConfig = chatAIConfig.parseModelConfig(model)
   if (modelConfig.source === "Built-in") {
@@ -895,7 +935,7 @@ dynamicController.prototype.openInput = async function () {
   }else{
     MNButton.setTitle(this.modelButton, modelConfig.model,14,true)
   }
-  await this.setLayout(this.lastFrame)
+  await this.setLayout()
   this.view.backgroundColor = MNUtil.hexColorAlpha("#e4eeff",0)
   this.view.hidden = false
   if (MNUtil.version.type === "macOS" && (!MNUtil.activeTextView)) {
@@ -904,14 +944,6 @@ dynamicController.prototype.openInput = async function () {
   } catch (error) {
     chatAIUtils.addErrorLog(error, "dynamicController.openInput")
   }
-  // if (!chatAIUtils.currentNoteId && !chatAIUtils.currentSelection) {
-  //   chatAIUtils.noSystemMode = true
-  //   if (chatAIUtils.noSystemMode) {
-  //     this.systemButton.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
-  //   }else{
-  //     this.systemButton.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
-  //   }
-  // }
 }
 /**
  * @this {dynamicController}

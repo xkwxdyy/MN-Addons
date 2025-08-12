@@ -50,6 +50,9 @@
 // JSB.require('utils');
 // JSB.require('base64')
 
+// 全局 MNTask 插件实例引用
+var MNTaskInstance = null;
+
 /**
  * MNTask 设置控制器 - 采用 JSB 框架的事件驱动架构
  * 
@@ -89,26 +92,29 @@ var taskSettingController = JSB.defineClass('taskSettingController : UIViewContr
   viewDidLoad: function() {
     let self = getTaskSettingController()
 try {
-    // 记录插件初始化开始
-    TaskLogManager.info("MNTask 设置面板开始初始化", "SettingController")
+    MNUtil.log("📍 [MNTask] viewDidLoad 开始")
     
-    // 添加一些测试日志
-    TaskLogManager.debug("调试信息：初始化参数", "SettingController", JSON.stringify({
-      viewFrame: self.view.frame,
-      timestamp: Date.now()
-    }))
-    TaskLogManager.warn("警告：这是一条测试警告", "SettingController")
+    // 暂时注释 TaskLogManager，避免早期调用
+    // TaskLogManager.info("MNTask 设置面板开始初始化", "SettingController")
     
-    self.init()
-    taskFrame.set(self.view,50,50,355,500)
-    self.lastFrame = self.view.frame;
+    MNUtil.log("📍 [MNTask] 1. 准备设置 frame")
+    
+    // 像 MNBrowser 一样，先设置 frame
+    self.view.frame = {x:50, y:50, width:355, height:500}
+    self.lastFrame = self.view.frame
     self.currentFrame = self.view.frame
+    
+    MNUtil.log("📍 [MNTask] 2. frame 设置完成: " + JSON.stringify(self.view.frame))
+    
+    // 设置其他属性
     self.isMainWindow = true
     self.title = "main"
     self.preAction = ""
     self.test = [0]
     self.moveDate = Date.now()
     self.color = [true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true]
+    
+    MNUtil.log("📍 [MNTask] 3. 设置 layer 属性")
     self.view.layer.shadowOffset = {width: 0, height: 0};
     self.view.layer.shadowRadius = 15;
     self.view.layer.shadowOpacity = 0.5;
@@ -117,22 +123,33 @@ try {
     self.view.layer.opacity = 1.0
     self.view.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
     self.view.layer.borderWidth = 0
-    // self.view.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
+    
+    MNUtil.log("📍 [MNTask] 4. 准备调用 self.init()")
+    // 现在调用 init，在 frame 设置之后（像 MNBrowser 一样）
+    self.init()
+    MNUtil.log("📍 [MNTask] 5. self.init() 完成")
+    
     self.config = {}
     if (!self.config.delay) {
       self.config.delay = 0
     }
+    
+    MNUtil.log("📍 [MNTask] 6. 准备创建 settingView")
     if (!self.settingView) {
       self.createSettingView()
     }
+    MNUtil.log("📍 [MNTask] 7. settingView 创建完成")
     
-    // 记录初始化成功
-    TaskLogManager.info("MNTask 设置面板初始化完成", "SettingController")
+    // 暂时注释，等基本功能正常后再启用
+    // TaskLogManager.info("MNTask 设置面板初始化完成", "SettingController")
 } catch (error) {
   // 记录初始化错误
-  TaskLogManager.error("MNTask 设置面板初始化失败", "SettingController", error)
-  MNUtil.showHUD(error)
+  MNUtil.log("❌ [MNTask] viewDidLoad 错误: " + error.message)
+  MNUtil.log("❌ [MNTask] 错误堆栈: " + error.stack)
+  // TaskLogManager.error("MNTask 设置面板初始化失败", "SettingController", error)
+  MNUtil.showHUD("初始化失败: " + error.message)
 }
+    MNUtil.log("📍 [MNTask] 8. 创建按钮")
     self.createButton("maxButton","maxButtonTapped:")
     self.maxButton.setTitleForState('➕', 0);
     self.maxButton.titleLabel.font = UIFont.systemFontOfSize(10);
@@ -146,6 +163,8 @@ try {
     self.moveButton.width = 150
     self.moveButton.height = 17
     // self.moveButton.showsTouchWhenHighlighted = true
+    
+    MNUtil.log("📍 [MNTask] 9. 调用 settingViewLayout")
     self.settingViewLayout()
 
     self.moveGesture = new UIPanGestureRecognizer(self,"onMoveGesture:")
@@ -162,6 +181,7 @@ try {
     self.selectedItem = taskConfig.action[0]
     let allActions = taskConfig.action.concat(taskConfig.getDefaultActionKeys().slice(taskConfig.action.length))
 
+    MNUtil.log("📍 [MNTask] 10. 设置按钮文本和视图")
     try {
       self.setButtonText(allActions,self.selectedItem)
       MNUtil.delay(0.5).then(()=>{
@@ -172,8 +192,11 @@ try {
       // 默认显示看板视图
       self.viewManager.switchTo('todayBoard')
     } catch (error) {  
+      MNUtil.log("❌ [MNTask] setButtonText 错误: " + error.message)
       taskUtils.addErrorLog(error, "viewDidLoad.setButtonText", info)
     }
+    
+    MNUtil.log("✅ [MNTask] viewDidLoad 完成")
   },
   viewWillAppear: function(animated) {
   },
@@ -187,6 +210,14 @@ try {
     }
   },
 viewWillLayoutSubviews: function() {
+    let self = getTaskSettingController()
+    
+    // 添加安全检查
+    if (!self.view || !self.view.bounds) {
+      MNUtil.log("⚠️ viewWillLayoutSubviews: view 未准备好")
+      return
+    }
+    
     let buttonHeight = 25
     // self.view.frame = self.currentFrame
     var viewFrame = self.view.bounds;
@@ -205,7 +236,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     
     // 添加调试日志
     MNUtil.log(`🔗 WebView 请求: ${requestURL}`)
-    TaskLogManager.debug("WebView URL 请求", "WebView", requestURL)
+    // TaskLogManager.debug("WebView URL 请求", "WebView", requestURL)
     
     if (!requestURL) {
       MNUtil.showHUD("Empty URL")
@@ -216,7 +247,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     if (/^nativecopy\:\/\/content=/.test(requestURL)) {
       let text = decodeURIComponent(requestURL.split("content=")[1])
       MNUtil.log(`📋 准备复制内容: ${text}`)
-      TaskLogManager.info(`复制到剪贴板: ${text}`, "WebView")
+      // TaskLogManager.info(`复制到剪贴板: ${text}`, "WebView")
       MNUtil.copy(text)
       return false
     }
@@ -259,6 +290,11 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
         MNUtil.delay(0.5).then(() => {
           MNUtil.log("🚀 开始加载今日看板数据")
           self.loadTodayBoardData()
+          
+          // 触发任务数据同步
+          if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
+            MNTaskInstance.syncTasksToWebView()
+          }
         })
       } else {
         MNUtil.log("⚠️ 未识别的 WebView 实例")
@@ -269,6 +305,87 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       MNUtil.log(`❌ webViewDidFinishLoad 出错: ${error.message}`)
       MNUtil.log(`📍 错误堆栈: ${error.stack}`)
       taskUtils.addErrorLog(error, "webViewDidFinishLoad")
+    }
+  },
+  /**
+   * 处理 WebView 的 URL 请求
+   * @param {UIWebView} webView - WebView 实例
+   * @param {NSURLRequest} request - 请求对象
+   * @param {number} navigationType - 导航类型
+   * @returns {boolean} 是否允许加载
+   */
+  webViewShouldStartLoadWithRequest: function(webView, request, navigationType) {
+    let self = getTaskSettingController()
+    try {
+      const url = request.URL.absoluteString()
+      MNUtil.log(`🔗 WebView 请求 URL: ${url}`)
+      
+      // 处理自定义 URL Scheme
+      if (url.startsWith('mntask://')) {
+        MNUtil.log('🎯 检测到 MNTask URL Scheme')
+        
+        // 解析 URL
+        const urlParts = url.split('?')
+        const action = urlParts[0].replace('mntask://', '')
+        
+        // 解析参数
+        let params = {}
+        if (urlParts.length > 1) {
+          const queryString = urlParts[1]
+          const paramPairs = queryString.split('&')
+          for (const pair of paramPairs) {
+            const [key, value] = pair.split('=')
+            if (key === 'data') {
+              try {
+                params[key] = JSON.parse(decodeURIComponent(value))
+              } catch (e) {
+                MNUtil.log(`⚠️ 解析 JSON 参数失败: ${e.message}`)
+                params[key] = decodeURIComponent(value)
+              }
+            } else {
+              params[key] = decodeURIComponent(value || '')
+            }
+          }
+        }
+        
+        MNUtil.log(`📋 URL Scheme 动作: ${action}`)
+        MNUtil.log(`📦 参数: ${JSON.stringify(params)}`)
+        
+        // 处理不同的动作
+        switch(action) {
+          case 'updateTask':
+            self.handleUpdateTask(params.data)
+            break
+            
+          case 'batchUpdate':
+            self.handleBatchUpdate(params.data)
+            break
+            
+          case 'syncTasks':
+            // ========== 性能优化：检查是否需要强制刷新 ==========
+            if (params.forceRefresh === 'true' || params.forceRefresh === true) {
+              MNUtil.log("⚡ 检测到强制刷新请求")
+              self.forceRefreshTodayBoard()
+            } else {
+              self.loadTodayBoardData()
+            }
+            break
+            
+          default:
+            MNUtil.log(`⚠️ 未知的 URL Scheme 动作: ${action}`)
+        }
+        
+        // 阻止加载这个 URL
+        return false
+      }
+      
+      // 允许其他 URL 加载
+      return true
+      
+    } catch (error) {
+      MNUtil.log(`❌ webViewShouldStartLoadWithRequest 出错: ${error.message}`)
+      taskUtils.addErrorLog(error, "webViewShouldStartLoadWithRequest")
+      return true
     }
   },
   changeOpacityTo:function (opacity) {
@@ -406,7 +523,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     }
   } catch (error) {
     // 使用 TaskLogManager 记录错误
-    TaskLogManager.error("重置配置失败", "SettingController", error)
+    // TaskLogManager.error("重置配置失败", "SettingController", error)
     MNUtil.showHUD("Error in resetConfig: "+error)
   }
   },
@@ -555,46 +672,31 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   advancedButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    TaskLogManager.info("切换到高级设置视图", "SettingController")
+    // TaskLogManager.info("切换到高级设置视图", "SettingController")
     self.viewManager.switchTo('advanced')
   },
-  // taskBoardButtonTapped: function (params) {
-  //   let self = getTaskSettingController()
-  //   // 记录视图切换
-  //   TaskLogManager.info("切换到任务看板视图", "SettingController")
-  //   self.viewManager.switchTo('taskBoard')
-  // },
-  // todayBoardButtonTapped: function (params) {
-  //   let self = getTaskSettingController()
-  //   // 记录视图切换
-  //   TaskLogManager.info("切换到今日看板视图", "SettingController")
-  //   MNUtil.log("🎯 todayBoardButtonTapped 被调用")
-  //   MNUtil.log(`📱 按钮信息: ${params}`)
-  //   
-  //   // 检查是否有剪贴板内容被意外复制
-  //   const clipboardBefore = MNUtil.clipboardText
-  //   MNUtil.log(`📋 切换前剪贴板: ${clipboardBefore}`)
-  //   
-  //   self.viewManager.switchTo('todayBoard')
-  //   
-  //   // 检查切换后剪贴板是否改变
-  //   MNUtil.delay(0.1).then(() => {
-  //     const clipboardAfter = MNUtil.clipboardText
-  //     if (clipboardBefore !== clipboardAfter) {
-  //       MNUtil.log(`⚠️ 剪贴板内容改变了！新内容: ${clipboardAfter}`)
-  //     }
-  //   })
-  // },
+  taskBoardButtonTapped: function (params) {
+    let self = getTaskSettingController()
+    // 记录视图切换
+    // TaskLogManager.info("切换到任务看板视图", "SettingController")
+    self.viewManager.switchTo('taskBoard')
+  },
+  todayBoardButtonTapped: function (params) {
+    let self = getTaskSettingController()
+    // 记录视图切换
+    MNUtil.log("切换到今日看板视图")
+    self.viewManager.switchTo('todayBoard')
+  },
   popupButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    TaskLogManager.info("切换到弹窗配置视图", "SettingController")
+    // TaskLogManager.info("切换到弹窗配置视图", "SettingController")
     self.viewManager.switchTo('popup')
   },
   configButtonTapped: function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    TaskLogManager.info("切换到配置视图", "SettingController")
+    // TaskLogManager.info("切换到配置视图", "SettingController")
     if (self.viewManager) {
       self.viewManager.switchTo('config')
     }
@@ -602,7 +704,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
   dynamicButtonTapped: async function (params) {
     let self = getTaskSettingController()
     // 记录视图切换
-    TaskLogManager.info("切换到动态视图", "SettingController")
+    // TaskLogManager.info("切换到动态视图", "SettingController")
     self.viewManager.switchTo('dynamic')
   },
   chooseTemplate: async function (button) {
@@ -652,7 +754,9 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     MNUtil.showHUD("Copy config")
     } catch (error) {
       // 使用 TaskLogManager 记录错误
-      TaskLogManager.error("复制配置失败", "SettingController", error)
+      if (typeof TaskLogManager !== 'undefined') {
+        TaskLogManager.error("复制配置失败", "SettingController", error)
+      }
       taskUtils.addErrorLog(error, "configCopyTapped", info)
     }
   },
@@ -1081,7 +1185,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     
     // 保存新的根目录卡片
     taskConfig.saveRootNoteId(note.noteId)
-    // self.updateRootNoteLabel()
+    self.updateRootNoteLabel()
     self.showHUD("✅ 已保存根目录卡片")
   },
   clearRootNoteId: async function () {
@@ -1102,7 +1206,7 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     
     if (result === 1) {  // 用户点击了"清除"
       taskConfig.clearRootNoteId()
-      // self.updateRootNoteLabel()
+      self.updateRootNoteLabel()
       self.showHUD("✅ 已清除根目录卡片")
     }
   },
@@ -1117,12 +1221,33 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let note = MNNote.new(noteId)
     if (note) {
       note.focusInFloatMindMap()
+      MNUtil.showHUD("🔍 已聚焦到根目录卡片")
     } else {
       self.showHUD("❌ 卡片不存在")
       // 清除无效的 ID
       taskConfig.clearRootNoteId()
-      // self.updateRootNoteLabel()
+      self.updateRootNoteLabel()
     }
+  },
+  
+  // 根目录看板处理方法
+  focusRootBoard: function(sender) {
+    let self = getTaskSettingController()
+    MNUtil.log("🔍 focusRootBoard 被调用")
+    MNUtil.showHUD("🔍 focusRootBoard 被调用")
+    self.focusBoard('root')
+  },
+  
+  clearRootBoard: async function(sender) {
+    let self = getTaskSettingController()
+    MNUtil.log("🗑️ clearRootBoard 被调用")
+    await self.clearBoard('root')
+  },
+  
+  pasteRootBoard: async function(sender) {
+    let self = getTaskSettingController()
+    MNUtil.log("📋 pasteRootBoard 被调用")
+    await self.pasteBoard('root')
   },
   
   // 通用看板处理方法
@@ -1383,6 +1508,32 @@ taskSettingController.prototype.init = function () {
   this.selectedText = '';
   this.searchedText = '';
   
+  // ========== 今日看板性能优化：数据加载标志 ==========
+  this.todayBoardDataLoaded = false;  // 标记今日看板数据是否已加载
+  this.todayBoardLoadTime = null;     // 记录数据加载时间
+  
+  // 尝试获取 MNTask 插件实例
+  try {
+    // 方法1: 从 MNTask 类获取
+    if (typeof MNTask !== 'undefined' && MNTask.sharedInstance) {
+      MNTaskInstance = MNTask.sharedInstance();
+      MNUtil.log("✅ 获取 MNTaskInstance 成功 (通过 MNTask.sharedInstance)")
+    } 
+    // 方法2: 从应用查询扩展
+    else if (Application.sharedInstance().queryExtension) {
+      MNTaskInstance = Application.sharedInstance().queryExtension('mntask');
+      if (MNTaskInstance) {
+        MNUtil.log("✅ 获取 MNTaskInstance 成功 (通过 queryExtension)")
+      }
+    }
+    
+    if (!MNTaskInstance) {
+      MNUtil.log("⚠️ 无法获取 MNTaskInstance，某些功能可能受限")
+    }
+  } catch (e) {
+    MNUtil.log("❌ 获取 MNTaskInstance 时出错: " + e.message)
+  }
+  
   // 初始化 viewManager
   this.initViewManager();
 }
@@ -1442,23 +1593,24 @@ taskSettingController.prototype.initViewManager = function() {
           self.setButtonText(dynamicAction)
         }
       },
-      // taskBoard: {
-      //   view: 'taskBoardView',
-      //   button: 'taskBoardButton',
-      //   selectedColor: '#457bd3',
-      //   normalColor: '#9bb2d6',
-      //   onShow: function(self) {
-      //     self.updateRootNoteLabel()
-      //     self.updateBoardLabel('target')
-      //     self.updateBoardLabel('project')
-      //     self.updateBoardLabel('action')
-      //     self.updateBoardLabel('completed')
-      //     self.settingViewLayout()
-      //   }
-      // },
+      taskBoard: {
+        view: 'taskBoardView',
+        button: 'taskBoardButton',
+        selectedColor: '#457bd3',
+        normalColor: '#9bb2d6',
+        onShow: function(self) {
+          // self.updateRootNoteLabel()  // Commented out - method is not defined
+          self.updateBoardLabel('root')
+          self.updateBoardLabel('target')
+          self.updateBoardLabel('project')
+          self.updateBoardLabel('action')
+          self.updateBoardLabel('completed')
+          self.settingViewLayout()
+        }
+      },
       todayBoard: {
         view: 'todayBoardWebView',
-        // button: 'todayBoardButton',
+        button: 'todayBoardButton',
         selectedColor: '#457bd3',
         normalColor: '#9bb2d6',
         onShow: function(self) {
@@ -1478,16 +1630,33 @@ taskSettingController.prototype.initViewManager = function() {
     
     // 切换到指定视图
     switchTo: function(viewName) {
+      MNUtil.log(`🔄 Switching to view: ${viewName}`)
+      
       const viewConfig = self.viewManager.views[viewName]
       
       if (!viewConfig) {
+        MNUtil.log(`❌ View config not found for: ${viewName}`)
         return
       }
       
+      MNUtil.log(`📦 View config found:`, JSON.stringify({
+        view: viewConfig.view,
+        button: viewConfig.button,
+        hasView: !!self[viewConfig.view],
+        hasButton: !!self[viewConfig.button]
+      }))
+      
       // 如果有前置检查，执行并判断是否继续
       if (viewConfig.onShow) {
-        const shouldContinue = viewConfig.onShow(self)
-        if (shouldContinue === false) return
+        try {
+          const shouldContinue = viewConfig.onShow(self)
+          if (shouldContinue === false) {
+            MNUtil.log(`⚠️ onShow returned false, aborting view switch`)
+            return
+          }
+        } catch (e) {
+          MNUtil.log(`❌ Error in onShow for ${viewName}: ${e.message}`)
+        }
       }
       
       // 隐藏所有视图并重置按钮状态
@@ -1505,10 +1674,16 @@ taskSettingController.prototype.initViewManager = function() {
       // 显示当前视图
       if (self[viewConfig.view]) {
         self[viewConfig.view].hidden = false
+        MNUtil.log(`✅ Showing view: ${viewConfig.view}`)
+      } else {
+        MNUtil.log(`❌ View not found: ${viewConfig.view}`)
       }
       if (self[viewConfig.button]) {
         self[viewConfig.button].selected = true
         MNButton.setColor(self[viewConfig.button], viewConfig.selectedColor, 0.8)
+        MNUtil.log(`✅ Highlighting button: ${viewConfig.button}`)
+      } else {
+        MNUtil.log(`❌ Button not found: ${viewConfig.button}`)
       }
     },
     
@@ -1604,7 +1779,7 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.configView,0,0,width-2,height-60)
     taskFrame.set(this.advanceView,0,0,width-2,height-60)
     taskFrame.set(this.popupEditView,0,0,width-2,height-60)
-    // taskFrame.set(this.taskBoardView,0,0,width-2,height-60)
+    taskFrame.set(this.taskBoardView,0,0,width-2,height-60)
     taskFrame.set(this.resizeButton,width-25,height-80)
     if (width < 650) {
       taskFrame.set(this.webviewInput, 5, 195, width-10, height-255)
@@ -1646,20 +1821,19 @@ taskSettingController.prototype.settingViewLayout = function (){
     }
     this.tabView.frame = tabViewFrame
     
-    // 设置 tabView 内部的按钮 - 看板按钮在最前
-    // taskFrame.set(this.todayBoardButton, 5, 0)
-    taskFrame.set(this.configButton, 5, 0)  // configButton 现在是第一个按钮
+    // 设置 tabView 内部的按钮 - 今日看板按钮在最前
+    taskFrame.set(this.todayBoardButton, 5, 0)
+    taskFrame.set(this.configButton, this.todayBoardButton.frame.x + this.todayBoardButton.frame.width+5, 0)
     taskFrame.set(this.dynamicButton, this.configButton.frame.x + this.configButton.frame.width+5, 0)
     taskFrame.set(this.popupButton, this.dynamicButton.frame.x + this.dynamicButton.frame.width+5, 0)
     taskFrame.set(this.advancedButton, this.popupButton.frame.x + this.popupButton.frame.width+5, 0)
-    // taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
+    taskFrame.set(this.taskBoardButton, this.advancedButton.frame.x + this.advancedButton.frame.width+5, 0)
     
     // 关闭按钮与 tabView 对齐
     taskFrame.set(this.closeButton, tabViewFrame.width + 5, tabViewFrame.y)
     
     // 设置 tabView 的 contentSize，使按钮可以横向滚动
-    // const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
-    const tabContentWidth = this.advancedButton.frame.x + this.advancedButton.frame.width + 10;
+    const tabContentWidth = this.taskBoardButton.frame.x + this.taskBoardButton.frame.width + 10;
     this.tabView.contentSize = {width: tabContentWidth, height: 30}
     let scrollHeight = 5
     if (MNUtil.appVersion().type === "macOS") {
@@ -1729,6 +1903,10 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.clearCompletedBoardButton, 15+(width-30)/3, 455, (width-30)/3, 35)
     taskFrame.set(this.pasteCompletedBoardButton, 20+2*(width-30)/3, 455, (width-30)/3, 35)
     
+    // 设置 taskBoardView 的 contentSize，确保所有按钮都可以滚动访问
+    // 最后一个按钮位于 y=455，高度 35，再加上底部边距
+    this.taskBoardView.contentSize = {width: width-2, height: 455 + 35 + 20}
+    
     // 今日看板 - 已移至 WebView 实现，注释掉旧的布局
     // taskFrame.set(this.todayBoardLabel, 10, 510, width-20, 35)
     // taskFrame.set(this.focusTodayBoardButton, 10, 555, (width-30)/3, 35)
@@ -1739,24 +1917,24 @@ taskSettingController.prototype.settingViewLayout = function (){
     // this.taskBoardView.contentSize = {width: width-2, height: 600}
     
     // 今日看板 WebView 布局
-    taskFrame.set(this.todayBoardWebView, 0, 0, width-2, height-60)
+    // taskFrame.set(this.todayBoardWebView, 0, 0, width-2, height-60)
     
-    // 如果 WebView 实例存在，更新其 frame
-    if (this.todayBoardWebViewInstance) {
-      // 使用 bounds 而不是 frame，确保相对于父视图的坐标系
-      const containerBounds = this.todayBoardWebView.bounds
-      this.todayBoardWebViewInstance.frame = {
-        x: 0,
-        y: 0,
-        width: containerBounds.width,
-        height: containerBounds.height
-      }
+    // // 如果 WebView 实例存在，更新其 frame
+    // if (this.todayBoardWebViewInstance) {
+    //   // 使用 bounds 而不是 frame，确保相对于父视图的坐标系
+    //   const containerBounds = this.todayBoardWebView.bounds
+    //   this.todayBoardWebViewInstance.frame = {
+    //     x: 0,
+    //     y: 0,
+    //     width: containerBounds.width,
+    //     height: containerBounds.height
+    //   }
       
-      // 设置自动调整大小的 mask，使 WebView 随容器大小变化
-      this.todayBoardWebViewInstance.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
+    //   // 设置自动调整大小的 mask，使 WebView 随容器大小变化
+    //   this.todayBoardWebViewInstance.autoresizingMask = (1 << 1 | 1 << 4) // 宽高自适应
       
-      MNUtil.log(`📐 更新 WebView frame: ${JSON.stringify(this.todayBoardWebViewInstance.frame)}`)
-    }
+    //   MNUtil.log(`📐 更新 WebView frame: ${JSON.stringify(this.todayBoardWebViewInstance.frame)}`)
+    // }
     
 }
 
@@ -1790,13 +1968,13 @@ try {
   this.creatView("advanceView","settingView","#9bb2d6",0.0)
   this.advanceView.hidden = true
 
-  // this.createScrollView("taskBoardView","settingView")
-  // this.taskBoardView.hidden = true
-  // this.taskBoardView.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.0)
+  this.createScrollView("taskBoardView","settingView")
+  this.taskBoardView.hidden = true
+  this.taskBoardView.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.0)
   
   // 创建今日看板视图（包含 WebView）
-  this.creatView("todayBoardWebView","settingView","#9bb2d6",0.0)
-  this.todayBoardWebView.hidden = true
+  // this.creatView("todayBoardWebView","settingView","#9bb2d6",0.0)
+  // this.todayBoardWebView.hidden = true
 
 
   // this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
@@ -1829,11 +2007,18 @@ try {
   this.advancedButton.height = 30
   this.advancedButton.selected = false
 
-  // this.createButton("taskBoardButton","taskBoardButtonTapped:","tabView")
-  // MNButton.setConfig(this.taskBoardButton, {alpha:0.9,opacity:1.0,title:"Task Board",font:17,radius:10,bold:true})
-  // this.taskBoardButton.width = this.taskBoardButton.sizeThatFits({width:150,height:30}).width+15
-  // this.taskBoardButton.height = 30
-  // this.taskBoardButton.selected = false
+  this.createButton("taskBoardButton","taskBoardButtonTapped:","tabView")
+  MNButton.setConfig(this.taskBoardButton, {alpha:0.9,opacity:1.0,title:"Task Board",font:17,radius:10,bold:true})
+  this.taskBoardButton.width = this.taskBoardButton.sizeThatFits({width:150,height:30}).width+15
+  this.taskBoardButton.height = 30
+  this.taskBoardButton.selected = false
+
+  // // 添加今日看板按钮
+  // this.createButton("todayBoardButton","todayBoardButtonTapped:","tabView")
+  // MNButton.setConfig(this.todayBoardButton, {alpha:0.9,opacity:1.0,title:"今日看板",font:17,radius:10,bold:true})
+  // this.todayBoardButton.width = this.todayBoardButton.sizeThatFits({width:150,height:30}).width+15
+  // this.todayBoardButton.height = 30
+  // this.todayBoardButton.selected = false
 
   this.createButton("closeButton","closeButtonTapped:","view")
   MNButton.setConfig(this.closeButton, {color:"#e06c75",alpha:0.9,opacity:1.0,radius:10,bold:true})
@@ -2056,66 +2241,74 @@ try {
   let color = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
 
   // Task Board 视图内容
-  // this.createButton("focusRootNoteButton","focusRootNoteId:","taskBoardView")
-  // MNButton.setConfig(this.focusRootNoteButton, {title:"Focus",color:"#457bd3",alpha:0.8})
+  // 手动创建根目录看板（使用 v0_10_2 的方式）
+  this.createButton("focusRootNoteButton","focusRootNoteId:","taskBoardView")
+  MNButton.setConfig(this.focusRootNoteButton, {title:"Focus",color:"#457bd3",alpha:0.8})
   
-  // this.createButton("clearRootNoteButton","clearRootNoteId:","taskBoardView")
-  // MNButton.setConfig(this.clearRootNoteButton, {title:"Clear",color:"#9bb2d6",alpha:0.8})
+  this.createButton("clearRootNoteButton","clearRootNoteId:","taskBoardView")
+  MNButton.setConfig(this.clearRootNoteButton, {title:"Clear",color:"#9bb2d6",alpha:0.8})
   
-  // this.createButton("pasteRootNoteButton","pasteRootNoteId:","taskBoardView")
-  // MNButton.setConfig(this.pasteRootNoteButton, {title:"Paste",color:"#9bb2d6",alpha:0.8})
+  this.createButton("pasteRootNoteButton","pasteRootNoteId:","taskBoardView")
+  MNButton.setConfig(this.pasteRootNoteButton, {title:"Paste",color:"#9bb2d6",alpha:0.8})
 
   // 添加说明文本
-  // this.createButton("rootNoteLabel","","taskBoardView")
-  // MNButton.setConfig(this.rootNoteLabel, {
-  //   title:"任务管理总看板:",
-  //   color:"#457bd3",
-  //   alpha:0.3,
-  //   font:16,
-  //   bold:true
-  // })
-  // this.rootNoteLabel.userInteractionEnabled = false
+  this.createButton("rootNoteLabel","","taskBoardView")
+  MNButton.setConfig(this.rootNoteLabel, {
+    title:"任务管理总看板:",
+    color:"#457bd3",
+    alpha:0.3,
+    font:16,
+    bold:true
+  })
+  this.rootNoteLabel.userInteractionEnabled = false
   
   // 更新标签显示
-  // this.updateRootNoteLabel()
+  this.updateRootNoteLabel()
+  
+  // 创建根目录看板 - 已改为手动创建方式
+  // this.createBoardBinding({
+  //   key: 'root',
+  //   title: '根目录看板:',
+  //   parent: 'taskBoardView'
+  // })
   
   // 创建目标看板
-  // this.createBoardBinding({
-  //   key: 'target',
-  //   title: '目标看板:',
-  //   parent: 'taskBoardView'
-  // })
+  this.createBoardBinding({
+    key: 'target',
+    title: '目标看板:',
+    parent: 'taskBoardView'
+  })
   
   // 创建项目看板
-  // this.createBoardBinding({
-  //   key: 'project',
-  //   title: '项目看板:',
-  //   parent: 'taskBoardView'
-  // })
+  this.createBoardBinding({
+    key: 'project',
+    title: '项目看板:',
+    parent: 'taskBoardView'
+  })
   
   // 创建动作看板
-  // this.createBoardBinding({
-  //   key: 'action',
-  //   title: '动作看板:',
-  //   parent: 'taskBoardView'
-  // })
+  this.createBoardBinding({
+    key: 'action',
+    title: '动作看板:',
+    parent: 'taskBoardView'
+  })
   
   // 创建已完成存档区看板
-  // this.createBoardBinding({
-  //   key: 'completed',
-  //   title: '已完成存档区:',
-  //   parent: 'taskBoardView'
-  // })
+  this.createBoardBinding({
+    key: 'completed',
+    title: '已完成存档区:',
+    parent: 'taskBoardView'
+  })
   
-  // 创建今日看板 - 已移至 WebView 实现，注释掉旧的实现
-  // this.createBoardBinding({
-  //   key: 'today',
-  //   title: '今日看板:',
-  //   parent: 'taskBoardView'
-  // })
+  // 创建今日看板
+  this.createBoardBinding({
+    key: 'today',
+    title: '今日看板:',
+    parent: 'taskBoardView'
+  })
   
   // 创建今日看板的 WebView
-  this.createTodayBoardWebView()
+  // this.createTodayBoardWebView()
   
 } catch (error) {
   taskUtils.addErrorLog(error, "createSettingView")
@@ -2126,13 +2319,13 @@ try {
  * 更新根目录标签显示
  * @this {settingController}
  */
-// taskSettingController.prototype.updateRootNoteLabel = function() {
-//   let rootNoteId = taskConfig.getRootNoteId()
-//   let title = rootNoteId ? "任务管理总看板: ✅" : "任务管理总看板: ❌"
-//   MNButton.setConfig(this.rootNoteLabel, {
-//     title: title
-//   })
-// }
+taskSettingController.prototype.updateRootNoteLabel = function() {
+  let rootNoteId = taskConfig.getRootNoteId()
+  let title = rootNoteId ? "任务管理总看板: ✅" : "任务管理总看板: ❌"
+  MNButton.setConfig(this.rootNoteLabel, {
+    title: title
+  })
+}
 
 /**
  * 创建通用的看板绑定组件
@@ -2146,6 +2339,8 @@ taskSettingController.prototype.createBoardBinding = function(config) {
   const {key, title, parent} = config
   const keyCapitalized = key.charAt(0).toUpperCase() + key.slice(1)
   
+  MNUtil.log(`📦 创建看板组件: ${key}, 标题: ${title}, 父视图: ${parent}`)
+  
   // 创建标签
   const labelName = `${key}BoardLabel`
   this.createButton(labelName, "", parent)
@@ -2157,6 +2352,7 @@ taskSettingController.prototype.createBoardBinding = function(config) {
     bold: true
   })
   this[labelName].userInteractionEnabled = false
+  MNUtil.log(`✅ 创建标签: ${labelName}`)
   
   // 创建 Focus 按钮
   const focusButtonName = `focus${keyCapitalized}BoardButton`
@@ -2167,27 +2363,33 @@ taskSettingController.prototype.createBoardBinding = function(config) {
     color: "#457bd3",
     alpha: 0.8
   })
+  MNUtil.log(`✅ 创建 Focus 按钮: ${focusButtonName}, 选择器: ${focusSelector}`)
   
   // 创建 Clear 按钮
   const clearButtonName = `clear${keyCapitalized}BoardButton`
-  this.createButton(clearButtonName, `clear${keyCapitalized}Board:`, parent)
+  const clearSelector = `clear${keyCapitalized}Board:`
+  this.createButton(clearButtonName, clearSelector, parent)
   MNButton.setConfig(this[clearButtonName], {
     title: "Clear",
     color: "#9bb2d6",
     alpha: 0.8
   })
+  MNUtil.log(`✅ 创建 Clear 按钮: ${clearButtonName}, 选择器: ${clearSelector}`)
   
   // 创建 Paste 按钮
   const pasteButtonName = `paste${keyCapitalized}BoardButton`
-  this.createButton(pasteButtonName, `paste${keyCapitalized}Board:`, parent)
+  const pasteSelector = `paste${keyCapitalized}Board:`
+  this.createButton(pasteButtonName, pasteSelector, parent)
   MNButton.setConfig(this[pasteButtonName], {
     title: "Paste",
     color: "#9bb2d6",
     alpha: 0.8
   })
+  MNUtil.log(`✅ 创建 Paste 按钮: ${pasteButtonName}, 选择器: ${pasteSelector}`)
   
   // 更新标签显示
   this.updateBoardLabel(key)
+  MNUtil.log(`📦 看板组件创建完成: ${key}`)
 }
 
 /**
@@ -2309,22 +2511,31 @@ taskSettingController.prototype.setTextview = function (name = this.selectedItem
  * @param {string} boardKey - 看板唯一标识
  */
 taskSettingController.prototype.focusBoard = function(boardKey) {
+  MNUtil.log(`📍 focusBoard 被调用，boardKey: ${boardKey}`)
   // 记录聚焦看板操作
-  TaskLogManager.info(`聚焦看板: ${boardKey}`, "SettingController")
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.info(`聚焦看板: ${boardKey}`, "SettingController")
+  }
   
   let noteId = taskConfig.getBoardNoteId(boardKey)
   if (!noteId) {
-    TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
+    }
     this.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
     return
   }
   
   let note = MNNote.new(noteId)
   if (note) {
-    TaskLogManager.debug(`成功聚焦看板: ${boardKey}`, "SettingController", { noteId })
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.debug(`成功聚焦看板: ${boardKey}`, "SettingController", { noteId })
+    }
     note.focusInFloatMindMap()
   } else {
-    TaskLogManager.error(`看板卡片不存在: ${boardKey}`, "SettingController", { noteId })
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.error(`看板卡片不存在: ${boardKey}`, "SettingController", { noteId })
+    }
     this.showHUD("❌ 卡片不存在")
     // 清除无效的 ID
     taskConfig.clearBoardNoteId(boardKey)
@@ -2338,12 +2549,17 @@ taskSettingController.prototype.focusBoard = function(boardKey) {
  * @param {string} boardKey - 看板唯一标识
  */
 taskSettingController.prototype.clearBoard = async function(boardKey) {
+  MNUtil.log(`🗑️ clearBoard 被调用，boardKey: ${boardKey}`)
   // 记录清除看板操作
-  TaskLogManager.info(`清除看板: ${boardKey}`, "SettingController")
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.info(`清除看板: ${boardKey}`, "SettingController")
+  }
   
   // 如果没有设置看板，直接返回
   if (!taskConfig.getBoardNoteId(boardKey)) {
-    TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.warn(`看板未设置: ${boardKey}`, "SettingController")
+    }
     this.showHUD(`❌ 未设置${this.getBoardDisplayName(boardKey)}`)
     return
   }
@@ -2356,10 +2572,19 @@ taskSettingController.prototype.clearBoard = async function(boardKey) {
   )
   
   if (result === 1) {  // 用户点击了"清除"
-    TaskLogManager.info(`用户确认清除看板: ${boardKey}`, "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.info(`用户确认清除看板: ${boardKey}`, "SettingController")
+    }
     taskConfig.clearBoardNoteId(boardKey)
     this.updateBoardLabel(boardKey)
     this.showHUD(`✅ 已清除${this.getBoardDisplayName(boardKey)}`)
+    
+    // 触发数据同步
+    if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
+      MNUtil.delay(0.1).then(() => {
+        MNTaskInstance.syncTasksToWebView()
+      })
+    }
   }
 }
 
@@ -2369,12 +2594,17 @@ taskSettingController.prototype.clearBoard = async function(boardKey) {
  * @param {string} boardKey - 看板唯一标识
  */
 taskSettingController.prototype.pasteBoard = async function(boardKey) {
+  MNUtil.log(`📋 pasteBoard 被调用，boardKey: ${boardKey}`)
   // 记录粘贴看板操作
-  TaskLogManager.info(`粘贴看板: ${boardKey}`, "SettingController")
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.info(`粘贴看板: ${boardKey}`, "SettingController")
+  }
   
   let noteId = MNUtil.clipboardText
   if (!noteId) {
-    TaskLogManager.warn("剪贴板为空", "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.warn("剪贴板为空", "SettingController")
+    }
     this.showHUD("剪贴板为空")
     return
   }
@@ -2382,7 +2612,9 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
   // 验证卡片是否存在
   let note = MNNote.new(noteId)
   if (!note) {
-    TaskLogManager.error(`卡片不存在: ${noteId}`, "SettingController")
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.error(`卡片不存在: ${noteId}`, "SettingController")
+    }
     this.showHUD("❌ 卡片不存在")
     return
   }
@@ -2396,7 +2628,9 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
     )
     
     if (result !== 1) {  // 用户取消了
-      TaskLogManager.info(`用户取消替换看板: ${boardKey}`, "SettingController")
+      if (typeof TaskLogManager !== 'undefined') {
+        TaskLogManager.info(`用户取消替换看板: ${boardKey}`, "SettingController")
+      }
       return
     }
   }
@@ -2406,12 +2640,21 @@ taskSettingController.prototype.pasteBoard = async function(boardKey) {
   taskConfig.saveBoardNoteId(boardKey, note.noteId)
   this.updateBoardLabel(boardKey)
   
-  TaskLogManager.info(`成功粘贴看板: ${boardKey}`, "SettingController", {
-    oldNoteId,
-    newNoteId: note.noteId
-  })
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.info(`成功粘贴看板: ${boardKey}`, "SettingController", {
+      oldNoteId,
+      newNoteId: note.noteId
+    })
+  }
   
   this.showHUD(`✅ 已保存${this.getBoardDisplayName(boardKey)}`)
+  
+  // 触发数据同步
+  if (MNTaskInstance && MNTaskInstance.syncTasksToWebView) {
+    MNUtil.delay(0.1).then(() => {
+      MNTaskInstance.syncTasksToWebView()
+    })
+  }
 }
 
 /**
@@ -2725,6 +2968,10 @@ taskSettingController.prototype.createWebviewInput = function (superView) {
   //   NSURL.fileURLWithPath(this.mainPath + '/jsoneditor.html'),
   //   NSURL.fileURLWithPath(MNUtil.mainPath + '/')
   // );
+  
+  // 默认隐藏，只有在切换到 HTML 视图时才显示
+  this.webviewInput.hidden = true
+  
     } catch (error) {
     MNUtil.showHUD(error)
   }
@@ -2855,13 +3102,42 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
       webView.delegate = this
       webView.layer.cornerRadius = 10
       webView.layer.masksToBounds = true
-      webView.scrollView.bounces = false // 禁用弹性滚动
+      
+      // 配置 ScrollView 以获得流畅的滚动体验（参考 MNBrowser）
+      webView.scrollView.bounces = true // 启用弹性滚动以获得自然的滚动体验
       webView.scrollView.scrollEnabled = true // 允许滚动
+      webView.scrollView.alwaysBounceVertical = true // 垂直方向始终有弹性
+      webView.scrollView.decelerationRate = 0.998 // 正常减速率
+      webView.scrollView.showsVerticalScrollIndicator = true // 显示滚动条
+      webView.scrollView.showsHorizontalScrollIndicator = false // 隐藏水平滚动条
+      
+      // 防止顶部出现空白区域
+      if (webView.scrollView.contentInsetAdjustmentBehavior !== undefined) {
+        webView.scrollView.contentInsetAdjustmentBehavior = 2 // UIScrollViewContentInsetAdjustmentNever
+      }
+      webView.scrollView.contentInset = {top: 0, left: 0, bottom: 0, right: 0}
       
       // 学习 mntoolbar 的做法，设置 WebView 的额外属性以提升兼容性
       webView.opaque = false // 透明背景
       webView.mediaPlaybackRequiresUserAction = false // 允许自动播放媒体
       webView.allowsInlineMediaPlayback = true // 允许内联媒体播放
+      
+      // iPad 特定优化设置
+      if (MNUtil.isIPadOS()) {
+        MNUtil.log("📱 检测到 iPad 设备，应用特定优化")
+        
+        // 禁用自动检测电话号码和链接（避免误触）
+        webView.dataDetectorTypes = 0
+        
+        // 优化缩放行为
+        webView.scrollView.minimumZoomScale = 1.0
+        webView.scrollView.maximumZoomScale = 1.0
+        webView.scrollView.zoomScale = 1.0
+        
+        // 设置更适合 iPad 的内边距
+        webView.scrollView.contentInset = {top: 0, left: 0, bottom: 20, right: 0}
+        webView.scrollView.scrollIndicatorInsets = {top: 0, left: 0, bottom: 20, right: 0}
+      }
       
       // 将 WebView 添加到容器视图中
       this.todayBoardWebView.addSubview(webView)
@@ -2873,7 +3149,7 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
     }
     
     // 加载 HTML 文件
-    const htmlPath = taskConfig.mainPath + '/sidebarContainer.html'
+    const htmlPath = taskConfig.mainPath + '/task-focus-board.html'
     MNUtil.log(`📁 HTML 文件路径: ${htmlPath}`)
     
     // 检查文件是否存在
@@ -2899,6 +3175,361 @@ taskSettingController.prototype.initTodayBoardWebView = function() {
 }
 
 /**
+ * 加载今日看板数据
+ * @this {settingController}
+ */
+taskSettingController.prototype.loadTodayBoardData = async function() {
+  try {
+    MNUtil.log("📦 开始加载今日看板数据")
+    
+    if (!this.todayBoardWebViewInstance || !this.todayBoardWebViewInitialized) {
+      MNUtil.log("⚠️ WebView 尚未初始化，跳过数据加载")
+      return
+    }
+    
+    // ========== 性能优化：检查是否需要重新加载数据 ==========
+    if (this.todayBoardDataLoaded && taskConfig.isTodayBoardCacheValid()) {
+      MNUtil.log("✅ 数据已加载且缓存有效，跳过重复加载")
+      return
+    }
+    
+    // ========== 性能优化：尝试使用缓存数据 ==========
+    let tasksData = taskConfig.getTodayBoardCache()
+    let totalTaskCount = 0
+    let boundBoards = 0
+    
+    if (tasksData) {
+      // 计算缓存数据的任务数量
+      for (const tasks of Object.values(tasksData)) {
+        if (Array.isArray(tasks)) {
+          totalTaskCount += tasks.length
+        }
+      }
+      MNUtil.log(`✅ 使用缓存数据，共 ${totalTaskCount} 个任务`)
+    } else {
+      // 缓存无效，需要重新提取数据
+      MNUtil.showHUD("🔄 正在加载任务数据...")
+      MNUtil.log("⚠️ 缓存无效，开始重新提取任务数据")
+      
+      // 准备任务数据
+      tasksData = {}
+    
+    // 获取各看板的数据
+    const boards = {
+      target: taskConfig.getBoardNoteId('target'),
+      project: taskConfig.getBoardNoteId('project'),
+      action: taskConfig.getBoardNoteId('action'),
+      completed: taskConfig.getBoardNoteId('completed'),
+      today: taskConfig.getBoardNoteId('today')
+    }
+    
+    MNUtil.log(`📋 看板绑定状态: ${JSON.stringify(boards)}`)
+    
+    // 检查是否绑定了任何看板
+    for (const [boardKey, boardNoteId] of Object.entries(boards)) {
+      if (boardNoteId) {
+        boundBoards++
+      }
+    }
+    
+    if (boundBoards === 0) {
+      MNUtil.log("❌ 没有绑定任何看板")
+      MNUtil.showHUD("❌ 请先在设置中绑定看板\n设置 → Task Boards")
+      
+      // 传递空数据给 WebView
+      const jsCode = `
+        (function() {
+          if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+            TaskSync.receiveTasks({});
+            return 'success';
+          }
+          return 'taskSyncNotReady';
+        })();
+      `
+      await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
+      return
+    }
+    
+      // 提取每个看板的任务数据
+      for (const [boardKey, boardNoteId] of Object.entries(boards)) {
+        if (boardNoteId) {
+          try {
+            // 使用 TaskDataExtractor.extractTasksFromBoard 确保数据格式一致
+            tasksData[boardKey] = await TaskDataExtractor.extractTasksFromBoard(boardNoteId)
+            totalTaskCount += tasksData[boardKey].length
+            MNUtil.log(`✅ ${boardKey} 看板提取了 ${tasksData[boardKey].length} 个任务`)
+          } catch (error) {
+            MNUtil.log(`❌ 提取 ${boardKey} 看板任务失败: ${error.message}`)
+            tasksData[boardKey] = []
+          }
+        } else {
+          tasksData[boardKey] = []
+        }
+      }
+      
+      MNUtil.log(`📊 总共加载了 ${totalTaskCount} 个任务`)
+      
+      // ========== 性能优化：保存到缓存 ==========
+      taskConfig.setTodayBoardCache(tasksData)
+    }
+    
+    // 将数据转为 JSON 字符串并编码（避免特殊字符问题）
+    const jsonData = JSON.stringify(tasksData)
+    const encodedData = encodeURIComponent(jsonData)
+    
+    // 注入数据到 WebView（带重试机制）
+    const injectData = async (retryCount = 0) => {
+      const maxRetries = 3
+      const retryDelay = 500 // 毫秒
+      
+      const jsCode = `
+        (function() {
+          try {
+            if (typeof TaskSync !== 'undefined' && TaskSync.receiveTasks) {
+              // 解码数据
+              const decodedData = decodeURIComponent('${encodedData}');
+              const tasksData = JSON.parse(decodedData);
+              
+              // 添加数据验证日志
+              console.log('📦 接收到的任务数据结构:', Object.keys(tasksData));
+              for (const [boardKey, tasks] of Object.entries(tasksData)) {
+                console.log('  📋 ' + boardKey + ' 看板: ' + tasks.length + ' 个任务');
+                if (tasks.length > 0) {
+                  console.log('    示例任务:', tasks[0]);
+                }
+              }
+              
+              const result = TaskSync.receiveTasks(tasksData);
+              console.log('📦 数据加载结果:', result);
+              console.log('📊 加载任务总数: ${totalTaskCount}');
+              return 'success';
+            } else {
+              console.error('❌ TaskSync 未定义或 receiveTasks 方法不存在');
+              console.log('⚠️ window.TaskSync:', window.TaskSync);
+              return 'taskSyncNotReady';
+            }
+          } catch (e) {
+            console.error('❌ 执行 TaskSync.receiveTasks 出错:', e);
+            return 'error: ' + e.message;
+          }
+        })();
+      `
+      
+      // 执行 JavaScript 并获取结果
+      const result = await this.runJavaScriptInWebView(jsCode, 'todayBoardWebViewInstance')
+      
+      if (result === 'success') {
+        MNUtil.log("✅ 任务数据已成功发送到 WebView")
+        MNUtil.showHUD("✅ 数据加载成功")
+        
+        // ========== 性能优化：标记数据已加载 ==========
+        this.todayBoardDataLoaded = true
+        this.todayBoardLoadTime = Date.now()
+      } else if (result === 'taskSyncNotReady' && retryCount < maxRetries) {
+        MNUtil.log(`⏱️ TaskSync 未就绪，${retryDelay}ms 后重试 (${retryCount + 1}/${maxRetries})`)
+        await MNUtil.delay(retryDelay / 1000)
+        return injectData(retryCount + 1)
+      } else if (result === 'taskSyncNotReady') {
+        MNUtil.log("❌ TaskSync 始终未就绪，数据加载失败")
+        MNUtil.showHUD("⚠️ 数据加载失败，请点击刷新按钮重试")
+      } else {
+        MNUtil.log(`❌ 数据注入失败: ${result}`)
+      }
+    }
+    
+    // 先检查 TaskSync 是否存在
+    const checkTaskSyncCode = `
+      (function() {
+        if (typeof TaskSync !== 'undefined') {
+          console.log('✅ TaskSync 已定义');
+          console.log('📋 TaskSync 方法:', Object.getOwnPropertyNames(TaskSync));
+          return 'exists';
+        } else {
+          console.error('❌ TaskSync 未定义');
+          return 'notExists';
+        }
+      })();
+    `
+    
+    const taskSyncStatus = await this.runJavaScriptInWebView(checkTaskSyncCode, 'todayBoardWebViewInstance')
+    MNUtil.log(`📋 TaskSync 状态: ${taskSyncStatus}`)
+    
+    if (taskSyncStatus === 'notExists') {
+      MNUtil.log("⚠️ TaskSync 未定义，等待一秒后重试...")
+      await MNUtil.delay(1)
+    }
+    
+    // 开始注入数据
+    injectData()
+    
+  } catch (error) {
+    MNUtil.log(`❌ loadTodayBoardData 出错: ${error.message}`)
+    MNUtil.log(`📍 错误堆栈: ${error.stack}`)
+    taskUtils.addErrorLog(error, "loadTodayBoardData")
+  }
+}
+
+/**
+ * 强制刷新今日看板数据
+ * 清除缓存并重新加载数据
+ * @this {settingController}
+ */
+taskSettingController.prototype.forceRefreshTodayBoard = async function() {
+  try {
+    MNUtil.log("🔄 强制刷新今日看板数据")
+    
+    // ========== 性能优化：清除缓存 ==========
+    taskConfig.clearTodayBoardCache()
+    
+    // 重置加载标志
+    this.todayBoardDataLoaded = false
+    this.todayBoardLoadTime = null
+    
+    // 重新加载数据
+    await this.loadTodayBoardData()
+    
+  } catch (error) {
+    MNUtil.log(`❌ forceRefreshTodayBoard 出错: ${error.message}`)
+    taskUtils.addErrorLog(error, "forceRefreshTodayBoard")
+  }
+}
+
+/**
+ * 映射看板键到任务类型
+ * @param {string} boardKey - 看板键
+ * @returns {string} 任务类型
+ */
+taskSettingController.prototype.mapBoardKeyToType = function(boardKey) {
+  const typeMap = {
+    'target': 'target',
+    'project': 'project', 
+    'key': 'keyresult',
+    'action': 'action',
+    'root': 'action' // root 看板默认为动作类型
+  }
+  return typeMap[boardKey] || 'action'
+}
+
+/**
+ * 构建任务标题路径
+ * @param {MNNote} note - 任务笔记
+ * @returns {string} 标题路径
+ */
+taskSettingController.prototype.buildTitlePath = function(note) {
+  const path = []
+  let current = note.parentNote
+  
+  while (current) {
+    if (current.noteTitle) {
+      path.unshift(current.noteTitle)
+    }
+    current = current.parentNote
+  }
+  
+  return path.join(' >> ')
+}
+
+/**
+ * 处理单个任务更新
+ * @param {Object} updateData - 更新数据
+ */
+taskSettingController.prototype.handleUpdateTask = function(updateData) {
+  try {
+    if (!updateData || !updateData.id) {
+      MNUtil.log('⚠️ 更新数据无效')
+      return
+    }
+    
+    MNUtil.log(`📝 更新任务: ${updateData.id}`)
+    MNUtil.log(`📦 更新内容: ${JSON.stringify(updateData)}`)
+    
+    // 获取任务笔记
+    const note = MNNote.new(updateData.id)
+    if (!note) {
+      MNUtil.log(`❌ 找不到任务笔记: ${updateData.id}`)
+      return
+    }
+    
+    // 使用 undoGrouping 确保更新可以撤销
+    MNUtil.undoGrouping(() => {
+      // 更新状态
+      if (updateData.status) {
+        const statusIndex = TaskFieldUtils.getFieldIndex(note, "状态")
+        if (statusIndex !== -1) {
+          // 更新现有状态字段
+          const statusHtml = TaskFieldUtils.createFieldHtml("状态", updateData.status)
+          note.setCommentHTMLAtIndex(statusHtml, statusIndex)
+          MNUtil.log(`✅ 更新状态为: ${updateData.status}`)
+        } else {
+          // 添加状态字段
+          const statusHtml = TaskFieldUtils.createFieldHtml("状态", updateData.status)
+          note.appendHtmlComment(statusHtml)
+          MNUtil.log(`✅ 添加状态字段: ${updateData.status}`)
+        }
+      }
+      
+      // 更新优先级
+      if (updateData.priority) {
+        const priorityIndex = TaskFieldUtils.getFieldIndex(note, "优先级")
+        if (priorityIndex !== -1) {
+          const priorityHtml = TaskFieldUtils.createFieldHtml("优先级", updateData.priority)
+          note.setCommentHTMLAtIndex(priorityHtml, priorityIndex)
+          MNUtil.log(`✅ 更新优先级为: ${updateData.priority}`)
+        }
+      }
+      
+      // 更新信息/描述
+      if (updateData.description !== undefined) {
+        const infoIndex = TaskFieldUtils.getFieldIndex(note, "信息")
+        if (infoIndex !== -1) {
+          const infoHtml = TaskFieldUtils.createFieldHtml("信息", updateData.description)
+          note.setCommentHTMLAtIndex(infoHtml, infoIndex)
+          MNUtil.log(`✅ 更新信息`)
+        }
+      }
+    })
+    
+    // 刷新 WebView 显示
+    this.loadTodayBoardData()
+    
+    // 显示成功提示
+    MNUtil.showHUD(`✅ 任务已更新`)
+    
+  } catch (error) {
+    MNUtil.log(`❌ handleUpdateTask 出错: ${error.message}`)
+    taskUtils.addErrorLog(error, "handleUpdateTask")
+  }
+}
+
+/**
+ * 批量更新任务
+ * @param {Array} tasksUpdates - 任务更新数组
+ */
+taskSettingController.prototype.handleBatchUpdate = function(tasksUpdates) {
+  try {
+    if (!Array.isArray(tasksUpdates)) {
+      MNUtil.log('⚠️ 批量更新数据格式错误')
+      return
+    }
+    
+    MNUtil.log(`📦 批量更新 ${tasksUpdates.length} 个任务`)
+    
+    MNUtil.undoGrouping(() => {
+      for (const updateData of tasksUpdates) {
+        this.handleUpdateTask(updateData)
+      }
+    })
+    
+    // 显示成功提示
+    MNUtil.showHUD(`✅ 批量更新了 ${tasksUpdates.length} 个任务`)
+    
+  } catch (error) {
+    MNUtil.log(`❌ handleBatchUpdate 出错: ${error.message}`)
+    taskUtils.addErrorLog(error, "handleBatchUpdate")
+  }
+}
+
+/**
  * 检测对象是否为 NSNull
  * @param {any} obj - 要检测的对象
  * @returns {boolean} 如果是 NSNull 返回 true
@@ -2914,34 +3545,32 @@ taskSettingController.prototype.isNSNull = function(obj) {
  * @returns {Promise} 返回执行结果的 Promise
  */
 taskSettingController.prototype.runJavaScriptInWebView = async function(script, webViewName = 'todayBoardWebViewInstance') {
-  return new Promise((resolve, reject) => {
-    try {
-      if (!this[webViewName]) {
-        reject(new Error(`WebView ${webViewName} not found`))
-        return
-      }
-      
-      // 使用 evaluateJavaScript 方法（与 webviewInput 保持一致）
+  try {
+    if (!this[webViewName]) {
+      throw new Error(`WebView ${webViewName} not found`)
+    }
+    
+    // 使用 evaluateJavaScript 方法（与 MN Browser 保持一致）
+    return new Promise((resolve, reject) => {
       this[webViewName].evaluateJavaScript(script, (result) => {
-        // 处理 NSNull 情况（iPad 上经常返回 NSNull）
-        if (this.isNSNull(result)) {
-          // 如果脚本包含 IIFE 包装，很可能执行成功但返回了 NSNull
-          // 这种情况下返回 'success' 而不是 undefined
+        // 处理 NSNull
+        if (MNUtil.isNSNull(result)) {
+          // 如果脚本包含 IIFE 包装，很可能执行成功但没有返回值
           if (script.includes('(function()')) {
             resolve('success')
           } else {
             resolve(undefined)
           }
-          return
+        } else {
+          resolve(result)
         }
-        resolve(result)
       })
-    } catch (error) {
-      reject(error)
-    }
-  })
+    })
+  } catch (error) {
+    MNUtil.log(`❌ JavaScript 执行错误: ${error.message}`)
+    throw error
+  }
 }
-
 
 /**
  * 切换 WebView 到日志视图
@@ -3341,9 +3970,9 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         }
         break
         
-      case 'viewTaskDetail':
+      case 'showInMindMap':
         if (params.taskId) {
-          this.viewTaskDetail(params.taskId)
+          this.showInMindMap(params.taskId)
         }
         break
         
@@ -3379,6 +4008,37 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
         this.handleOpenTaskEditor()
         break
         
+      case 'updateTask':
+        // 处理任务更新
+        if (params.data) {
+          const taskData = JSON.parse(decodeURIComponent(params.data))
+          if (MNTaskInstance) {
+            MNTaskInstance.updateTaskFromWebView(taskData)
+          } else {
+            MNUtil.log("❌ MNTaskInstance 不存在")
+            MNUtil.showHUD("❌ 无法更新任务")
+          }
+        }
+        break
+        
+      case 'batchUpdate':
+        // 处理批量更新
+        if (params.data) {
+          const tasksData = JSON.parse(decodeURIComponent(params.data))
+          if (MNTaskInstance) {
+            for (const taskData of tasksData) {
+              MNTaskInstance.updateTaskFromWebView(taskData)
+            }
+          }
+        }
+        break
+        
+      case 'syncTasks':
+        // 触发任务同步
+        MNUtil.log("🔄 收到任务同步请求")
+        this.loadTodayBoardData()
+        break
+        
       default:
         MNUtil.log(`⚠️ 未知的协议动作: ${action}`)
     }
@@ -3394,11 +4054,15 @@ taskSettingController.prototype.handleTodayBoardProtocol = function(url) {
 taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
   try {
     // 记录开始更新任务状态
-    TaskLogManager.info("开始更新任务状态", "SettingController", { taskId })
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.info("开始更新任务状态", "SettingController", { taskId })
+    }
     MNUtil.log(`🔄 handleUpdateTaskStatus 被调用，taskId: ${taskId}`)
     
     if (!taskId) {
-      TaskLogManager.warn("任务ID为空", "SettingController")
+      if (typeof TaskLogManager !== 'undefined') {
+        TaskLogManager.warn("任务ID为空", "SettingController")
+      }
       MNUtil.log("❌ 任务ID为空，无法更新状态")
       MNUtil.showHUD("任务ID为空")
       return
@@ -3406,7 +4070,9 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
     
     const task = MNNote.new(taskId)
     if (!task) {
-      TaskLogManager.error("任务不存在", "SettingController", { taskId })
+      if (typeof TaskLogManager !== 'undefined') {
+        TaskLogManager.error("任务不存在", "SettingController", { taskId })
+      }
       MNUtil.showHUD("任务不存在")
       return
     }
@@ -3421,11 +4087,13 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
     
     // 获取新状态（用于日志记录）
     const newStatus = MNTaskManager.getNoteStatus(task)
-    TaskLogManager.info("任务状态已更新", "SettingController", { 
-      taskId, 
-      fromStatus: currentStatus, 
-      toStatus: newStatus 
-    })
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.info("任务状态已更新", "SettingController", { 
+        taskId, 
+        fromStatus: currentStatus, 
+        toStatus: newStatus 
+      })
+    }
     
     // 延迟刷新数据，确保状态已更新
     MNUtil.delay(0.3).then(() => {
@@ -3435,7 +4103,9 @@ taskSettingController.prototype.handleUpdateTaskStatus = function(taskId) {
     MNUtil.showHUD("状态已更新")
   } catch (error) {
     // 使用 TaskLogManager 记录错误
-    TaskLogManager.error("更新任务状态失败", "SettingController", error)
+    if (typeof TaskLogManager !== 'undefined') {
+      TaskLogManager.error("更新任务状态失败", "SettingController", error)
+    }
     taskUtils.addErrorLog(error, "handleUpdateTaskStatus")
     MNUtil.showHUD("更新状态失败")
   }
@@ -4529,15 +5199,17 @@ taskSettingController.prototype.diagnoseWebViewStatus = function() {
   MNUtil.log("=== 诊断完成 ===")
   
   // 将诊断信息也记录到 TaskLogManager
-  TaskLogManager.debug("WebView 状态诊断", "Diagnostics", {
-    todayBoardWebView: {
-      containerExists: !!this.todayBoardWebView,
-      instanceExists: !!this.todayBoardWebViewInstance,
-      initialized: this.todayBoardWebViewInitialized,
-      frame: this.todayBoardWebViewInstance?.frame
-    },
-    currentView: this.currentView
-  })
+  if (typeof TaskLogManager !== 'undefined') {
+    TaskLogManager.debug("WebView 状态诊断", "Diagnostics", {
+      todayBoardWebView: {
+        containerExists: !!this.todayBoardWebView,
+        instanceExists: !!this.todayBoardWebViewInstance,
+        initialized: this.todayBoardWebViewInitialized,
+        frame: this.todayBoardWebViewInstance?.frame
+      },
+      currentView: this.currentView
+    })
+  }
 }
 
 /**
@@ -4622,9 +5294,9 @@ taskSettingController.prototype.updateTaskStatus = function(taskId) {
 
 
 /**
- * 查看任务详情
+ * 在主脑图中定位卡片
  */
-taskSettingController.prototype.viewTaskDetail = function(taskId) {
+taskSettingController.prototype.showInMindMap = function(taskId) {
   try {
     const task = MNNote.new(taskId)
     if (!task) {
@@ -4632,10 +5304,10 @@ taskSettingController.prototype.viewTaskDetail = function(taskId) {
       return
     }
     
-    task.focusInFloatMindMap(0.5)
+    task.focusInMindMap(0.5)
     this.hide()
   } catch (error) {
-    taskUtils.addErrorLog(error, "viewTaskDetail")
+    taskUtils.addErrorLog(error, "showInMindMap")
   }
 }
 

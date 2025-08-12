@@ -100,11 +100,25 @@ function registerAllButtons() {
     image: "think",
     templateName: "menu_think"
   });
+
+
+  global.registerButton("custom1", {
+    name: "摘录",
+    image: "excerpt",
+    templateName: "menu_excerpt"
+  });
   
   global.registerButton("custom4", {
     name: "文献",
     image: "reference",
     templateName: "menu_reference"
+  });
+
+  // 代码学习按钮
+  global.registerButton("custom_code", {
+    name: "代码学习",
+    image: "code",
+    templateName: "menu_codeLearning"
   });
 
   global.registerButton("custom7", {
@@ -160,7 +174,6 @@ function registerAllButtons() {
     image: "excerpt_white",
     templateName: "menu_excerpt"
   });
-
   
   if (typeof MNUtil !== "undefined" && MNUtil.log) {
     MNUtil.log(`🚀 已注册 ${Object.keys(global.customButtons).length} 个自定义按钮`);

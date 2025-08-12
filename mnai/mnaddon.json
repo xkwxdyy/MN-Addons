@@ -2,7 +2,7 @@
     "addonid": "marginnote.extension.mnchatglm",
     "author": "Feliks",
     "title": "MN ChatAI",
-    "version": "0.2.5.alpha0616",
+    "version": "0.2.6.alpha0805",
     "marginnote_version_min": "3.7.11",
     "cert_key": ""
 }

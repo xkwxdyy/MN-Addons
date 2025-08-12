@@ -59,43 +59,13 @@ function generateUrlScheme(scheme, host, path, query, fragment) {
   return url;
 }
     /**
-     * 根据指定的 scheme、路径和参数生成一个 URL Scheme 字符串。
-     * URL Scheme协议完整格式：scheme://host/path?query_parameters#fragment_identifier
-     *
-     * @param {string} scheme - URL scheme, 例如 'myapp'。
-     * @param {string} [host] - 可选的路径或操作名。
-     * @param {Object<string, string|number|boolean>} [params] - 查询参数对象。
-     * @returns {string} - 生成的完整 URL 字符串。
-     */
-    function generateUrlScheme(scheme, host, params) {
-      let url = `${scheme}://${host || ''}`;
-      if (params && Object.keys(params).length > 0) {
-        const queryParts = [];
-        for (const key in params) {
-          // 确保我们只处理对象自身的属性
-          if (Object.prototype.hasOwnProperty.call(params, key)) {
-            const value = params[key];
-            const type = typeof value
-            // 对键和值都进行编码，这是至关重要的！
-            const encodedKey = encodeURIComponent(key);
-            const encodedValue = encodeURIComponent(type === "object"? JSON.stringify(value):value);
-            queryParts.push(`${encodedKey}=${encodedValue}`);
-          }
-        }
-        if (queryParts.length > 0) {
-          url += `?${queryParts.join('&')}`;
-        }
-      }
-      return url;
-    }
-    /**
      *
      * @param {string} scheme - URL scheme, 例如 'myapp'。
      * @param {string} [host] - 可选的路径或操作名。
      * @param {Object<string, string|number|boolean>} [params] - 查询参数对象。
      */
     function postMessageToAddon(scheme, host, params) {
-      let url = generateUrlScheme(scheme,host,params)
+      let url = generateUrlScheme(scheme,host,undefined,params)
       window.location.href = url
     }
 

@@ -1,0 +1,357 @@
+
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>自定义按钮配置</title>
+<style>
+    /* 全局样式 */
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background-color: #f0f2f5;
+        color: #1c1e21;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        -o-user-select: none;
+    }
+
+    /* 主容器 */
+    .config-container {
+        width: 100%;
+        max-width: 720px;
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 10px 10px;
+    }
+
+    /* 配置页标题 */
+    .config-header {
+        font-size: 20px;
+        font-weight: 600;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    /* === 修改核心区域 START === */
+
+    /* 每一行配置 */
+    .config-row {
+        /* 改为块级布局，不再使用 Flex */
+        padding: 14px 0;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s ease;
+        padding-left: 12px;
+        padding-right: 12px;
+        margin: 0 -12px;
+    }
+
+    .config-row:last-child {
+        border-bottom: none;
+    }
+
+    .config-row:hover {
+        background-color:rgba(0, 149, 255, 0.08);
+    }
+
+    /* 新增：用于容纳第一行内容的容器 */
+    .config-top-line {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px; /* 与下方的下拉菜单拉开距离 */
+    }
+
+    /* 1. 原始按钮样式 */
+    .original-button {
+        /* flex: 1; 不再需要 */
+        font-size: 18px;
+        font-weight: 500;
+        padding-right: 15px; /* 与开关保持距离 */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis; /* 防止文本过长时溢出 */
+    }
+    .replacement-selector{
+        display: flex;
+        align-items: center;
+    }
+    .replacement-arrow{
+        margin-right: 10px;
+    }
+    /* 2. 替换按钮（下拉菜单）样式 */
+    .replacement-selector select {
+        display: flex;
+        font-size: 16px;
+        padding: 8px 12px;
+        border: 1px solid #ccd0d5;
+        border-radius: 6px;
+        background-color: #f5f6f7;
+        cursor: pointer;
+        width: 100%;
+        box-sizing: border-box; /* 确保 padding 不会撑开宽度 */
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    /* === 修改核心区域 END === */
+
+    .replacement-selector select:hover {
+        border-color: #a0a0a0;
+    }
+
+    .replacement-selector select:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+    
+    /* 3. 开关样式 */
+    .enable-switch {
+        margin-left: 10px; /* 和左侧文字的间距 */
+        flex-shrink: 0; /* 防止开关在 flex 布局中被压缩 */
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 25px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 4px;
+        bottom: 3.5px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #007bff;
+    }
+
+    input:focus + .slider {
+        box-shadow: 0 0 1px #2196F3;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
+
+    /* 保存按钮样式 */
+    .save-button-container {
+        text-align: right;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    #save-btn {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: 500;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+
+    #save-btn:hover {
+        background-color: #0056b3;
+    }
+    
+    #save-btn:active {
+        transform: scale(0.98);
+    }
+
+</style>
+</head>
+<body>
+
+<div class="config-container">
+    <div class="config-header">自定义按钮配置</div>
+    
+    <div id="config-list">
+        </div>
+</div>
+
+<script>
+    let initialized = false
+    // 按钮数据
+    const allPopupButtons = [
+        "copy", "copyOCR", "toggleTitle", "toggleCopyMode", "toggleGroupMode", "insertAI", "aiFromNote", "moveNoteTo", "linkNoteTo", "noteHighlight", "blankHighlight", "mergeHighlight", "delHighlight", "sendHighlight", "foldHighlight", "textHighlight", "paintHighlight", "sourceHighlight", "setTitleHighlight", "setCommentHighlight", "setEmphasisHighlight", "sourceHighlightOfNote", "highStyleColor0", "highStyleColor1", "highStyleColor2", "highStyleColor3", "highlightType1", "highlightType2", "highlightType3", "highlightType4", "highlightShortcut1", "highlightShortcut2", "highlightShortcut3", "highlightShortcut4", "highlightShortcut5", "highlightShortcut6", "highlightShortcut7", "highlightShortcut8", "editHashtags", "deleteNote", "commentNote", "pasteToNote", "mergeIntoNote", "focusCurrentNote", "draftCurrentNote", "collapseBlank", "collapseBlankOnPage", "cancelBlankOnPage", "setBlankLayer", "insertBlank", "insertTranslation", "addToTOC", "addToReview", "addSelToReivew", "speechText", "speechHighlight", "goWiki", "goPalette", "goWikiNote", "goDictionary", "goToMindMap", "newGroupChild", "splitBook", "pasteOnPage", "textboxOnPage", "fullTextOnPage", "imageboxOnPage", "cameraOnPage", "moreOperations", "dragDrop", "exportCards", "newGroupMenu", "showInlineChatForNote", "showInlineChat", "selectBranch", "ocrForNote", "textFirstForNote", "aiMenuPlaceholder"
+    ];
+
+    let popupReplaceConfig = {};
+
+    function updatePopupReplaceConfigEncoded(config) {
+      popupReplaceConfig = JSON.parse(decodeURIComponent(config))
+    }
+
+    let targetActions = [];
+
+    const configList = document.getElementById('config-list');
+
+    // 生成下拉菜单的所有选项
+    let optionsHtml = '';
+    function updateTargetActionsEncoded(config) {
+      optionsHtml = ''
+      targetActions = JSON.parse(decodeURIComponent(config))
+      targetActions.push({title:"None",key:"None"})
+      targetActions.forEach(btn => {
+          // 将 title="None" 改为 "无"
+          const title = btn.title;
+          optionsHtml += `<option value="${btn.key}">${title}</option>`;
+      });
+    }
+
+    function updateConfigList() {
+      // let configList = document.getElementById('config-list');
+      configList.innerHTML = ''
+      // 动态创建每一行配置
+      allPopupButtons.forEach((buttonName, index) => {
+        let config = popupReplaceConfig[buttonName];
+        if (!config) return; // 如果配置不存在则跳过
+
+        const row = document.createElement('div');
+        row.className = 'config-row';
+        row.dataset.originalButton = buttonName;
+
+        const isChecked = config.enabled ? "checked" : "";
+
+        // === 修改核心区域 START ===
+        // 更新 innerHTML 以匹配新的两行布局
+        row.innerHTML = `
+            <div class="config-top-line">
+                <div class="original-button" title="${buttonName}">${buttonName}</div>
+                <div class="enable-switch">
+                    <label class="switch">
+                        <input type="checkbox" ${isChecked}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="replacement-selector">
+                <div class="replacement-arrow">➡️</div>
+                <select>
+                    ${optionsHtml}
+                </select>
+            </div>
+        `;
+        // === 修改核心区域 END ===
+        
+        configList.appendChild(row);
+
+        // 设置下拉菜单的默认选中项
+        const selectElement = row.querySelector('select');
+        if (config.target === "") {
+            selectElement.value = "None";
+        } else {
+            selectElement.value = config.target;
+        }
+        // selectElement.addEventListener('change', (event) => {
+        //     // 当用户做出选择后，让 select 元素失去焦点
+        //     setTimeout(() => {
+        //       event.target.blur(); 
+        //       event.srcElement.blur()
+        //       document.activeElement.blur()
+        //     }, 10);
+        // });
+      });
+    }
+
+
+
+    // =======================================================
+    // == 新增功能区
+    // =======================================================
+
+    /**
+     * 获取当前页面上的所有配置项，并返回一个配置对象。
+     * @returns {object} 与 popupReplaceConfig 结构相同的配置对象
+     */
+    function getUpdatedConfig() {
+        const newConfig = {};
+        const configRows = document.querySelectorAll('.config-row');
+
+        configRows.forEach(row => {
+            const originalButtonName = row.dataset.originalButton;
+            if (originalButtonName) {
+                const selectElement = row.querySelector('select');
+                const checkboxElement = row.querySelector('input[type="checkbox"]');
+
+                const selectedTarget = selectElement.value;
+                const isEnabled = checkboxElement.checked;
+                
+                newConfig[originalButtonName] = {
+                    enabled: isEnabled,
+                    target: selectedTarget === "None" ? "" : selectedTarget,
+                    name: originalButtonName
+                };
+            }
+        });
+        return newConfig;
+    }
+
+    function getUpdatedConfigEncoded() {
+      const updatedConfig = getUpdatedConfig()
+      return encodeURIComponent(JSON.stringify(updatedConfig))
+    }
+    function isInitialized() {
+      return JSON.stringify({initialized:initialized})
+    }
+    // updateConfigList()
+    document.addEventListener("DOMContentLoaded", function() {
+      if (!initialized) {
+        initialized = true
+      }
+
+            configList.addEventListener('change', function(event) {
+            
+            if (event.target && event.target.tagName === 'SELECT') {
+                event.srcElement.blur()
+                
+                // 在这里，您可以添加其他需要立即执行的逻辑，
+                // 例如：自动将当前配置发送到服务器保存
+                // saveConfiguration(); 
+            }
+            
+        });
+    })
+
+</script>
+
+</body>
+</html>

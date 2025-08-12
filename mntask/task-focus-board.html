@@ -8,6 +8,9 @@
     <!-- 引入测试数据 -->
     <script src="testData.js"></script>
     
+    <!-- 引入 MNTask 通信桥接库 -->
+    <script src="mntask-bridge.js"></script>
+    
     <style>
         /* ========================================
            🎨 CSS 变量定义 - 现代化设计系统
@@ -383,7 +386,6 @@
             transition: var(--transition);
             cursor: pointer;
             position: relative;
-            overflow: hidden;
         }
 
         .focus-task-card:hover {
@@ -679,6 +681,38 @@
             color: #f6ad55;
             background: rgba(246, 173, 85, 0.2);
         }
+        
+        /* 焦点任务定位按钮 */
+        .focus-task-locate {
+            position: absolute;
+            top: var(--spacing-sm);
+            right: calc(var(--spacing-sm) + 72px); /* 在当前任务标记按钮左边 */
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            line-height: 1;
+            transition: var(--transition);
+            opacity: 0;
+            z-index: 10;
+        }
+        
+        .focus-task-card:hover .focus-task-locate {
+            opacity: 1;
+        }
+        
+        .focus-task-locate:hover {
+            background: rgba(91, 157, 217, 0.2);
+            color: var(--status-pause);
+            transform: scale(1.1);
+        }
 
         @media (max-width: 768px) {
             .focus-task-remove {
@@ -694,6 +728,14 @@
                 height: 36px;
                 font-size: 20px;
                 right: calc(var(--spacing-sm) + 44px);
+            }
+            
+            .focus-task-locate {
+                opacity: 1;
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+                right: calc(var(--spacing-sm) + 88px);
             }
             
             .drag-handle {
@@ -764,6 +806,7 @@
             display: flex;
             gap: var(--spacing-sm);
             margin-top: var(--spacing-lg);
+            flex-wrap: wrap;
         }
         
         /* 最近进展样式 */
@@ -788,6 +831,15 @@
         .recent-progress-content {
             color: var(--text-primary);
             line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-height: 3.6em; /* 限制最多显示3行 (1.4 * 3 ≈ 4.2) */
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3; /* 标准属性，提高兼容性 */
+            -webkit-box-orient: vertical;
+            text-overflow: ellipsis;
         }
         
         .recent-progress-time {
@@ -867,12 +919,14 @@
             .focus-task-actions {
                 gap: var(--spacing-md);
                 margin-top: var(--spacing-md);
+                flex-wrap: wrap;
             }
             
             .focus-task-actions .btn {
-                flex: 1;
+                flex: 1 1 auto;
                 justify-content: center;
-                min-width: auto;
+                min-width: 120px;
+                margin-bottom: var(--spacing-xs);
             }
             
             /* 优化模态框关闭按钮 */
@@ -5159,6 +5213,10 @@
             
             <!-- 全局功能按钮 -->
             <div class="global-actions">
+                <button class="global-btn" onclick="refreshTasks()">
+                    🔄
+                    <span class="tooltip">刷新数据</span>
+                </button>
                 <button class="global-btn" onclick="openGlobalSearch()">
                     🔍
                     <span class="tooltip">全局搜索 (Ctrl+K)</span>
@@ -5978,6 +6036,42 @@
     </div>
 
     <script>
+        // 全局错误处理器
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            console.error('🚨 JavaScript错误:', {
+                message: msg,
+                source: url,
+                line: lineNo,
+                column: columnNo,
+                error: error
+            });
+            
+            // 尝试通过MNTask协议发送错误日志
+            try {
+                const errorData = {
+                    level: 'error',
+                    message: `JavaScript错误: ${msg}`,
+                    data: JSON.stringify({
+                        filename: url,
+                        lineno: lineNo,
+                        colno: columnNo,
+                        stack: error ? error.stack : ''
+                    })
+                };
+                window.location.href = `mntask://log?${new URLSearchParams(errorData).toString()}`;
+            } catch (e) {
+                console.error('发送错误日志失败:', e);
+            }
+            
+            return true; // 阻止默认错误处理
+        };
+        
+        // 处理Promise拒绝
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('🚨 未处理的Promise拒绝:', event.reason);
+            event.preventDefault();
+        });
+        
         /* ========================================
            📊 数据模型
            ======================================== */
@@ -6198,6 +6292,23 @@
             // 自动移除
             if (duration > 0) {
                 setTimeout(closeNotification, duration);
+            }
+        }
+        
+        // 定位到任务卡片
+        function focusTaskInMindMap(taskId) {
+            try {
+                // 通过 URL Scheme 调用插件原生代码
+                window.location.href = `mntask://showInMindMap?taskId=${encodeURIComponent(taskId)}`;
+                
+                // 关闭任务详情模态框（如果打开的话）
+                const modal = document.getElementById('taskDetailModal');
+                if (modal && modal.classList.contains('active')) {
+                    closeModal('taskDetailModal');
+                }
+            } catch (error) {
+                console.error('定位卡片失败:', error);
+                showNotification('定位失败：' + error.message, 'error');
             }
         }
         
@@ -6438,11 +6549,12 @@
         // 渲染焦点任务卡片
         function renderFocusTasks() {
             const container = document.getElementById('focusTaskContainer');
-            // 只显示动作类型的未完成焦点任务
+            // 只显示动作类型的未完成、未归档的焦点任务
             let focusTasksList = tasks.filter(task => 
                 focusTasks.has(task.id) && 
                 task.type === '动作' && 
-                task.status !== '已完成'
+                task.status !== '已完成' &&
+                task.status !== '已归档'
             );
             
             // 按照 focusTasksOrder 排序
@@ -6470,7 +6582,7 @@
                      ondragleave="handleDragLeave(event)"
                      ondrop="handleDrop(event)"
                      ondragend="handleDragEnd(event)"
-                     onclick="viewTaskDetail('${task.id}')"
+                     onclick="showInMindMap('${task.id}')"
                      style="cursor: pointer;">
                     <div class="drag-handle" title="拖拽排序">⋮⋮</div>
                     <button class="focus-task-remove" onclick="removeFromFocus(event, '${task.id}')" title="从焦点移除">
@@ -6480,6 +6592,11 @@
                             onclick="event.stopPropagation(); toggleCurrentFocus('${task.id}')" 
                             title="${task.currentFocus ? '取消当前任务' : '设为当前任务'}">
                         ${task.currentFocus ? '⭐' : '☆'}
+                    </button>
+                    <button class="focus-task-locate" 
+                            onclick="event.stopPropagation(); focusTaskInMindMap('${task.id}')" 
+                            title="定位到卡片">
+                        📍
                     </button>
                     <div class="task-type-badge ${task.type.toLowerCase()}">
                         ${getTaskTypeIcon(task.type)} ${task.type}
@@ -6518,10 +6635,10 @@
                         <div class="recent-progress">
                             <div class="recent-progress-header">
                                 <span>📝 最近进展</span>
-                                <span class="recent-progress-time">${formatProgressTime(task.fields.progressLog[task.fields.progressLog.length - 1].date)}</span>
+                                <span class="recent-progress-time">${formatProgressTimeRelative(task.fields.progressLog[task.fields.progressLog.length - 1].date)}</span>
                             </div>
                             <div class="recent-progress-content">
-                                ${task.fields.progressLog[task.fields.progressLog.length - 1].note}
+                                ${stripHTMLTags(task.fields.progressLog[task.fields.progressLog.length - 1].note)}
                             </div>
                         </div>
                     ` : ''}
@@ -6586,7 +6703,7 @@
                      ondragleave="handlePendingDragLeave(event)"
                      ondrop="handlePendingDrop(event)"
                      ondragend="handlePendingDragEnd(event)"
-                     onclick="viewTaskDetail('${task.id}')" 
+                     onclick="showInMindMap('${task.id}')" 
                      style="cursor: pointer; position: relative;">
                     <div class="drag-handle" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-muted); cursor: grab; opacity: 0; transition: opacity 0.2s;" title="拖拽排序">⋮⋮</div>
                     ${index > 0 ? `<button class="pending-task-pin" onclick="event.stopPropagation(); pinToTopPending('${task.id}')" title="置顶">⬆️</button>` : ''}
@@ -6867,7 +6984,17 @@
         
         // 时间轴专用的添加到焦点函数
         function addToFocusInTimeline(taskId) {
-            if (focusTasks.size >= 5) {
+            // 只统计符合显示条件的焦点任务数量
+            const activeFocusTasks = Array.from(focusTasks)
+                .map(id => tasks.find(t => t.id === id))
+                .filter(task => 
+                    task && 
+                    task.type === '动作' && 
+                    task.status !== '已完成' && 
+                    task.status !== '已归档'
+                );
+            
+            if (activeFocusTasks.length >= 5) {
                 showNotification('焦点任务不能超过5个，请先移除其他任务', 'warning');
                 return;
             }
@@ -6938,6 +7065,11 @@
             const timelineTasks = baseTasks.filter(task => {
                 // 只显示项目和动作类型的任务
                 if (task.type !== '项目' && task.type !== '动作') {
+                    return false;
+                }
+                
+                // 不显示已归档的任务
+                if (task.status === '已归档') {
                     return false;
                 }
                 
@@ -7134,7 +7266,7 @@
                         <div class="timeline-group-label">同一时间的任务</div>
                         <div class="timeline-group-tasks">
                             ${group.tasks.map(task => `
-                                <div class="timeline-content timeline-content-grouped" onclick="viewTaskDetail('${task.id}')">
+                                <div class="timeline-content timeline-content-grouped" onclick="showInMindMap('${task.id}')">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
                                         <span class="task-type-badge ${task.type.toLowerCase()} text-small">
                                             ${getTaskTypeIcon(task.type)} ${task.type}
@@ -7233,7 +7365,7 @@
                         <div class="timeline-main-content">
                             <!-- 任务头部：信息 + 操作按钮 -->
                             <div class="timeline-header">
-                                <div class="task-info" onclick="viewTaskDetail('${task.id}')">
+                                <div class="task-info" onclick="showInMindMap('${task.id}')">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xs);">
                                         <span class="task-type-badge ${task.type.toLowerCase()} text-small">
                                             ${getTaskTypeIcon(task.type)} ${task.type}
@@ -7594,10 +7726,26 @@
                     task.fields.progressLog = [];
                 }
                 
-                task.fields.progressLog.push({
+                const newProgress = {
                     date: new Date().toLocaleString('zh-CN'),
                     note: note.trim()
-                });
+                };
+                
+                task.fields.progressLog.push(newProgress);
+                
+                // 同步进展数据到原生端
+                if (window.TaskSync && window.TaskSync.sendTaskUpdate) {
+                    // 将进展数据转换回原生格式
+                    const progressesForSync = task.fields.progressLog.map(p => {
+                        // 根据原生端期望的格式转换
+                        return `${p.date}: ${p.note}`;
+                    });
+                    
+                    TaskSync.sendTaskUpdate(taskId, {
+                        progresses: progressesForSync
+                    });
+                    console.log('📤 进展数据已同步到原生端');
+                }
                 
                 // 根据当前视图刷新对应内容
                 if (currentView === 'focus') {
@@ -7765,8 +7913,8 @@
            📝 时间轴进展记录显示功能
            ======================================== */
 
-        // 格式化进展时间显示
-        function formatProgressTime(dateStr) {
+        // 格式化进展时间显示（绝对时间格式）
+        function formatProgressTimeAbsolute(dateStr) {
             const progressDate = new Date(dateStr);
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -7813,8 +7961,8 @@
                     ${recentProgress.map((progress, index) => `
                         <div class="progress-item ${index === 0 ? 'latest' : 'history'}">
                             ${index === 0 ? 
-                                `${formatProgressTime(progress.date)}: ${progress.note}` :
-                                `｜- ${formatProgressTime(progress.date)} ${progress.note}`
+                                `${formatProgressTimeAbsolute(progress.date)}: ${progress.note}` :
+                                `｜- ${formatProgressTimeAbsolute(progress.date)} ${progress.note}`
                             }
                         </div>
                     `).join('')}
@@ -7909,7 +8057,17 @@
 
         // 添加到焦点任务
         function addToFocus(taskId) {
-            if (focusTasks.size >= 5) {
+            // 只统计符合显示条件的焦点任务数量
+            const activeFocusTasks = Array.from(focusTasks)
+                .map(id => tasks.find(t => t.id === id))
+                .filter(task => 
+                    task && 
+                    task.type === '动作' && 
+                    task.status !== '已完成' && 
+                    task.status !== '已归档'
+                );
+            
+            if (activeFocusTasks.length >= 5) {
                 showNotification('焦点任务不能超过5个，请先移除其他任务', 'warning');
                 return;
             }
@@ -8380,6 +8538,14 @@
             // 保存数据
             saveToLocalStorage();
             
+            // 同步到原生端
+            if (window.TaskSync) {
+                TaskSync.sendTaskUpdate(taskId, {
+                    status: newStatus,
+                    newProgress: `任务状态从"${oldStatus}"变更为"${newStatus}"`
+                });
+            }
+            
             // 显示通知
             showNotification(`任务状态已更新为：${newStatus}`, 'success');
             
@@ -8747,7 +8913,8 @@
                 '未开始': '⏸',
                 '暂停': '⏯',
                 '进行中': '🚀',
-                '已完成': '✅'
+                '已完成': '✅',
+                '已归档': '📦'
             };
             return icons[status] || '❓';
         }
@@ -8771,6 +8938,16 @@
                 '已完成': 'text-success'
             };
             return classes[status] || '';
+        }
+
+        // 去除HTML标签
+        function stripHTMLTags(html) {
+            if (!html) return '';
+            // 创建临时DOM元素来解析HTML
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            // 返回纯文本内容
+            return tmp.textContent || tmp.innerText || '';
         }
 
         // 格式化日期
@@ -8809,8 +8986,8 @@
             return hours > 0 ? `${days}天${hours}小时` : `${days}天`;
         }
         
-        // 格式化进展时间
-        function formatProgressTime(dateStr) {
+        // 格式化进展时间（相对时间格式）
+        function formatProgressTimeRelative(dateStr) {
             if (!dateStr) return '';
             
             const date = new Date(dateStr);
@@ -8869,8 +9046,23 @@
             // 更新侧边栏内容
             updateSidebar(viewName);
             
-            // 根据视图类型渲染内容
-            switch(viewName) {
+            // 特殊处理：今日视图需要初始化日期
+            if (viewName === 'today') {
+                // 重置为今天的日期
+                const now2 = new Date();
+                selectedTimelineDate = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
+                // 初始化日期选择器
+                const datePicker = document.getElementById('timelineDatePicker');
+                if (datePicker) {
+                    datePicker.value = formatDateToLocal(selectedTimelineDate);
+                }
+            }
+            
+            // 应用筛选器
+            applyFilters();
+            
+            // 根据视图类型渲染内容（注意：applyFilters 已经会调用相应的渲染函数，这里注释掉避免重复渲染）
+            /*switch(viewName) {
                 case 'focus':
                     renderFocusTasks();
                     renderPendingTasks();
@@ -8905,7 +9097,7 @@
                 case 'planning':
                     renderPlanningView();
                     break;
-            }
+            }*/
         }
 
         // 快速添加任务
@@ -9441,10 +9633,13 @@
         // 应用筛选
         function applyFilters() {
             // 更新全局 filteredTasks
+            console.log(`🔍 [applyFilters] 开始筛选，总任务数: ${tasks.length}, 当前视图: ${currentView}`);
+            
             filteredTasks = tasks.filter(task => {
-                // 特殊规则：在焦点视图中默认隐藏所有已完成的任务
-                // 如果没有显式设置状态筛选，且在焦点视图中，隐藏所有已完成任务
-                if (!activeFilters.status && currentView === 'focus' && task.status === '已完成') {
+                // 特殊规则：在焦点视图中默认隐藏已完成和已归档的任务
+                // 如果没有显式设置状态筛选，且在焦点视图中，隐藏已完成和已归档任务
+                if (!activeFilters.status && currentView === 'focus' && 
+                    (task.status === '已完成' || task.status === '已归档')) {
                     return false;
                 }
                 
@@ -9479,6 +9674,16 @@
                 return true;
             });
             
+            console.log(`✅ [applyFilters] 筛选完成，筛选后任务数: ${filteredTasks.length}`);
+            if (filteredTasks.length > 0) {
+                console.log(`📊 [applyFilters] 任务状态分布:`, 
+                    filteredTasks.reduce((acc, task) => {
+                        acc[task.status] = (acc[task.status] || 0) + 1;
+                        return acc;
+                    }, {})
+                );
+            }
+            
             // 根据当前视图渲染
             switch(currentView) {
                 case 'focus':
@@ -9504,6 +9709,21 @@
                             renderBoardGantt();
                             break;
                     }
+                    // 初始化项目下拉框和统计信息
+                    initializeBoardProjectFilter();
+                    updateBoardStats();
+                    break;
+                case 'project':
+                    renderProjectBoard();
+                    break;
+                case 'goal':
+                    renderGoalBoard();
+                    break;
+                case 'list':
+                    renderListView();
+                    break;
+                case 'planning':
+                    renderPlanningView();
                     break;
             }
             
@@ -9565,9 +9785,14 @@
         // 查看任务详情
         // 获取时间冲突任务功能已移除 - 系统不再考虑时间安排
         
-        function viewTaskDetail(taskId) {
+        function showInMindMap(taskId) {
+            console.log('🔍 [showInMindMap] 被调用，taskId:', taskId);
             const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
+            if (!task) {
+                console.error('❌ [showInMindMap] 找不到任务:', taskId);
+                return;
+            }
+            console.log('✅ [showInMindMap] 找到任务:', task);
             
             // 保存当前查看的任务ID
             window.currentDetailTaskId = taskId;
@@ -9614,7 +9839,7 @@
                         <div class="progress-log-time" style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 4px;">
                             ${log.date}
                         </div>
-                        <div class="progress-log-note">${log.note}</div>
+                        <div class="progress-log-note">${stripHTMLTags(log.note)}</div>
                     </div>
                 `).join('');
                 
@@ -9636,10 +9861,21 @@
                     <button class="btn btn-primary" onclick="toggleTaskStatusFromDetail('${status}')">
                         ${getStatusIcon(status)} 设为${status}
                     </button>
-                `).join('');
+                `).join('') + `
+                <button class="btn btn-info" onclick="focusTaskInMindMap('${task.id}')">
+                    📍 定位到卡片
+                </button>
+            `;
             
             // 显示模态框
-            document.getElementById('taskDetailModal').classList.add('active');
+            console.log('🎯 [showInMindMap] 准备显示模态框');
+            const modal = document.getElementById('taskDetailModal');
+            if (!modal) {
+                console.error('❌ [showInMindMap] 找不到 taskDetailModal 元素');
+                return;
+            }
+            modal.classList.add('active');
+            console.log('✅ [showInMindMap] 模态框已添加 active 类');
         }
         
         // 从详情模态框切换任务状态
@@ -9655,14 +9891,8 @@
 
         // 处理看板任务卡片点击
         function handleBoardTaskClick(event, taskId) {
-            if (expandedTasksBoard.has(taskId)) {
-                // 已展开，打开详情
-                viewTaskDetail(taskId);
-            } else {
-                // 未展开，展开卡片
-                expandedTasksBoard.add(taskId);
-                renderBoardKanban();  // 修复函数名错误
-            }
+            // 直接打开任务详情
+            showInMindMap(taskId);
         }
 
         /* ========================================
@@ -9781,6 +10011,15 @@
                     if (newValue !== task.launchLink) {
                         task.launchLink = newValue;
                         element.textContent = newValue || '未设置';
+                        
+                        // 同步启动链接到原生端
+                        if (window.TaskSync && window.TaskSync.sendTaskUpdate) {
+                            TaskSync.sendTaskUpdate(taskId, {
+                                launchLink: newValue
+                            });
+                            console.log('📤 启动链接已同步到原生端');
+                        }
+                        
                         showNotification('启动链接已更新', 'success');
                     } else {
                         element.innerHTML = element._originalContent;
@@ -9839,7 +10078,7 @@
                          data-task-status="${project.status}"
                          ondragstart="handleProjectDragStart(event)"
                          ondragend="handleProjectDragEnd(event)"
-                         onclick="viewTaskDetail('${project.id}')">
+                         onclick="showInMindMap('${project.id}')">
                         ${isSubProject ? '<div class="sub-project-indicator"></div>' : ''}
                         <div class="board-card-header">
                             <span class="priority-badge ${project.fields.priority.toLowerCase()}">
@@ -10296,8 +10535,11 @@
                                     </thead>
                                     <tbody>
                                         ${typeTasks.map(task => `
-                                            <tr class="task-list-row" onclick="viewTaskDetail('${task.id}')">
-                                                <td class="task-title">${task.title}</td>
+                                            <tr class="task-list-row" onclick="showInMindMap('${task.id}')">
+                                                <td class="task-title">
+                                                    ${task.title}
+                                                    ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7;">📍 ${task.path}</div>` : ''}
+                                                </td>
                                                 <td><span class="status-badge ${task.status}">${getStatusIcon(task.status)} ${task.status}</span></td>
                                                 <td><span class="priority-badge ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)}</span></td>
                                                 <td>${task.fields.dueDate ? formatDate(task.fields.dueDate) : '-'}</td>
@@ -10430,16 +10672,15 @@
         
         // 渲染任务卡片（统一格式）
         function renderTaskCard(task) {
-            const isExpanded = expandedTasksBoard.has(task.id);
-            
             return `
-                <div class="board-card ${isExpanded ? 'expanded' : ''}" 
+                <div class="board-card" 
                      draggable="true"
                      data-task-id="${task.id}"
                      data-task-status="${task.status}"
                      ondragstart="handleBoardDragStart(event)"
                      ondragend="handleBoardDragEnd(event)"
-                     onclick="handleBoardTaskClick(event, '${task.id}')">
+                     onclick="handleBoardTaskClick(event, '${task.id}')"
+                     style="cursor: pointer;">
                     <div class="board-card-header">
                         <span class="type-icon">${getTaskTypeIcon(task.type)}</span>
                         <span class="priority-badge ${task.fields.priority.toLowerCase()}">
@@ -10449,11 +10690,6 @@
                     <h4 class="board-card-title">${task.title}</h4>
                     ${task.path ? `<div class="board-card-path" style="font-size: 0.85rem; color: var(--text-muted); opacity: 0.7; margin: 4px 0;">📍 ${task.path}</div>` : ''}
                     
-                    <div class="expand-indicator" style="position: absolute; right: 8px; bottom: 8px; font-size: 0.7rem; color: var(--text-muted); opacity: 0.6;">
-                        ${isExpanded ? '▲' : '▼'}
-                    </div>
-                    
-                    ${isExpanded ? `
                     <div class="board-card-meta">
                         ${task.fields.dueDate ? `<span>📅 ${formatDate(task.fields.dueDate)}</span>` : ''}
                         ${task.fields.progress ? `<span>📊 ${task.fields.progress}%</span>` : ''}
@@ -10462,19 +10698,25 @@
                         <span class="task-type-badge">${task.type}</span>
                         ${getTaskActions(task)}
                     </div>
-                    ` : ''}
                 </div>
             `;
         }
         
         // 获取任务操作按钮
         function getTaskActions(task) {
+            let actions = '';
+            
+            // 状态操作按钮
             if (task.status === '未开始') {
-                return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">🚀 开始</button>`;
+                actions += `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '进行中')">🚀 开始</button>`;
             } else if (task.status === '进行中') {
-                return `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">✅ 完成</button>`;
+                actions += `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}', '已完成')">✅ 完成</button>`;
             }
-            return '';
+            
+            // 定位按钮
+            actions += `<button class="btn btn-sm btn-info" onclick="event.stopPropagation(); focusTaskInMindMap('${task.id}')" title="定位到卡片">📍</button>`;
+            
+            return actions;
         }
         
         // 统一看板拖拽功能
@@ -10619,7 +10861,7 @@
                     <div class="gantt-body">
                         <div class="gantt-task-list">
                             ${tasksWithDates.map((task, index) => `
-                                <div class="gantt-task-item" onclick="viewTaskDetail('${task.id}')">
+                                <div class="gantt-task-item" onclick="showInMindMap('${task.id}')">
                                     <span class="gantt-task-type">${getTaskTypeIcon(task.type)}</span>
                                     <span class="gantt-task-title">${task.title}</span>
                                     <span class="gantt-task-status">${getStatusIcon(task.status)}</span>
@@ -10742,7 +10984,7 @@
             return `
                 <div class="gantt-bar ${barClass}" 
                      style="top: ${index * 40 + 5}px; left: ${left}px; width: ${width}px;"
-                     onclick="viewTaskDetail('${task.id}')"
+                     onclick="showInMindMap('${task.id}')"
                      title="${task.title}">
                     <div class="gantt-bar-progress" style="width: ${progressWidth}px;"></div>
                     <div class="gantt-bar-text">${task.title}</div>
@@ -10855,7 +11097,7 @@
                             : 0;
                         
                         return `
-                            <div class="goal-card" data-goal-id="${goal.id}" onclick="viewTaskDetail('${goal.id}')" style="cursor: pointer;">
+                            <div class="goal-card" data-goal-id="${goal.id}" onclick="showInMindMap('${goal.id}')" style="cursor: pointer;">
                                 <div class="goal-header">
                                     <h3 class="goal-title">
                                         ${getTaskTypeIcon('目标')} ${goal.title}
@@ -10873,7 +11115,7 @@
                                 <div class="key-results">
                                     <h4 class="key-results-title">关键结果</h4>
                                     ${goalKeyResults.length > 0 ? goalKeyResults.map(kr => `
-                                        <div class="key-result-item" onclick="event.stopPropagation(); viewTaskDetail('${kr.id}')">
+                                        <div class="key-result-item" onclick="event.stopPropagation(); showInMindMap('${kr.id}')">
                                             <div class="key-result-header">
                                                 <span class="key-result-title">${kr.title}</span>
                                                 <span class="key-result-progress">${kr.fields.progress || 0}%</span>
@@ -11801,9 +12043,12 @@
             }
             
             container.innerHTML = filteredTasks.map(task => `
-                <div class="timeline-task-item" onclick="viewTaskDetail('${task.id}')">
+                <div class="timeline-task-item" onclick="showInMindMap('${task.id}')">
                     <div class="task-content">
-                        <div class="task-title">${task.title}</div>
+                        <div class="task-title">
+                            ${task.title}
+                            ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7;">📍 ${task.path}</div>` : ''}
+                        </div>
                         <div class="task-meta">
                             <span class="task-type ${task.type.toLowerCase()}">${task.type}</span>
                             <span class="task-status ${task.status.toLowerCase()}">${task.status}</span>
@@ -11828,11 +12073,557 @@
         }
         
         /* ========================================
+           📱 触摸事件和设备适配支持
+           ======================================== */
+        
+        /**
+         * 设备检测工具类
+         */
+        const DeviceDetector = {
+            /**
+             * 检测是否为触摸设备
+             */
+            isTouchDevice() {
+                return ('ontouchstart' in window) || 
+                       (navigator.maxTouchPoints > 0) || 
+                       (navigator.msMaxTouchPoints > 0);
+            },
+            
+            /**
+             * 检测是否为 iOS 设备
+             */
+            isIOS() {
+                return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            },
+            
+            /**
+             * 检测是否为 iPad
+             */
+            isIPad() {
+                return (navigator.userAgent.includes("iPad") || 
+                       (navigator.userAgent.includes("Mac") && this.isTouchDevice()));
+            },
+            
+            /**
+             * 获取设备类型
+             */
+            getDeviceType() {
+                if (this.isIPad()) return 'ipad';
+                if (this.isIOS()) return 'iphone';
+                if (this.isTouchDevice()) return 'touch';
+                return 'desktop';
+            }
+        };
+        
+        
+        /**
+         * 初始化设备特定的适配逻辑
+         */
+        function initDeviceAdaptation() {
+            const deviceType = DeviceDetector.getDeviceType();
+            console.log(`🔧 初始化 ${deviceType} 设备适配`);
+            
+            // iPad 特定适配
+            if (deviceType === 'ipad') {
+                // 禁用默认的上下文菜单
+                document.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                });
+                
+                // 处理方向变化
+                window.addEventListener('orientationchange', handleOrientationChange);
+                handleOrientationChange(); // 初始化时调用一次
+                
+                // 优化侧边栏在 iPad 上的行为
+                optimizeIPadSidebar();
+                
+                // 添加多任务手势支持
+                addMultitaskingSupport();
+            }
+            
+            // iPhone 特定适配
+            else if (deviceType === 'iphone') {
+                // 在 iPhone 上默认隐藏侧边栏
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar && window.innerWidth < 768) {
+                    sidebar.classList.add('hidden');
+                    document.body.classList.add('sidebar-hidden');
+                }
+                
+                // 优化小屏幕上的布局
+                optimizeSmallScreenLayout();
+            }
+            
+            // 通用触摸设备适配
+            if (DeviceDetector.isTouchDevice()) {
+                // 添加滑动手势支持
+                addSwipeGestures();
+                
+                // 优化滚动行为
+                optimizeScrollBehavior();
+                
+                // 处理虚拟键盘
+                handleVirtualKeyboard();
+            }
+            
+            // 桌面设备适配
+            else {
+                // 添加键盘快捷键
+                addKeyboardShortcuts();
+                
+                // 启用拖拽功能
+                enableDesktopDragAndDrop();
+            }
+        }
+        
+        /**
+         * 处理设备方向变化
+         */
+        function handleOrientationChange() {
+            const orientation = window.orientation;
+            const isLandscape = Math.abs(orientation) === 90;
+            
+            document.body.classList.toggle('landscape', isLandscape);
+            document.body.classList.toggle('portrait', !isLandscape);
+            
+            console.log(`📐 设备方向: ${isLandscape ? '横屏' : '竖屏'}`);
+            
+            // 横屏时可能需要调整布局
+            if (isLandscape && DeviceDetector.isIPad()) {
+                // 在横屏模式下显示侧边栏
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) {
+                    sidebar.classList.remove('hidden');
+                }
+            }
+        }
+        
+        /**
+         * 优化 iPad 侧边栏
+         */
+        function optimizeIPadSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar) return;
+            
+            // 在 iPad 上使用覆盖式侧边栏而非推移式
+            if (window.innerWidth < 1024) {
+                sidebar.classList.add('overlay-mode');
+                
+                // 点击空白处关闭侧边栏
+                const overlay = document.getElementById('sidebarOverlay');
+                if (overlay) {
+                    overlay.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        toggleSidebar();
+                    });
+                }
+            }
+        }
+        
+        /**
+         * 添加多任务手势支持
+         */
+        function addMultitaskingSupport() {
+            // 检测四指或五指手势（iPad 多任务手势）
+            let touchCount = 0;
+            
+            document.addEventListener('touchstart', (e) => {
+                touchCount = e.touches.length;
+            });
+            
+            document.addEventListener('touchend', (e) => {
+                // 如果是多指手势，不阻止默认行为
+                if (touchCount >= 4) {
+                    return;
+                }
+                touchCount = 0;
+            });
+        }
+        
+        /**
+         * 优化小屏幕布局
+         */
+        function optimizeSmallScreenLayout() {
+            // 调整网格布局为单列
+            const style = document.createElement('style');
+            style.textContent = `
+                @media (max-width: 480px) {
+                    .task-grid,
+                    .focus-container {
+                        grid-template-columns: 1fr !important;
+                    }
+                    
+                    .modal-content {
+                        width: 95% !important;
+                        margin: 2.5% auto !important;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        /**
+         * 添加滑动手势
+         */
+        function addSwipeGestures() {
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchEndX = 0;
+            let touchEndY = 0;
+            
+            document.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+            
+            document.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                touchEndY = e.changedTouches[0].screenY;
+                handleSwipe();
+            }, { passive: true });
+            
+            function handleSwipe() {
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                const minSwipeDistance = 50;
+                
+                // 水平滑动
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                    if (deltaX > 0) {
+                        // 右滑 - 显示侧边栏
+                        if (touchStartX < 20) { // 从边缘开始
+                            const sidebar = document.getElementById('sidebar');
+                            if (sidebar && sidebar.classList.contains('hidden')) {
+                                toggleSidebar();
+                            }
+                        }
+                    } else {
+                        // 左滑 - 隐藏侧边栏
+                        const sidebar = document.getElementById('sidebar');
+                        if (sidebar && !sidebar.classList.contains('hidden') && window.innerWidth < 768) {
+                            toggleSidebar();
+                        }
+                    }
+                }
+            }
+        }
+        
+        /**
+         * 优化滚动行为
+         */
+        function optimizeScrollBehavior() {
+            // 防止过度滚动
+            document.body.addEventListener('touchmove', (e) => {
+                if (e.target.closest('.modal-content')) {
+                    // 允许模态框内的滚动
+                    return;
+                }
+                
+                const scrollable = e.target.closest('.task-list, .timeline-content, .board-column-content');
+                if (scrollable) {
+                    const isScrollable = scrollable.scrollHeight > scrollable.clientHeight;
+                    if (!isScrollable) {
+                        e.preventDefault();
+                    }
+                }
+            }, { passive: false });
+        }
+        
+        /**
+         * 处理虚拟键盘
+         */
+        function handleVirtualKeyboard() {
+            // 监听输入框焦点
+            document.addEventListener('focusin', (e) => {
+                if (e.target.matches('input, textarea')) {
+                    document.body.classList.add('keyboard-visible');
+                    
+                    // 确保输入框在视口内
+                    setTimeout(() => {
+                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                }
+            });
+            
+            document.addEventListener('focusout', (e) => {
+                if (e.target.matches('input, textarea')) {
+                    document.body.classList.remove('keyboard-visible');
+                }
+            });
+        }
+        
+        /**
+         * 添加键盘快捷键（桌面端）
+         */
+        function addKeyboardShortcuts() {
+            const shortcuts = {
+                'ctrl+k': () => openGlobalSearch(),
+                'ctrl+n': () => showQuickAddTask(),
+                'ctrl+/': () => openHelp(),
+                'ctrl+,': () => openSettings(),
+                'ctrl+r': () => refreshTasks(),
+                'ctrl+1': () => switchView('focus'),
+                'ctrl+2': () => switchView('planning'),
+                'ctrl+3': () => switchView('today'),
+                'ctrl+4': () => switchView('board'),
+                'escape': () => closeAllModals()
+            };
+            
+            document.addEventListener('keydown', (e) => {
+                const key = (e.ctrlKey || e.metaKey ? 'ctrl+' : '') + e.key.toLowerCase();
+                
+                if (shortcuts[key]) {
+                    e.preventDefault();
+                    shortcuts[key]();
+                }
+            });
+        }
+        
+        /**
+         * 启用桌面端拖拽功能
+         */
+        function enableDesktopDragAndDrop() {
+            // 这里可以添加更高级的桌面端拖拽功能
+            console.log('✅ 桌面端拖拽功能已启用');
+        }
+        
+        /**
+         * 关闭所有模态框
+         */
+        function closeAllModals() {
+            document.querySelectorAll('.modal.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+        }
+        
+        /**
+         * 添加触摸反馈样式
+         */
+        function addTouchFeedbackStyles() {
+            const style = document.createElement('style');
+            style.textContent = `
+                /* 触摸反馈效果 */
+                .touch-active {
+                    opacity: 0.7 !important;
+                    transform: scale(0.98) !important;
+                    transition: all 0.1s ease !important;
+                }
+                
+                /* 优化移动端滚动 */
+                .task-list,
+                .project-grid,
+                .board-column-content,
+                .timeline-content {
+                    -webkit-overflow-scrolling: touch;
+                    overscroll-behavior: contain;
+                }
+                
+                /* iPad 特定优化 */
+                @media screen and (min-width: 768px) and (max-width: 1366px) {
+                    .btn, .task-card, .view-btn {
+                        min-height: 44px; /* Apple 推荐的最小触摸目标 */
+                        padding: 12px 16px;
+                    }
+                    
+                    .task-actions button {
+                        min-width: 44px;
+                        min-height: 44px;
+                    }
+                }
+                
+                /* 防止 iOS 上的文本选择 */
+                .btn, .task-card-header, .view-btn {
+                    -webkit-touch-callout: none;
+                    -webkit-user-select: none;
+                }
+                
+                /* 优化移动端按钮和交互元素 */
+                @media (hover: none) and (pointer: coarse) {
+                    /* 增大所有按钮的可点击区域 */
+                    .btn {
+                        min-height: 44px;
+                        padding: 12px 20px;
+                        font-size: 16px; /* 防止 iOS 自动缩放 */
+                    }
+                    
+                    .btn-sm {
+                        min-height: 36px;
+                        padding: 8px 16px;
+                        font-size: 14px;
+                    }
+                    
+                    /* 任务卡片优化 */
+                    .focus-task-card,
+                    .task-item,
+                    .pending-task-item {
+                        min-height: 60px;
+                        padding: 16px;
+                    }
+                    
+                    /* 任务操作按钮组优化 */
+                    .task-actions {
+                        gap: 12px;
+                    }
+                    
+                    .task-actions button {
+                        min-width: 44px;
+                        min-height: 44px;
+                        font-size: 18px;
+                    }
+                    
+                    /* 视图切换按钮优化 */
+                    .view-btn {
+                        min-height: 44px;
+                        padding: 12px 16px;
+                        font-size: 15px;
+                    }
+                    
+                    /* 侧边栏项目优化 */
+                    .custom-view-item,
+                    .project-item {
+                        min-height: 44px;
+                        padding: 12px 16px;
+                    }
+                    
+                    /* 模态框按钮优化 */
+                    .modal-footer .btn {
+                        min-width: 100px;
+                    }
+                    
+                    /* 输入框优化 */
+                    input[type="text"],
+                    input[type="date"],
+                    select,
+                    textarea {
+                        min-height: 44px;
+                        font-size: 16px; /* 防止缩放 */
+                        padding: 12px;
+                    }
+                    
+                    /* 复选框和单选框优化 */
+                    input[type="checkbox"],
+                    input[type="radio"] {
+                        width: 20px;
+                        height: 20px;
+                        margin-right: 12px;
+                    }
+                    
+                    /* 下拉菜单项优化 */
+                    .dropdown-item {
+                        min-height: 44px;
+                        padding: 12px 16px;
+                    }
+                    
+                    /* 标签优化 */
+                    .tag,
+                    .priority-tag,
+                    .status-tag {
+                        padding: 6px 12px;
+                        font-size: 14px;
+                    }
+                    
+                    /* 进度条触摸区域优化 */
+                    .progress-bar-container {
+                        min-height: 24px;
+                        padding: 8px 0;
+                    }
+                    
+                    /* 快速操作按钮始终显示 */
+                    .quick-action-btn,
+                    .task-quick-btn {
+                        opacity: 0.8;
+                    }
+                    
+                    /* 防止双击缩放 */
+                    * {
+                        touch-action: manipulation;
+                    }
+                    
+                    /* 滚动容器优化 */
+                    .scroll-container {
+                        scroll-snap-type: y proximity;
+                        scroll-padding-top: 20px;
+                    }
+                    
+                    .task-item,
+                    .focus-task-card {
+                        scroll-snap-align: start;
+                    }
+                }
+                
+                /* iPad Pro 特定优化 */
+                @media screen and (min-width: 1024px) and (max-width: 1366px) and (hover: none) {
+                    /* 利用更大的屏幕空间 */
+                    .main-container {
+                        padding: 24px;
+                    }
+                    
+                    .task-grid {
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 24px;
+                    }
+                    
+                    /* 侧边栏在 iPad Pro 上可以更宽 */
+                    .sidebar {
+                        width: 320px;
+                    }
+                }
+                
+                /* 横屏模式优化 */
+                @media screen and (orientation: landscape) and (max-height: 768px) {
+                    /* 减少垂直方向的内边距 */
+                    .header {
+                        padding: 12px 20px;
+                    }
+                    
+                    .view-tabs {
+                        margin-bottom: 16px;
+                    }
+                    
+                    /* 优化内容区域高度 */
+                    .content-area {
+                        max-height: calc(100vh - 120px);
+                    }
+                }
+                
+                /* 安全区域适配（针对有刘海屏的设备） */
+                @supports (padding: env(safe-area-inset-left)) {
+                    .main-container {
+                        padding-left: max(20px, env(safe-area-inset-left));
+                        padding-right: max(20px, env(safe-area-inset-right));
+                        padding-bottom: max(20px, env(safe-area-inset-bottom));
+                    }
+                    
+                    .sidebar {
+                        padding-left: env(safe-area-inset-left);
+                    }
+                    
+                    .header {
+                        padding-top: max(20px, env(safe-area-inset-top));
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        /* ========================================
            🚀 应用初始化
            ======================================== */
         
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
+            // 初始化设备适配
+            console.log('📱 设备类型:', DeviceDetector.getDeviceType());
+            
+            // 添加触摸反馈样式
+            addTouchFeedbackStyles();
+            
+            // 添加设备类型到 body 类名，方便 CSS 定制
+            document.body.classList.add(`device-${DeviceDetector.getDeviceType()}`);
+            
+            // 设备特定的适配逻辑
+            initDeviceAdaptation();
+            
             // 尝试从 localStorage 加载数据
             const hasData = loadFromLocalStorage();
             
@@ -11874,6 +12665,12 @@
                     document.querySelectorAll('.modal.active').forEach(modal => {
                         modal.classList.remove('active');
                     });
+                }
+                
+                // Ctrl/Cmd + K 打开全局搜索
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    openGlobalSearch();
                 }
                 
                 // Ctrl/Cmd + S 保存
@@ -11946,6 +12743,11 @@
             
             // 搜索任务
             const results = tasks.filter(task => {
+                // 确保任务有基本属性
+                if (!task || !task.title) {
+                    return false;
+                }
+                
                 // 排除已完成的任务（如果未勾选）
                 if (!includeCompleted && task.status === '已完成') {
                     return false;
@@ -11962,7 +12764,7 @@
                 }
                 
                 // 搜索标签
-                if (searchInTags && task.fields.tags) {
+                if (searchInTags && task.fields && task.fields.tags && Array.isArray(task.fields.tags)) {
                     return task.fields.tags.some(tag => tag.toLowerCase().includes(keyword));
                 }
                 
@@ -11976,18 +12778,22 @@
         // 显示最近访问的任务
         function showRecentTasks() {
             const recentTasks = tasks
-                .filter(task => task.status !== '已完成')
+                .filter(task => task && task.status !== '已完成')
                 .sort((a, b) => {
                     // 优先显示焦点任务
                     if (focusTasks.has(a.id) && !focusTasks.has(b.id)) return -1;
                     if (!focusTasks.has(a.id) && focusTasks.has(b.id)) return 1;
                     // 其次按优先级排序
                     const priorityOrder = { '高': 0, '中': 1, '低': 2 };
-                    return priorityOrder[a.fields.priority] - priorityOrder[b.fields.priority];
+                    const aPriority = (a.fields && a.fields.priority) || '低';
+                    const bPriority = (b.fields && b.fields.priority) || '低';
+                    return priorityOrder[aPriority] - priorityOrder[bPriority];
                 })
                 .slice(0, 10);
             
             const container = document.getElementById('searchResults');
+            if (!container) return;
+            
             container.innerHTML = `
                 <h4 style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">最近任务</h4>
                 ${recentTasks.map(task => createSearchResultItem(task)).join('')}
@@ -12013,8 +12819,18 @@
         
         // 创建搜索结果项
         function createSearchResultItem(task) {
+            // 确保任务有必要的属性
+            const taskType = task.type || '动作';
+            const taskStatus = task.status || '未开始';
+            const taskTitle = task.title || '未命名任务';
+            const taskPath = task.path || '';
+            const taskTags = (task.fields && task.fields.tags && Array.isArray(task.fields.tags)) ? task.fields.tags : [];
+            
             return `
-                <div class="search-result-item" onclick="selectSearchResult('${task.id}')" style="
+                <div class="search-result-item" onclick="selectSearchResult('${task.id}')" 
+                     onmouseover="this.style.background='var(--bg-hover)'; this.style.borderColor='var(--type-goal)'" 
+                     onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='var(--glass-border)'"
+                     style="
                     padding: var(--spacing-md);
                     margin-bottom: var(--spacing-sm);
                     background: var(--bg-card);
@@ -12024,19 +12840,19 @@
                     transition: var(--transition);
                 ">
                     <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-xs);">
-                        <span class="task-type-badge ${task.type.toLowerCase()}">
-                            ${getTaskTypeIcon(task.type)} ${task.type}
+                        <span class="task-type-badge ${taskType.toLowerCase()}">
+                            ${getTaskTypeIcon(taskType)} ${taskType}
                         </span>
-                        <span class="text-small" style="color: ${getStatusColor(task.status)};">
-                            ${getStatusIcon(task.status)} ${task.status}
+                        <span class="text-small" style="color: ${getStatusColor(taskStatus)};">
+                            ${getStatusIcon(taskStatus)} ${taskStatus}
                         </span>
                         ${focusTasks.has(task.id) ? '<span class="text-small">🎯 焦点</span>' : ''}
                     </div>
-                    <div class="font-weight-500">${highlightKeyword(task.title)}</div>
-                    <div class="text-small text-muted">${highlightKeyword(task.path)}</div>
-                    ${task.fields.tags.length > 0 ? `
+                    <div class="font-weight-500">${highlightKeyword(taskTitle)}</div>
+                    ${taskPath ? `<div class="text-small text-muted">${highlightKeyword(taskPath)}</div>` : ''}
+                    ${taskTags.length > 0 ? `
                         <div style="margin-top: var(--spacing-xs);">
-                            ${task.fields.tags.map(tag => `
+                            ${taskTags.map(tag => `
                                 <span class="filter-tag text-small">${highlightKeyword(tag)}</span>
                             `).join('')}
                         </div>
@@ -12060,7 +12876,7 @@
             closeModal('globalSearchModal');
             
             // 查看任务详情
-            viewTaskDetail(taskId);
+            showInMindMap(taskId);
         }
         
         // 获取状态颜色
@@ -12081,6 +12897,39 @@
         function openSettings() {
             // 暂时使用 alert，后续可以实现完整的设置界面
             showNotification('设置功能开发中...', 'info');
+        }
+        
+        /* ========================================
+           🔄 刷新数据功能
+           ======================================== */
+        
+        function refreshTasks() {
+            // 显示加载提示
+            showNotification('正在刷新数据...', 'info');
+            
+            // 检查 TaskSync 是否可用
+            if (window.TaskSync && window.TaskSync.requestSync) {
+                // ========== 性能优化：手动刷新时强制清除缓存 ==========
+                // 传递 forceRefresh 参数，让原生端知道需要强制刷新
+                if (mnTaskBridge && mnTaskBridge.ready) {
+                    mnTaskBridge.send('syncTasks', { forceRefresh: true })
+                        .then(response => {
+                            console.log('✅ 通过 MNTaskBridge 请求强制刷新成功:', response);
+                        })
+                        .catch(error => {
+                            console.error('❌ MNTaskBridge 请求同步失败:', error);
+                            // 降级到原有方案
+                            window.location.href = 'mntask://syncTasks?forceRefresh=true';
+                        });
+                } else {
+                    // 使用原有的 URL Scheme 方案，带上 forceRefresh 参数
+                    window.location.href = 'mntask://syncTasks?forceRefresh=true';
+                }
+                console.log('📤 已发送强制刷新请求');
+            } else {
+                console.error('❌ TaskSync 未定义或 requestSync 方法不存在');
+                showNotification('刷新失败：TaskSync 未就绪', 'error');
+            }
         }
         
         /* ========================================
@@ -12129,7 +12978,15 @@
         
         // 渲染焦点任务回顾
         function renderFocusTasksReview() {
-            const focusTasksArray = Array.from(focusTasks).map(id => tasks.find(t => t.id === id)).filter(Boolean);
+            // 使用与焦点任务视图相同的过滤逻辑：只统计动作类型且未完成、未归档的任务
+            const focusTasksArray = Array.from(focusTasks)
+                .map(id => tasks.find(t => t.id === id))
+                .filter(task => 
+                    task && 
+                    task.type === '动作' && 
+                    task.status !== '已完成' && 
+                    task.status !== '已归档'
+                );
             
             // 按状态分组
             const tasksByStatus = {
@@ -12178,7 +13035,7 @@
                     const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
                     return `
                         <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
                                 <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                 <div class="task-info">
                                     <div class="task-title">${task.title}</div>
@@ -12210,7 +13067,7 @@
                     const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
                     return `
                         <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
                                 <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                 <div class="task-info">
                                     <div class="task-title">${task.title}</div>
@@ -12240,7 +13097,7 @@
                     const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
                     return `
                         <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
                                 <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                 <div class="task-info">
                                     <div class="task-title">${task.title}</div>
@@ -12270,7 +13127,7 @@
                     const progressCount = task.fields.progressLog ? task.fields.progressLog.length : 0;
                     return `
                         <div class="reflection-task-item" style="position: relative;">
-                            <div onclick="viewTaskDetail('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                            <div onclick="showInMindMap('${task.id}')" style="display: flex; align-items: center; gap: var(--spacing-sm);">
                                 <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                 <div class="task-info">
                                     <div class="task-title">${task.title}</div>
@@ -12328,7 +13185,7 @@
                 <div class="pending-tasks-list" style="margin-top: 15px;">
                     ${pendingTasksArray.length === 0 ? '<p class="empty-state">没有待处理任务</p>' : 
                       pendingTasksArray.slice(0, 5).map(task => `
-                        <div class="reflection-task-item" onclick="viewTaskDetail('${task.id}')" style="margin-bottom: 8px;">
+                        <div class="reflection-task-item" onclick="showInMindMap('${task.id}')" style="margin-bottom: 8px;">
                             <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                             <div class="task-info">
                                 <div class="task-title">${task.title}</div>
@@ -12389,7 +13246,7 @@
                                     ` : ''}
                                     
                                     <div class="task-content" style="background: var(--bg-card); padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border);">
-                                        <div onclick="viewTaskDetail('${task.id}')" style="cursor: pointer;">
+                                        <div onclick="showInMindMap('${task.id}')" style="cursor: pointer;">
                                             <div style="display: flex; align-items: center; justify-content: space-between;">
                                                 <div style="flex: 1;">
                                                     <div class="task-title" style="font-weight: 500; margin-bottom: 4px;">${task.title}</div>
@@ -12515,7 +13372,7 @@
                             const parentProject = isProject ? null : tasks.find(t => t.id === task.fields.parentId && t.type === '项目');
                             
                             return `
-                            <div class="reflection-task-item tomorrow-task" onclick="viewTaskDetail('${task.id}')" style="margin-bottom: 10px;">
+                            <div class="reflection-task-item tomorrow-task" onclick="showInMindMap('${task.id}')" style="margin-bottom: 10px;">
                                 <div class="task-status-icon">${getTaskTypeIcon(task.type)}</div>
                                 <div class="task-info" style="flex: 1;">
                                     <div class="task-title">${task.title}</div>
@@ -12668,10 +13525,13 @@
                         </h5>
                         <div style="margin-left: 15px;">
                             ${typeTasks.map(task => `
-                                <div class="reflection-task-item" onclick="viewTaskDetail('${task.id}')" style="margin-bottom: 8px;">
+                                <div class="reflection-task-item" onclick="showInMindMap('${task.id}')" style="margin-bottom: 8px;">
                                     <div class="task-status-icon">${getStatusIcon(task.status)}</div>
                                     <div class="task-info" style="flex: 1;">
-                                        <div class="task-title">${task.title}</div>
+                                        <div class="task-title">
+                                            ${task.title}
+                                            ${task.path ? `<div style="font-size: 0.85em; color: var(--text-muted); opacity: 0.7; margin-top: 2px;">📍 ${task.path}</div>` : ''}
+                                        </div>
                                         <div class="task-meta">
                                             <span class="task-status ${task.status.toLowerCase()}">${task.status}</span>
                                             <span class="task-priority ${task.fields.priority.toLowerCase()}">${getPriorityIcon(task.fields.priority)} ${task.fields.priority}</span>
@@ -13206,7 +14066,369 @@
             switchView(currentView);
             
             console.log('✅ MNTask 任务看板初始化完成');
+            
+            // 延迟请求同步数据（等待原生端准备就绪）
+            setTimeout(() => {
+                if (window.TaskSync) {
+                    TaskSync.requestSync();
+                }
+            }, 500);
         });
+        
+        /**
+         * 初始化 MNTask 通信桥接器
+         */
+        let mnTaskBridge = null;
+        
+        // 在页面加载时初始化桥接器
+        if (typeof MNTaskBridge !== 'undefined') {
+            mnTaskBridge = new MNTaskBridge({
+                debug: true,
+                protocol: 'mntask://',
+                autoInit: true
+            });
+            
+            // 监听来自插件的任务数据
+            mnTaskBridge.on('tasks', (tasksData) => {
+                if (window.TaskSync) {
+                    TaskSync.receiveTasks(tasksData);
+                }
+            });
+            
+            console.log('✅ MNTaskBridge 已初始化');
+        } else {
+            console.warn('⚠️ MNTaskBridge 未找到，使用降级方案');
+        }
+        
+        /**
+         * TaskSync - 任务数据同步类
+         * 用于处理与原生端的数据交互
+         * 优先使用 MNTaskBridge，如果不可用则降级到原有方案
+         */
+        class TaskSync {
+            /**
+             * 接收来自原生端的任务数据
+             * @param {Object} tasksData - 包含各看板任务的数据
+             */
+            static receiveTasks(tasksData) {
+                console.log('📥 接收到任务数据:', tasksData);
+                
+                // 数据验证
+                if (!tasksData || typeof tasksData !== 'object') {
+                    console.error('❌ 无效的任务数据格式');
+                    return 'error: 无效的数据格式';
+                }
+                
+                try {
+                    // 清空现有数据
+                    tasks.length = 0;
+                    let totalReceived = 0;
+                    let totalConverted = 0;
+                    let conversionErrors = [];
+                    
+                    // 处理每个看板的任务
+                    for (const [boardKey, boardTasks] of Object.entries(tasksData)) {
+                        console.log(`📋 处理 ${boardKey} 看板: ${boardTasks.length} 个任务`);
+                        
+                        if (!Array.isArray(boardTasks)) {
+                            console.warn(`⚠️ ${boardKey} 看板数据不是数组:`, boardTasks);
+                            continue;
+                        }
+                        
+                        for (let i = 0; i < boardTasks.length; i++) {
+                            const taskData = boardTasks[i];
+                            totalReceived++;
+                            
+                            // 验证任务数据的必要字段
+                            if (!taskData.id) {
+                                conversionErrors.push(`${boardKey}[${i}]: 缺少id字段`);
+                                continue;
+                            }
+                            
+                            // 转换为界面需要的格式
+                            try {
+                                const task = this.convertToUIFormat(taskData);
+                                if (task) {
+                                    tasks.push(task);
+                                    totalConverted++;
+                                } else {
+                                    conversionErrors.push(`${boardKey}[${i}]: 转换失败 (id: ${taskData.id})`);
+                                }
+                            } catch (convError) {
+                                conversionErrors.push(`${boardKey}[${i}]: ${convError.message}`);
+                            }
+                        }
+                    }
+                    
+                    // 输出转换结果统计
+                    console.log(`📊 数据转换统计:`);
+                    console.log(`  - 接收任务总数: ${totalReceived}`);
+                    console.log(`  - 成功转换: ${totalConverted}`);
+                    console.log(`  - 转换失败: ${totalReceived - totalConverted}`);
+                    
+                    if (conversionErrors.length > 0) {
+                        console.warn('⚠️ 转换错误详情:', conversionErrors);
+                    }
+                    
+                    // 刷新当前视图
+                    switchView(currentView);
+                    
+                    console.log(`✅ 成功加载 ${tasks.length} 个任务`);
+                    return 'success';
+                    
+                } catch (error) {
+                    console.error('❌ 接收任务数据失败:', error);
+                    console.error('错误堆栈:', error.stack);
+                    return 'error: ' + error.message;
+                }
+            }
+            
+            /**
+             * 转换进展数据格式
+             * @param {Array} progresses - 原生进展数据
+             * @returns {Array} UI 格式的进展数据
+             */
+            static convertProgressData(progresses) {
+                if (!progresses || !Array.isArray(progresses)) {
+                    return [];
+                }
+                
+                return progresses.map(progress => {
+                    // 如果已经是正确格式，直接返回
+                    if (progress.date && progress.note) {
+                        return progress;
+                    }
+                    
+                    // 尝试解析不同格式的进展数据
+                    if (typeof progress === 'string') {
+                        // 假设字符串格式为 "时间: 内容" 或直接是内容
+                        const parts = progress.split(/[:：]/);
+                        if (parts.length >= 2) {
+                            return {
+                                date: parts[0].trim(),
+                                note: parts.slice(1).join(':').trim()
+                            };
+                        } else {
+                            return {
+                                date: new Date().toLocaleString('zh-CN'),
+                                note: stripHTMLTags(progress)
+                            };
+                        }
+                    } else if (typeof progress === 'object') {
+                        // 尝试从对象中提取时间和内容
+                        return {
+                            date: progress.time || progress.timestamp || progress.date || new Date().toLocaleString('zh-CN'),
+                            note: stripHTMLTags(progress.content || progress.note || progress.text || JSON.stringify(progress))
+                        };
+                    }
+                    
+                    // 默认处理
+                    return {
+                        date: new Date().toLocaleString('zh-CN'),
+                        note: stripHTMLTags(String(progress))
+                    };
+                });
+            }
+            
+            /**
+             * 将原生数据格式转换为 UI 格式
+             * @param {Object} taskData - 原生任务数据
+             * @returns {Object} UI 格式的任务对象
+             */
+            static convertToUIFormat(taskData) {
+                // 验证必要字段
+                if (!taskData || !taskData.id) {
+                    console.error('❌ 转换失败: 缺少必要字段', taskData);
+                    return null;
+                }
+                
+                const typeIconMap = {
+                    'target': '🎯',
+                    'keyresult': '📊',
+                    'project': '📁',
+                    'action': '🔨',
+                    // 中文类型映射
+                    '目标': '🎯',
+                    '关键结果': '📊',
+                    '项目': '📁',
+                    '动作': '🔨'
+                };
+                
+                const statusMap = {
+                    '未开始': 'todo',
+                    '进行中': 'doing',
+                    '已完成': 'done',
+                    '暂停': 'pause',
+                    '已归档': 'archived'
+                };
+                
+                const priorityMap = {
+                    '高': 'high',
+                    '中': 'medium',
+                    '低': 'low'
+                };
+                
+                // 调试日志：显示原始数据
+                if (tasks.length < 5) { // 只显示前5个任务的详细信息
+                    console.log(`🔍 转换任务数据:`, {
+                        id: taskData.id,
+                        type: taskData.type,
+                        titleContent: taskData.titleContent,
+                        status: taskData.status,
+                        priority: taskData.priority
+                    });
+                }
+                
+                const convertedTask = {
+                    id: taskData.id,
+                    type: taskData.type,
+                    title: taskData.title || taskData.titleContent || '无标题',  // 兼容两种字段名
+                    path: taskData.path || taskData.titlePath || '',  // 兼容两种字段名
+                    status: taskData.status,  // 保持中文状态名，不进行转换
+                    statusEn: statusMap[taskData.status] || 'todo',  // 英文状态供内部逻辑使用
+                    priority: priorityMap[taskData.priority] || taskData.priority || 'low',
+                    description: taskData.description || '',
+                    launchLink: taskData.launchLink || '',
+                    parentId: taskData.parentURL ? taskData.parentURL.split('/').pop() : null,
+                    parentTitle: taskData.parentTitle || '',
+                    icon: typeIconMap[taskData.type] || '📄',
+                    isScheduled: false,
+                    scheduledDate: null,
+                    scheduleTime: null,
+                    isCurrent: false,
+                    isCompleted: taskData.status === '已完成',
+                    completedDate: null,
+                    createdDate: new Date().toISOString().split('T')[0],
+                    updatedDate: new Date().toISOString().split('T')[0],
+                    tags: [],
+                    notes: taskData.description || '',
+                    // fields 对象存储任务的字段数据
+                    fields: {
+                        priority: taskData.priority || '低',  // 保持中文格式的优先级
+                        progressLog: this.convertProgressData(taskData.progresses)
+                    },
+                    // 保存原始数据用于同步
+                    _originalData: taskData
+                };
+                
+                // 验证转换结果
+                if (!convertedTask.title || !convertedTask.type) {
+                    console.warn('⚠️ 转换后的任务缺少关键字段:', convertedTask);
+                }
+                
+                return convertedTask;
+            }
+            
+            /**
+             * 发送任务更新到原生端
+             * @param {string} taskId - 任务 ID
+             * @param {Object} updates - 更新的字段
+             */
+            static sendTaskUpdate(taskId, updates) {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task || !task._originalData) {
+                    console.error('❌ 找不到任务或原始数据:', taskId);
+                    return;
+                }
+                
+                // 构建更新数据
+                const updateData = {
+                    id: taskId,
+                    ...updates
+                };
+                
+                // 如果更新了状态，转换回原生格式
+                if (updates.status) {
+                    const statusMap = {
+                        'todo': '未开始',
+                        'doing': '进行中',
+                        'done': '已完成',
+                        'pause': '暂停'
+                    };
+                    updateData.status = statusMap[updates.status] || updates.status;
+                }
+                
+                // 优先使用 MNTaskBridge
+                if (mnTaskBridge && mnTaskBridge.ready) {
+                    mnTaskBridge.send('updateTask', updateData)
+                        .then(response => {
+                            console.log('✅ 通过 MNTaskBridge 发送成功:', response);
+                        })
+                        .catch(error => {
+                            console.error('❌ MNTaskBridge 发送失败:', error);
+                            // 降级到原有方案
+                            this._sendViaURLScheme('updateTask', updateData);
+                        });
+                } else {
+                    // 使用原有的 URL Scheme 方案
+                    this._sendViaURLScheme('updateTask', updateData);
+                }
+                
+                console.log('📤 发送任务更新:', updateData);
+            }
+            
+            /**
+             * 批量发送任务更新
+             * @param {Array} tasksUpdates - 多个任务的更新数据
+             */
+            static sendBatchUpdate(tasksUpdates) {
+                // 优先使用 MNTaskBridge
+                if (mnTaskBridge && mnTaskBridge.ready) {
+                    mnTaskBridge.send('batchUpdate', tasksUpdates)
+                        .then(response => {
+                            console.log('✅ 通过 MNTaskBridge 批量发送成功:', response);
+                        })
+                        .catch(error => {
+                            console.error('❌ MNTaskBridge 批量发送失败:', error);
+                            // 降级到原有方案
+                            this._sendViaURLScheme('batchUpdate', tasksUpdates);
+                        });
+                } else {
+                    // 使用原有的 URL Scheme 方案
+                    this._sendViaURLScheme('batchUpdate', tasksUpdates);
+                }
+                
+                console.log('📤 批量发送任务更新:', tasksUpdates);
+            }
+            
+            /**
+             * 请求同步最新数据
+             */
+            static requestSync() {
+                // 优先使用 MNTaskBridge
+                if (mnTaskBridge && mnTaskBridge.ready) {
+                    mnTaskBridge.send('syncTasks', {})
+                        .then(response => {
+                            console.log('✅ 通过 MNTaskBridge 请求同步成功:', response);
+                        })
+                        .catch(error => {
+                            console.error('❌ MNTaskBridge 请求同步失败:', error);
+                            // 降级到原有方案
+                            window.location.href = 'mntask://syncTasks';
+                        });
+                } else {
+                    // 使用原有的 URL Scheme 方案
+                    window.location.href = 'mntask://syncTasks';
+                }
+                
+                console.log('🔄 请求同步任务数据');
+            }
+            
+            /**
+             * 通过 URL Scheme 发送数据（降级方案）
+             * @private
+             */
+            static _sendViaURLScheme(action, data) {
+                let url = `mntask://${action}`;
+                if (data && Object.keys(data).length > 0) {
+                    url += `?data=${encodeURIComponent(JSON.stringify(data))}`;
+                }
+                window.location.href = url;
+            }
+        }
+        
+        // 将 TaskSync 暴露到全局
+        window.TaskSync = TaskSync;
     </script>
     
     <!-- 全局快速进展弹窗 -->

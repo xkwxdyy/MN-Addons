@@ -9,8 +9,8 @@ window.MathJax = {
 let onProcess = false
 let processPercent = 0
 let parsedPdf
-const pageContents = [];
-const pageStructure = []
+let pageContents = [];
+let pageStructure = []
 /**
  * 解析单页的 textContent 对象，并根据文本项的布局返回带有正确换行和空格的字符串。
  * @param {object} textContent - 从 page.getTextContent() 获取的对象。
@@ -178,6 +178,7 @@ const buffer = new Uint8Array(rawData.length);
 for (let i = 0; i < rawData.length; i++) {
   buffer[i] = rawData.charCodeAt(i);
 }
+pageContents = []
   return new Promise(async (resolve, reject) => {
 pdfjsLib.getDocument(buffer).promise
             .then(async(pdf)=>{
@@ -185,7 +186,9 @@ pdfjsLib.getDocument(buffer).promise
                 parsedPdf = pdf
                 await renderPage(1);
                 onProcess = false
-                resolve(pageContents.join('\n\n'))
+                let res = pageContents.join('\n\n')
+                // console.log(res);
+                resolve(res)
                 // console.log(pageContents.join('\n\n'));
                 // console.log(pageStructure);
                 

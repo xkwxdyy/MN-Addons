@@ -43,7 +43,7 @@ try {
 
     // self.createButton("screenButton","changeScreen:","toolbar")
     self.createButton("screenButton","closeButtonTapped:","toolbar")
-    self.screenButton.setImageForState(self.stopImage,0)
+    self.screenButton.setImageForState(chatAIConfig.closeImage,0)
     self.screenButton.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
     // MNUtil.copy(actionImages)
     self.createButton("bigbangButton","executeCustomButton:","toolbar")
@@ -167,18 +167,19 @@ try {
   }
   },
   executeCustomButton: async function (button) {
+    let self = getNotificationController()
     let config = chatAIConfig.getConfig("customButton")
     if (typeof button === "string") {
-      self.executeAction(button)
+      self.executeActionFromButton(button)
     }else{
       if(config[button.action]){
         let action = config[button.action].click
-        self.executeAction(action,button)
+        self.executeActionFromButton(action,button)
         self.checkAutoClose(config[button.action].autoClose)
       }else{
         let defaultConfig = chatAIConfig.defaultConfig.customButton
         let action = defaultConfig[button.action].click
-        self.executeAction(action,button)
+        self.executeActionFromButton(action,button)
         self.checkAutoClose(defaultConfig[button.action].autoClose)
       }
     }
@@ -355,12 +356,12 @@ try {
       let config = chatAIConfig.getConfig("customButton")
       if(config[button.action]){
         let action = config[button.action].longPress
-        self.executeAction(action,button)
+        self.executeActionFromButton(action,button)
         self.checkAutoClose(config[button.action].autoClose)
       }else{
         let defaultConfig = chatAIConfig.defaultConfig.customButton
         let action = defaultConfig[button.action].longPress
-        self.executeAction(action,button)
+        self.executeActionFromButton(action,button)
         self.checkAutoClose(defaultConfig[button.action].autoClose)
       }
     } catch (error) {
@@ -405,7 +406,7 @@ try {
     // MNUtil.copy(self.originalText)
     self.promptButton.setTitleForState(chatAIConfig.prompts[chatAIConfig.currentPrompt].title ,0)
     var commandTable = chatAIConfig.config.promptNames.map(promptName => {
-      return {title:chatAIConfig.prompts[promptName].title,object:self,selector:'askWithPrompt:',param:promptName,checked:chatAIConfig.currentPrompt===promptName}
+      return {title:"🚀 "+chatAIConfig.prompts[promptName].title,object:self,selector:'askWithPrompt:',param:promptName,checked:chatAIConfig.currentPrompt===promptName}
     })
 
     // switch (chatAIConfig.getConfig("notifyLoc")) {
@@ -592,6 +593,51 @@ try {
   webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let requestURL = request.URL().absoluteString()
     // MNUtil.copy(requestURL)
+    let config = MNUtil.parseURL(requestURL)
+    if (config.scheme === "userselect") {
+      switch (config.host) {
+        case "choice":
+          if ("content" in config.params) {
+            let content = config.params.content
+            self.showHUD("💬 Reply: "+content)
+            self.continueAsk(content)
+          }else if ("linkText" in config.params) {
+            let linkText = config.params.linkText
+            // let content = config.params.content
+            self.showHUD("💬 Reply: "+linkText)
+            self.continueAsk(linkText)
+          }else{
+            MNUtil.copy(config)
+          }
+          break;
+        case "addnote":
+          if ("content" in config.params) {
+            let content = config.params.content
+            self.showHUD("➕ Add note: "+content)
+            let note = MNNote.new(self.noteid)??chatAIUtils.getFocusNote()
+            let childNote = note.createChildNote({excerptText:content,excerptTextMarkdown:true})
+            childNote.focusInMindMap(0.5)
+          }else {
+            MNUtil.copy(config)
+          }
+          break;
+        case "addcomment":
+          if ("content" in config.params) {
+            let content = config.params.content
+            self.showHUD("➕ Add comment: "+content)
+            let note = MNNote.new(self.noteid)??chatAIUtils.getFocusNote()
+            MNUtil.undoGrouping(()=>{
+              note.appendMarkdownComment(content)
+            })
+          }else {
+            MNUtil.copy(config)
+          }
+        default:
+          break;
+      }
+
+      return false
+    }
     if (/^nativecopy\:\/\//.test(requestURL)) {
       let text = decodeURIComponent(requestURL.split("content=")[1])
       MNUtil.copy(text)
@@ -608,8 +654,16 @@ try {
       return false
     }
     if (/^editorheight\:\/\//.test(requestURL)) {
+      
+      // MNUtil.log("editorheight")
       let height = decodeURIComponent(requestURL.split("content=")[1])
       // MNUtil.waitHUD("editorheight"+height)  
+      // try {
+      // MNUtil.log(`${height}:${self.webviewResponse.scrollView.contentSize.height}`)
+        
+      // } catch (error) {
+      //   MNUtil.log(error.message)
+      // }
       if ((parseInt(height)+5) === self.sizeHeight) {
         self.onResponse = false
         return false
@@ -627,7 +681,9 @@ try {
       let data = NSData.dataWithContentsOfURL(NSURL.URLWithString(url))
       // MNUtil.copy(url)
       MNUtil.copyImage(data)
-      MNUtil.showHUD("✅ Image Copied")
+      MNUtil.waitHUD("✅ Image Copied")
+      MNUtil.stopHUD(1)
+      MNUtil.postNotification("snipasteImage", {imageData:data})
       return false
     }
     if (/^chataction\:\/\/runhtml/.test(requestURL)) {
@@ -890,6 +946,7 @@ try {
   this.temperature = temperature
   this.funcIndices = config.func ?? []
   this.actions = config.action ?? []
+  this.toolbarAction = config.toolbarAction ?? ""
   if (temperature !== undefined) {//优先从函数的参数中获取温度
     this.temperature = temperature
   }else{
@@ -903,6 +960,7 @@ try {
     case "Minimax":
     case "Deepseek":
     case "SiliconFlow":
+    case "PPIO":
     case "Github":
     case "Qwen":
     case "ChatGPT":
@@ -946,7 +1004,6 @@ try {
 }
 }
 
-
 /**
  * @this {notificationController}
  */
@@ -960,7 +1017,7 @@ notificationController.prototype.askWithDynamicPromptOnText = async function (us
   chatAIUtils.notifyController.currentPrompt = "Dynamic"
   chatAIUtils.notifyController.noteid = undefined
     } catch (error) {
-    MNUtil.showHUD(error)
+    chatAIUtils.addErrorLog(error, "notificationController.askWithDynamicPromptOnText")
   }
 }
 
@@ -1130,6 +1187,7 @@ try {
   this.token = []
   this.preFuncResponse = ""
   this.actions = config.action
+  this.toolbarAction = config.toolbarAction ?? ""
   // this.targetTextview = "textviewResponse"
   if (!this.preCheck()) {
     return
@@ -1193,6 +1251,7 @@ try {
   this.history = []
   this.token = []
   this.actions = config.action
+  this.toolbarAction = config.toolbarAction ?? ""
   this.preFuncResponse = ""
   // this.targetTextview = "textviewResponse"
   if (!this.preCheck()) {
@@ -1338,11 +1397,13 @@ notificationController.prototype.finish = async function() {
   let heightOffset = 0
 try {
   this.tool = []
-  if (this.func && this.func.length) {
+  if (this.func && this.func.length && !this.view.hidden) {
     //把得到的func执行一遍并将响应添加到this.tool中
     // MNUtil.copy(this.func)
+    // await MNUtil.delay(0.5)
     this.funcResponses = await Promise.all(this.func.map(func=> this.executeFunctionByAI(func)))
     this.funcResponse = this.funcResponses.join("")
+    // MNUtil.showHUD("123")
     // this.history.push(chatAIUtils.genAssistantMessage(undefined,this.func))
     if (this.response?.trim()) {
       this.history.push({role:"assistant",content:this.response.trim()})
@@ -1373,21 +1434,29 @@ try {
       this.history.push({role:"assistant",content:this.response})
     }
     if (!this.response.trim() && !this.tool.length && !this.preFuncResponse && this.statusCode < 400) {
-      MNUtil.showHUD("Empty response")
+      if (this.history.at(-2).role !== "tool") {
+        MNUtil.showHUD("Empty response"+this.history.length)
+      }
     }
     // MNUtil.copyJSON(this.history)
     this.funcResponse = ""
     this.lastResponse = this.response.trim()
-    let htmlBlock = chatAIUtils.extractHtmlCodeBlocks(this.response)
-    if (htmlBlock.length) {
-      MNUtil.showHUD("Preview...")
-      MNUtil.postNotification("snipasteHtml", {html:htmlBlock[0].code})
-    }
-    // MNUtil.copy(this.lastResponse)
+
+    MNUtil.log({
+      message:this.currentTitle??"notification.aiResponse",
+      source:"MN ChatAI",
+      detail:this.response
+    })
     this.response = ""
     this.preResponse = ""
     if (this.actions.length && !this.onChat) {
-      this.excuteFinishAction(this.actions,this.lastResponse)
+      await this.executeFinishAction(this.actions,this.lastResponse)
+    }
+    // MNUtil.log(this.toolbarAction)
+    if (this.toolbarAction && this.toolbarAction.trim()) {
+
+      this.executeToolbarAction(this.toolbarAction, this.view)
+      // MNUtil.log("Should execute toolbar action: "+this.toolbarAction)
     }
     if (chatAIUtils.dynamicController) {
       MNUtil.studyView.bringSubviewToFront(chatAIUtils.dynamicController.view)
@@ -1414,7 +1483,6 @@ notificationController.prototype.init = function () {
   // let ctr = this
   // MNUtil.showHUD("message")
   this.reloadImage = MNUtil.getImage(chatAIConfig.mainPath + `/reload.png`)
-  this.stopImage = MNUtil.getImage(chatAIConfig.mainPath + `/stop.png`)
   this.bigbangImage = MNUtil.getImage(chatAIConfig.mainPath + `/bigbang.png`)
   this.copyImage = MNUtil.getImage(chatAIConfig.mainPath + `/copy.png`)
   this.titleImage = MNUtil.getImage(chatAIConfig.mainPath + `/title.png`)
@@ -1433,7 +1501,7 @@ notificationController.prototype.init = function () {
   this.clearImage = MNUtil.getImage(chatAIConfig.mainPath + `/eraser.png`)
   this.mindmapImage = MNUtil.getImage(chatAIConfig.mainPath + `/mindmap.png`)
   this.editorImage = MNUtil.getImage(chatAIConfig.mainPath + `/edit.png`,2.2)
-  this.actionImages = MNUtil.getImage(chatAIConfig.mainPath + `/action.png`)
+  this.actionImage = MNUtil.getImage(chatAIConfig.mainPath + `/action.png`)
   this.snipasteImage = MNUtil.getImage(chatAIConfig.mainPath + `/snipaste.png`)
   this.menuImage = MNUtil.getImage(chatAIConfig.mainPath + `/menu.png`)
   this.searchImage = MNUtil.getImage(chatAIConfig.mainPath + `/search.png`)
@@ -1494,7 +1562,7 @@ notificationController.prototype.setNotiLayout = function (forceHeight) {
     this.currentFrame = currentFrame
     this.webviewResponse.frame = webviewFrame
     this.setLayout()
-  }).then(()=>{
+  },0.1).then(()=>{
     this.onAnimate = false
   })
 }
@@ -1684,6 +1752,9 @@ notificationController.prototype.hide = async function () {
   // this.currentFrame = preFrame
   this.custom = preCustom
   this.response = ''
+  this.preResponse = ""
+  this.preFuncResponse = ''
+  this.funcResponse = ''
   this.setNewResponse()
   return
 }
@@ -2059,6 +2130,7 @@ notificationController.prototype.getFileParsingProcess = async function (fileObj
       processPercent: 0
     }
   }
+  // MNUtil.log({source:"MN ChatAI",message:"getFileParsingProcess",detail:decodeURIComponent(encodeRes)})
   let res = JSON.parse(decodeURIComponent(encodeRes))
   return res
 }
@@ -2178,11 +2250,12 @@ notificationController.prototype.setResponseText = async function (funcResponse 
     // MNUtil.copy(this.tem)
     this.onResponse = true
     this.onreceive = false
+    let response = chatAIUtils.fixMarkdownLinks(this.response.trim())
     // MNUtil.copy(this.reasoningResponse)
     let option = {
       scrollToBottom: this.scrollToBottom,
       funcResponse: funcHtml,
-      response: this.response.trim(),
+      response: response,
       reasoningResponse: this.reasoningResponse,
     }
     if (!this.onFinish) {
@@ -2215,7 +2288,7 @@ try {
   // MNUtil.copy(func)
   let note,title,comment
   let funcName = func.function.name
-  let noteid = this.noteid ?? chatAIUtils.getFocusNoteId()
+  let noteid = this.noteid ?? chatAIUtils.getFocusNoteId(false)
   switch (funcName) {
     case "multi_tool_use.parallel":
       this.func = []
@@ -2356,110 +2429,37 @@ notificationController.prototype.speech = async function(text,webview){
  * @param {number[]} actionIndices 
  * @param {string} text 
  */
-notificationController.prototype.excuteFinishAction = function (actionIndices,text) {
+notificationController.prototype.executeFinishAction = async function (actionIndices,text) {
   try {
     
 
   let shouldClose = false
-  let noteid = this.noteid
-  let note = undefined
-  if (noteid) {
-    note = MNNote.new(noteid)
-  }else{
-    note = chatAIUtils.getFocusNote()
-  }
-  var actions = ["setTitle","addComment","copyMarkdownLink","copyCardURL","copyText","close","addTag","addChildNote","clearExcerpt","setExcerpt"];
+  // let noteid = this.noteid
+  // let note = undefined
+  // if (noteid) {
+  //   note = MNNote.new(noteid)
+  // }else{
+  //   note = chatAIUtils.getFocusNote()
+  // }
+  var actions = ["setTitle","addComment","copyMarkdownLink","copyCardURL","copyText","close","addTag","addChildNote","clearExcerpt","setExcerpt","snipasteHTML","addBrotherNote","appendBlankComment","appendTitle","appendExcerpt","snipasteText","markdown2Mindmap"];
   MNUtil.undoGrouping(()=>{
-    actionIndices.forEach(index=>{
-      switch (actions[index]) {
-        case "setTitle":
-          if (note) {
-            note.noteTitle = MNUtil.mergeWhitespace(text)
-            MNUtil.showHUD("Title is set")
-          }else{
-            // MNUtil.showHUD("No note selected")
-          }
-          break;
-        case "addComment":
-          if (note) {
-            if (text.trim()) {
-              note.appendMarkdownComment(text.trim())
-              MNUtil.showHUD("Comment is added")
-            }else{
-              MNUtil.showHUD("Empty content!")
-            }
-          }else{
-            // MNUtil.showHUD("No note selected")
-          }
-          break;
-        case "addTag":
-          if (note) {
-            note.appendTextComment("#"+MNUtil.mergeWhitespace(text))
-            MNUtil.showHUD("Tag is added")
-          }else{
-            // MNUtil.showHUD("No note selected")
-          }
-          break
-        case "copyCardURL":
-          if (note) {
-            MNUtil.copy(note.noteURL)
-            MNUtil.showHUD("Link is copied")
-          }else{
-            // MNUtil.showHUD("No note selected")
-          }
-          break;
-        case "copyMarkdownLink":
-          if (note) {
-            MNUtil.copy(`[${text}](${note.noteURL})`)
-            MNUtil.showHUD("Markdown Link is copied")
-          }else{
-            // MNUtil.showHUD("No note selected")
-          }
-          break;
-        case "copyText":
-          MNUtil.copy(text)
-          MNUtil.showHUD("Content is copied")
-          break;
-        case "clearExcerpt":
-          if (note) {
-            note.excerptText = ""
-            MNUtil.showHUD("clear excerpt")
-          }else{
-            // MNUtil.showHUD("No note selected")
-          }
-          break;
-        case "close":
-          shouldClose = true;
-          break;
-        case "setExcerpt":
-          if (note) {
-            note.excerptText = text
-            MNUtil.showHUD("excerpt is set")
-          }else{
-            // MNUtil.showHUD("No note selected")
-          }
-          break;
-        case "addChildNote":
-          if (note) {
-            note.createChildNote({content:text,markdown:true})
-            MNUtil.showHUD("child note is added")
-          }else{
-            // MNUtil.showHUD("No note selected")
-          }
-          break;
-        default:
-          break;
+    actionIndices.forEach(async (index)=>{
+      let action = actions[index]
+      if (action === "close") {
+        shouldClose = true
+      }else{
+        await this.executeAction(action, text,false)
       }
     })
   
   })
-  MNUtil.delay(0.5).then(()=>{
-    if (shouldClose) {
-      this.hide()
-    }
-  })
+  await MNUtil.delay(0.5)
+  if (shouldClose) {
+    this.hide()
+  }
+  return
   } catch (error) {
-    chatAIUtils.addErrorLog(error, "excuteFinishAction")
+    chatAIUtils.addErrorLog(error, "notificationController.executeFinishAction")
   }
 }
 /**
@@ -2622,39 +2622,190 @@ notificationController.prototype.waitHUD = function (title,view = this.view) {
 }
 
 /**
+ * 不包括带有按钮的动作,不带undoGrouping
+ * @this {notificationController}
+ * @param {MNNote} note 
+ * @param {string} action 
+ * @param {string} text 
+ */
+notificationController.prototype.executeActionOnNote = async function (note,action,text){
+try {
+    // let note = note ?? await this.currentNote(true)
+    if (!note) {
+      this.showHUD("Unavailable")
+      return
+    }
+    switch (action) {
+      case "copyCardURL":
+        MNUtil.copy(note.noteURL)
+        this.showHUD("Link is copied")
+        break;
+      case "copyMarkdownLink":
+        MNUtil.copy(`[${text}](${note.noteURL})`)
+        this.showHUD("Markdown Link is copied")
+        break;
+      case "addComment":
+        if (text.trim()) {
+          note.appendMarkdownComment(text.trim())
+          MNUtil.showHUD("Comment is added")
+        }else{
+          MNUtil.showHUD("Empty content!")
+        }
+        break;
+      case "addBlankComment":
+      case "appendBlankComment":
+        await chatAIUtils.insertBlank(note, text)
+        break;
+      case "addChildNote":
+        MNUtil.showHUD("Creating childNote...")
+        // note.focusInFloatMindMap(0.5)
+        let childNote = note.createChildNote({excerptText:text,excerptTextMarkdown:true})
+        childNote.focusInMindMap(0.5)
+        break;
+      case "addBrotherNote":
+        MNUtil.showHUD("Creating brotherNote...")
+        let parentNote = note.parentNote
+        let brotherNote = parentNote.createChildNote({excerptText:text,excerptTextMarkdown:true})
+        brotherNote.focusInMindMap(0.5)
+        break;
+      case "setTitle":
+        note.noteTitle = text
+        MNUtil.showHUD("Title is set")
+        break;
+      case "addTitle":
+      case "appendTitle":
+        if (note.noteTitle) {
+          note.noteTitle = note.noteTitle+"; "+text
+        }else{
+          note.noteTitle = text
+        }
+        MNUtil.showHUD("Title is added")
+        break;
+      case "addTag":
+        note.appendTextComment("#"+MNUtil.mergeWhitespace(text))
+        MNUtil.showHUD("Tag is added")
+        break;
+      case "clearExcerpt":
+        note.excerptText = ""
+        MNUtil.showHUD("Excerpt is cleared")
+        break;
+      case "setExcerpt":
+        MNUtil.showHUD("Replacing excerpt...")
+        note.excerptText = text.trim()
+        note.excerptTextMarkdown = true
+        break;
+      case "appendExcerpt":
+        MNUtil.showHUD("Appending excerpt...")
+        note.excerptText = note.excerptText+"\n"+text.trim()
+        break;
+      case "markdown2Mindmap":
+      case "markdown2mindmap":
+        MNUtil.waitHUD("Create Mindmap...")
+        await MNUtil.delay(0.1)
+        let ast = chatAIUtils.markdown2AST(text)
+        chatAIUtils.AST2Mindmap(note,ast)
+        MNUtil.stopHUD()
+        break;
+      default:
+        break;
+    }
+} catch (error) {
+  chatAIUtils.addErrorLog(error, "notificationController.executeActionOnNote", action)
+}
+}
+
+notificationController.prototype.stopOutput = async function () {
+  if (this.connection) {
+    this.connection.cancel()
+    delete this.connection
+    this.showHUD("Stop output")
+  }else{
+    this.showHUD("Not on output")
+  }
+  this.setButtonOpacity(1.0)
+  return;
+}
+/**
+ * 不包括带有按钮的动作
  * @this {notificationController}
  * @param {string} action 
- * @param {UIButton} button 
+ * @param {string} text 
+ * @param {boolean} undoGrouping 
  */
-notificationController.prototype.executeAction = async function (action,button){
-    Menu.dismissCurrentMenu()
+notificationController.prototype.executeAction = async function (action,text,undoGrouping=true){
 try {
 
-    if (action === "menu") {
-        let menu = new Menu(button,this)
-        menu.addMenuItem("bigbang","executeCustomButton:","bigbang")
-        menu.addMenuItem("addChildNote","executeCustomButton:","addChildNote")
-        menu.addMenuItem("addBrotherNote","executeCustomButton:","addBrotherNote")
-        menu.addMenuItem("addComment","executeCustomButton:","addComment")
-        menu.addMenuItem("addBlankComment","executeCustomButton:","addBlankComment")
-        menu.addMenuItem("setTitle","executeCustomButton:","setTitle")
-        menu.addMenuItem("addTitle","executeCustomButton:","addTitle")
-        menu.addMenuItem("copy","executeCustomButton:","copy")
-        menu.addMenuItem("setExcerpt","executeCustomButton:","setExcerpt")
-        menu.addMenuItem("appendExcerpt","executeCustomButton:","appendExcerpt")
-        menu.addMenuItem("markdown2Mindmap","executeCustomButton:","markdown2Mindmap")
-        menu.addMenuItem("openInEditor","executeCustomButton:","openInEditor")
-        menu.addMenuItem("snipaste","executeCustomButton:","snipaste")
-        menu.addMenuItem("searchInBrowser","executeCustomButton:","searchInBrowser")
-        menu.addMenuItem("reAsk","executeCustomButton:","reAsk")
-        menu.addMenuItem("openChat","executeCustomButton:","openChat")
-        menu.show()
-        return
-    }
-    let text = await this.getTextForAction()
-    let note = MNNote.new(this.noteid) ?? chatAIUtils.getFocusNote()
-    note = note?.realGroupNoteForTopicId()
+    let note = await this.currentNote(false)
     switch (action) {
+      case "editMode":
+        this.showHUD("Edit mode")
+        this.runJavaScript(`openEdit(true)`)
+        return
+      case "stopOutput":
+        if (this.connection) {
+          this.connection.cancel()
+          delete this.connection
+          this.showHUD("Stop output")
+        }else{
+          this.showHUD("Not on output")
+        }
+        this.setButtonOpacity(1.0)
+        return;
+      case "reply":
+        let userInputRes = await MNUtil.userInput("MN ChatAI", "Reply to the last message\n\n请输入回复内容", ["Cancel","Yes/是","No/不是","Continue/继续","Exit/退出","Confirm"])
+        switch (userInputRes.button) {
+          case 0:
+            MNUtil.showHUD("Cancel")
+            return
+          case 1:
+            this.showHUD("💬 Reply: Yes")
+            this.continueAsk("Yes")
+            return
+          case 2:
+            this.showHUD("💬 Reply: No")
+            this.continueAsk("No")
+            return
+          case 3:
+            this.showHUD("💬 Reply: Continue")
+            this.continueAsk("Continue")
+            return
+          case 4:
+            this.showHUD("💬 Reply: Exit")
+            this.continueAsk("Exit")
+            return
+          case 5:
+            let text = userInputRes.input
+            if (text.trim()) {
+              this.showHUD("💬 Reply: "+text)
+              this.continueAsk(text)
+            }else{
+              MNUtil.showHUD("内容为空")
+            }
+            break;
+          default:
+            break;
+        }
+        return;
+      case "switchLocation":
+        if (this.notifyLoc === 1) {
+          chatAIConfig.config.notifyLoc = 0
+          chatAIConfig.save("MNChatglm_config")
+          this.show(chatAIConfig.config.notifyLoc,false,true)
+          if (chatAIUtils.chatController.windowLocationButton) {
+            chatAIUtils.chatController.windowLocationButton.setTitleForState("Notification: Left",0)
+          }
+          return
+        }
+        if (this.notifyLoc === 0) {
+          chatAIConfig.config.notifyLoc = 1
+          this.show(chatAIConfig.config.notifyLoc,false,true)
+          chatAIConfig.save("MNChatglm_config")
+          if (chatAIUtils.chatController.windowLocationButton) {
+            chatAIUtils.chatController.windowLocationButton.setTitleForState("Notification: Right",0)
+          }
+          return
+        }
+        return
       case "none":
         this.showHUD("No action")
         return;
@@ -2678,19 +2829,6 @@ try {
         }else{
           this.reAsk(0.99)
         }
-        return;
-      case "reAskWithMenu":
-        let selector = 'setChatModelAndReAsk:'
-        let modelName = this.currentModel
-        let allModels = chatAIConfig.getAvailableModels()
-        let widths = []
-        var commandTable = allModels.map(model=>{
-          widths.push(chatAIUtils.strCode(model))
-          return this.tableItem(model, selector,model,modelName === model)
-          // return {title:model,object:self,selector:selector,param:model,checked:modelName === model}
-        })
-        let position = this.notifyLoc ? 0 : 4
-        this.popover(button, commandTable, Math.max(...widths)*9+30,position)
         return;
       case "openChat":
         if (chatAIUtils.isMN3()) {
@@ -2731,8 +2869,8 @@ try {
           MNUtil.postNotification("bigbangText",{text:text})
         }
         return;
-
       case "snipaste":
+      case "snipasteText":
         let html = `
   <html lang="en">
 
@@ -2740,6 +2878,7 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="https://vip.123pan.cn/1836303614/dl/cdn/mermaid.js" defer></script>
   </head>
 
   <body>
@@ -2750,6 +2889,135 @@ ${MNUtil.md2html(text)}
               inlineMath: [ ['$','$'], ["\\(","\\)"] ]
           }
       };
+/**
+ * 根据指定的 scheme、host、path、query 和 fragment 生成一个完整的 URL Scheme 字符串。
+ * URL Scheme 完整格式：scheme://host/path?query#fragment
+ *
+ * @param {string} scheme - URL scheme，例如 'myapp'。必须提供。
+ * @param {string|undefined} [host] - host 部分，例如 'user_profile'。
+ * @param {string|string[]|undefined} [path] - path 部分，例如 'view/123'。
+ * @param {Object<string, string|number|boolean|object>|undefined} [query] - 查询参数对象。
+ * @param {string|undefined} [fragment] - fragment 标识符，即 URL 中 # 后面的部分。
+ * @returns {string} - 生成的完整 URL 字符串。
+ */
+function generateUrlScheme(scheme, host, path, query, fragment) {
+  // 1. 处理必须的 scheme
+  if (!scheme) {
+    console.error("Scheme is a required parameter.");
+    return '';
+  }
+  // 2. 构建基础部分：scheme 和 host
+  //    即使 host 为空，也会生成 'scheme://'，这对于 'file:///' 这类 scheme 是正确的
+  let url = \`\${scheme}://\${host || ''}\`;
+
+  // 3. 添加 path
+  if (path) {
+    if (Array.isArray(path)) {
+      let pathStr = path.join('/')
+      url += \`/\${pathStr.replace(/^\\\/+/, '')}\`;
+    }else{
+      // 确保 host 和 path 之间只有一个斜杠，并处理 path 开头可能存在的斜杠
+      url += \`/\${path.replace(/^\\\/+/, '')}\`;
+    }
+  }
+
+  // 4. 添加 query 参数
+  if (query && Object.keys(query).length > 0) {
+    const queryParts = [];
+    for (const key in query) {
+      // 确保我们只处理对象自身的属性
+      if (Object.prototype.hasOwnProperty.call(query, key)) {
+        const value = query[key];
+        const encodedKey = encodeURIComponent(key);
+        // 对值进行编码，如果是对象，则先序列化为 JSON 字符串
+        const encodedValue = encodeURIComponent(
+          typeof value === "object" && value !== null ? JSON.stringify(value) : value
+        );
+        queryParts.push(\`\${encodedKey}=\${encodedValue}\`);
+      }
+    }
+    if (queryParts.length > 0) {
+      url += \`?\${queryParts.join('&')}\`;
+    }
+  }
+
+  // 5. 添加 fragment
+  if (fragment) {
+    // Fragment 部分不应该被编码
+    url += \`#\${fragment}\`;
+  }
+
+  return url;
+}
+
+    /**
+     *
+     * @param {string} scheme - URL scheme, 例如 'myapp'。
+     * @param {string} [host] - 可选的路径或操作名。
+     * @param {Object<string, string|number|boolean>} [params] - 查询参数对象。
+     */
+    function postMessageToAddon(scheme, host, path, params,fragment) {
+      let url = generateUrlScheme(scheme,host,path, params,fragment)
+      window.location.href = url
+    }
+    function replaceLtInLatexBlocks(markdown) {
+        return markdown.replace(/\\$\\$(.*?)\\$\\$/gs, (match, latexContent) => {
+            return '$$' + latexContent.replace(/</g, '\\\\lt') + '$$';
+        });
+    }
+     async function validateMermaid(content,i=0){
+      try {
+        let res = await mermaid.render('mermaid-graph'+i, content)
+        return {valid:true,svg:res.svg}
+      } catch (error) {
+
+        // notyf.error(error.message)
+        return {valid:false,error:error.message}
+      }
+    }
+    async function renderMermaindOneChart(container,i) {
+      container.id = "mermaid-container-"+i
+      let content = replaceLtInLatexBlocks(container.textContent)
+          // content = content.replace(/</g, "\\lt")
+          let res = await validateMermaid(content,i)
+          if (!res.valid) {
+            if(res.error.includes("KaTeX parse error")) {
+              console.log(res.error)
+            }
+            // document.getElementById('mermaid-container').innerHTML = res.error.message
+            // postMessageToAddon("snipaste", "mermaid",undefined, {action: "endRendering",content:content})
+            return
+          }
+          
+          
+            container.innerHTML = res.svg;
+    }
+      async function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+        
+      }
+        async function renderMermaid(){
+        try {
+          const containers = document.getElementsByClassName("language-mermaid");
+          for (let i = 0; i < containers.length; i++) {
+            await renderMermaindOneChart(containers[i],i)
+          }
+        } catch (error) {
+          console.log(error);
+          
+            // postMessageToAddon("snipaste", "mermaid",undefined, {action: "endRendering",content:content})
+        }
+        }
+      // 监听 DOMContentLoaded 事件
+      document.addEventListener('DOMContentLoaded', async function () {
+        // notyf = new Notyf({position: {x: 'center', y: 'top'}, duration: 1000,ripple:false});
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'strict'
+        });
+        renderMermaid()
+
+      })
   </script>
   <script id="MathJax-script" async src="https://vip.123pan.cn/1836303614/dl/cdn/es5/tex-svg-full.js"></script>
   </body>
@@ -2797,75 +3065,355 @@ ${MNUtil.md2html(text)}
         }
         return;
       case "copy":
+      case "copyText":
         MNUtil.copy(text)
         this.showHUD("Copy text")
+        return;
+      case "snipasteHTML":
+        let htmlBlock = chatAIUtils.extractHtmlCodeBlocks(text)
+        if (htmlBlock.length) {
+          MNUtil.showHUD("Preview...")
+          MNUtil.postNotification("snipasteHtml", {html:htmlBlock[0].code})
+        }
         return;
       default:
         break;
     }
-    if (!note) {
-      note = MNNote.fromSelection()
+
+    if (undoGrouping) {
+      MNUtil.undoGrouping(()=>{
+        if (!note) {
+          note = MNNote.fromSelection()
+        }
+        if (!note) {
+          this.showHUD("Unavailable")
+          return
+        }
+        this.executeActionOnNote(note,action,text)
+      })
+    }else{
+      if (!note && MNUtil.currentSelection.onSelection) {
+        note = MNNote.fromSelection()
+        note = note.realGroupNoteForTopicId()
+      }
+      if (!note) {
+        this.showHUD("Unavailable")
+        return
+      }
+      this.executeActionOnNote(note,action,text)
     }
-    if (!note) {
-      this.showHUD("Unavailable")
+} catch (error) {
+  chatAIUtils.addErrorLog(error, "notificationController.executeAction", action)
+}
+}
+
+/**
+ * @this {notificationController}
+ * @param {string} action 
+ * @param {UIButton} button 
+ */
+notificationController.prototype.executeToolbarAction = async function (actionKey,button){
+  if (typeof toolbarUtils === "undefined") {
+    this.showHUD("Please install MN Utils First!")
+    return
+  }
+  if (!chatAIUtils.checkSubscribe(true)) {
+    return
+  }
+  let actionDes = toolbarConfig.getDescriptionById(actionKey)
+  if (!("action" in actionDes)) {
+    self.showHUD("Missing action")
+    return
+  }
+  MNUtil.log({message:"executeToolbarAction",source:"MN ChatAI",detail:actionDes})
+  await toolbarUtils.customActionByDes(actionDes,button,undefined,false)
+  while ("onFinish" in actionDes) {
+    let delay = actionDes.delay ?? 0.5
+    actionDes = actionDes.onFinish
+    await MNUtil.delay(delay)
+    await toolbarUtils.customActionByDes(actionDes,button,undefined,false)
+  }
+
+}
+/**
+ * @this {notificationController}
+ * @param {string} action 
+ * @param {UIButton} button 
+ */
+notificationController.prototype.executeActionFromButton = async function (action,button){
+    Menu.dismissCurrentMenu()
+try {
+    if (action.startsWith("toolbar:")) {
+      let toolbarAction = action.split(":")[1]
+      this.executeToolbarAction(toolbarAction, button)
       return
     }
-    switch (action) {
-      case "addComment":
-        MNUtil.undoGrouping(()=>{
-          note.appendMarkdownComment(text.trim())
-        })
-        break;
-      case "addBlankComment":
-        await chatAIUtils.insertBlank(note, text)
-        break;
-      case "addChildNote":
-        let childNote = note.createChildNote({excerptText:text,excerptTextMarkdown:true})
-        childNote.focusInMindMap(0.5)
-        break;
-      case "addBrotherNote":
-        let parentNote = note.parentNote
-        let brotherNote = parentNote.createChildNote({excerptText:text,excerptTextMarkdown:true})
-        brotherNote.focusInMindMap(0.5)
-        break;
-      case "setTitle":
-        MNUtil.undoGrouping(()=>{
-          note.noteTitle = text
-        })
-        break;
-      case "addTitle":
-        MNUtil.undoGrouping(()=>{
-          if (note.noteTitle) {
-            note.noteTitle = note.noteTitle+"; "+text
-          }else{
-            note.noteTitle = text
-          }
-        })
-        break;
-      case "setExcerpt":
-        MNUtil.undoGrouping(()=>{
-          note.excerptText = text.trim()
-          note.excerptTextMarkdown = true
-        })
-        break;
-      case "appendExcerpt":
-        MNUtil.undoGrouping(()=>{
-          note.excerptText = note.excerptText+"\n"+text.trim()
-        })
-        break;
-      case "markdown2Mindmap":
-        MNUtil.waitHUD("Create Mindmap...")
-        await MNUtil.delay(0.1)
-        let ast = chatAIUtils.markdown2AST(text)
-        MNUtil.copy(ast)
-        MNUtil.undoGrouping(()=>{
-          chatAIUtils.AST2Mindmap(note,ast)
-          MNUtil.stopHUD()
-        })
-        break;
-      default:
-        break;
+
+    if (action === "menu") {
+      if (!button) {
+        return
+      }
+      let menu = new Menu(button,this)
+      let selector = 'executeCustomButton:'
+      menu.addMenuItem("添加子卡片/节点",selector,"addChildNote")
+      menu.addMenuItem("添加兄弟卡片/节点",selector,"addBrotherNote")
+      menu.addMenuItem("添加评论",selector,"addComment")
+      menu.addMenuItem("添加文字留白",selector,"addBlankComment")
+      menu.addMenuItem("设置标题",selector,"setTitle")
+      menu.addMenuItem("追加标题",selector,"addTitle")
+      menu.addMenuItem("复制内容",selector,"copy")
+      menu.addMenuItem("设置摘要",selector,"setExcerpt")
+      menu.addMenuItem("追加摘要",selector,"appendExcerpt")
+      menu.addMenuItem("Markdown转脑图",selector,"markdown2Mindmap")
+      menu.addMenuItem("调用 MN Editor",selector,"openInEditor")
+      menu.addMenuItem("调用 MN Bigbang",selector,"bigbang")
+      menu.addMenuItem("调用 MN Snipaste",selector,"snipasteText")
+      menu.addMenuItem("调用 MN Snipaste 预览 HTML",selector,"snipasteHTML")
+      menu.addMenuItem("调用 MN Browser 搜索",selector,"searchInBrowser")
+      menu.addMenuItem("重新生成",selector,"reAsk")
+      menu.addMenuItem("打开聊天模式",selector,"openChat")
+      menu.addMenuItem("停止输出",selector,"stopOutput")
+      menu.addMenuItem("切换窗口位置",selector,"switchLocation")
+      menu.width = 250
+      menu.preferredPosition = 0
+      menu.show()
+      return
     }
+    if (action === "reAskWithMenu") {
+      if (!button) {
+        return
+      }
+      let selector = 'setChatModelAndReAsk:'
+      let modelName = this.currentModel
+      let allModels = chatAIConfig.getAvailableModels()
+      let widths = []
+      var commandTable = allModels.map(model=>{
+        widths.push(chatAIUtils.strCode(model))
+        return this.tableItem(model, selector,model,modelName === model)
+        // return {title:model,object:self,selector:selector,param:model,checked:modelName === model}
+      })
+      let position = this.notifyLoc ? 0 : 4
+      this.popover(button, commandTable, Math.max(...widths)*9+30,position)
+      return
+    }
+    let text = await this.getTextForAction()
+    this.executeAction(action, text)
+//     let note = await this.currentNote(false)
+//     switch (action) {
+//       case "none":
+//         this.showHUD("No action")
+//         return;
+//       case "reAsk":
+//         if (this.connection) {
+//           let confirm = await MNUtil.confirm("On output. Re-ask?", "当前正在输出，是否重新请求？")
+//           if (confirm) {
+//             this.connection.cancel()
+//             delete this.connection
+//             MNUtil.stopHUD()
+//           }else{
+//             return
+//           }
+//         }
+//         this.notShow = false
+//         this.called = true
+//         this.response = ""
+//         this.preFuncResponse = ''
+//         if (this.currentPrompt === "Dynamic" || this.currentPrompt === "Vision") {
+//           this.reAskByDynamic(0.99)
+//         }else{
+//           this.reAsk(0.99)
+//         }
+//         return;
+//       case "reAskWithMenu":
+//         if (!button) {
+//           return
+//         }
+//         let selector = 'setChatModelAndReAsk:'
+//         let modelName = this.currentModel
+//         let allModels = chatAIConfig.getAvailableModels()
+//         let widths = []
+//         var commandTable = allModels.map(model=>{
+//           widths.push(chatAIUtils.strCode(model))
+//           return this.tableItem(model, selector,model,modelName === model)
+//           // return {title:model,object:self,selector:selector,param:model,checked:modelName === model}
+//         })
+//         let position = this.notifyLoc ? 0 : 4
+//         this.popover(button, commandTable, Math.max(...widths)*9+30,position)
+//         return;
+//       case "openChat":
+//         if (chatAIUtils.isMN3()) {
+//           MNUtil.showHUD("Only available in MN4")
+//           return
+//         }
+//         let config = {
+//           token:this.token,
+//           history:this.history,
+//           config:this.config,
+//           currentModel:this.currentModel,
+//           preFuncResponse:this.preFuncResponse,
+//           lastResponse:this.lastResponse,
+//           funcIndices:this.funcIndices,
+//           prompt:this.currentPrompt,
+//           reasoningResponse:this.reasoningResponse
+//         }
+//         // MNUtil.copyJSON(config)
+//         if (!chatAIUtils.sideOutputController) {
+//           // MNUtil.toggleExtensionPanel()
+//           MNExtensionPanel.show()
+//           chatAIUtils.sideOutputController = sideOutputController.new();
+//           // let panelView = MNExtensionPanel.view
+//           MNExtensionPanel.addSubview("chatAISideOutputView", chatAIUtils.sideOutputController.view)
+//           // MNUtil.extensionPanelView.backgroundColor = UIColor.whiteColor()
+//           chatAIUtils.sideOutputController.view.hidden = false
+//           chatAIUtils.sideOutputController.view.frame = {x:0,y:0,width:MNExtensionPanel.width,height:MNExtensionPanel.height}
+//           chatAIUtils.sideOutputController.currentFrame = {x:0,y:0,width:MNExtensionPanel.width,height:MNExtensionPanel.height}
+//         }else{
+//           MNExtensionPanel.show("chatAISideOutputView")
+//         }
+//         chatAIUtils.sideOutputController.openChatView(config)
+//         return;
+//       case "bigbang":
+//         if (note) {
+//           MNUtil.postNotification("bigbangText",{text:text,noteid:note.noteId,url:note.noteURL})
+//         }else{
+//           MNUtil.postNotification("bigbangText",{text:text})
+//         }
+//         return;
+
+//       case "snipaste":
+//         let html = `
+//   <html lang="en">
+
+//   <head>
+//     <meta charset="UTF-8">
+//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//     <title>Document</title>
+//   </head>
+
+//   <body>
+// ${MNUtil.md2html(text)}
+//   <script>
+//       MathJax = {
+//           tex: {
+//               inlineMath: [ ['$','$'], ["\\(","\\)"] ]
+//           }
+//       };
+//   </script>
+//   <script id="MathJax-script" async src="https://vip.123pan.cn/1836303614/dl/cdn/es5/tex-svg-full.js"></script>
+//   </body>
+//   </html>`
+//         MNUtil.postNotification("snipasteHtml",{html:html})
+//         return;
+//       case "openInEditor":
+//         if (text.trim()) {
+//           let studyFrame = MNUtil.studyView.bounds
+//           let beginFrame = this.view.frame
+//           beginFrame.y = beginFrame.y-10
+//           if (beginFrame.x+490 > studyFrame.width) {
+//             let endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+//             if (beginFrame.y+490 > studyFrame.height) {
+//               endFrame.y = studyFrame.height-500
+//             }
+//             MNUtil.postNotification("openInEditor",{content:text,beginFrame:beginFrame,endFrame:endFrame})
+//           }else{
+//             let endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+//             if (beginFrame.y+490 > studyFrame.height) {
+//               endFrame.y = studyFrame.height-500
+//             }
+//             MNUtil.postNotification("openInEditor",{content:text,beginFrame:beginFrame,endFrame:endFrame})
+//           }
+//         }
+//         return;
+//       case "searchInBrowser":
+//         if (text.trim()) {
+//           let studyFrame = MNUtil.studyView.bounds
+//           let beginFrame = this.view.frame
+//           beginFrame.y = beginFrame.y-10
+//           if (beginFrame.x+490 > studyFrame.width) {
+//             let endFrame = Frame.gen(beginFrame.x-450, beginFrame.y-10, 450, 500)
+//             if (beginFrame.y+490 > studyFrame.height) {
+//               endFrame.y = studyFrame.height-500
+//             }
+//             MNUtil.postNotification("searchInBrowser",{text:text,beginFrame:beginFrame,endFrame:endFrame})
+//           }else{
+//             let endFrame = Frame.gen(beginFrame.x+40, beginFrame.y-10, 450, 500)
+//             if (beginFrame.y+490 > studyFrame.height) {
+//               endFrame.y = studyFrame.height-500
+//             }
+//             MNUtil.postNotification("searchInBrowser",{text:text,beginFrame:beginFrame,endFrame:endFrame})
+//           }
+//         }
+//         return;
+//       case "copy":
+//         MNUtil.copy(text)
+//         this.showHUD("Copy text")
+//         return;
+//       default:
+//         break;
+//     }
+//     if (!note) {
+//       note = MNNote.fromSelection()
+//     }
+//     if (!note) {
+//       this.showHUD("Unavailable")
+//       return
+//     }
+//     switch (action) {
+//       case "addComment":
+//         MNUtil.undoGrouping(()=>{
+//           note.appendMarkdownComment(text.trim())
+//         })
+//         break;
+//       case "addBlankComment":
+//         await chatAIUtils.insertBlank(note, text)
+//         break;
+//       case "addChildNote":
+//         let childNote = note.createChildNote({excerptText:text,excerptTextMarkdown:true})
+//         childNote.focusInMindMap(0.5)
+//         break;
+//       case "addBrotherNote":
+//         let parentNote = note.parentNote
+//         let brotherNote = parentNote.createChildNote({excerptText:text,excerptTextMarkdown:true})
+//         brotherNote.focusInMindMap(0.5)
+//         break;
+//       case "setTitle":
+//         MNUtil.undoGrouping(()=>{
+//           note.noteTitle = text
+//         })
+//         break;
+//       case "addTitle":
+//         MNUtil.undoGrouping(()=>{
+//           if (note.noteTitle) {
+//             note.noteTitle = note.noteTitle+"; "+text
+//           }else{
+//             note.noteTitle = text
+//           }
+//         })
+//         break;
+//       case "setExcerpt":
+//         MNUtil.undoGrouping(()=>{
+//           note.excerptText = text.trim()
+//           note.excerptTextMarkdown = true
+//         })
+//         break;
+//       case "appendExcerpt":
+//         MNUtil.undoGrouping(()=>{
+//           note.excerptText = note.excerptText+"\n"+text.trim()
+//         })
+//         break;
+//       case "markdown2Mindmap":
+//         MNUtil.waitHUD("Create Mindmap...")
+//         await MNUtil.delay(0.1)
+//         let ast = chatAIUtils.markdown2AST(text)
+//         MNUtil.copy(ast)
+//         MNUtil.undoGrouping(()=>{
+//           chatAIUtils.AST2Mindmap(note,ast)
+//           MNUtil.stopHUD()
+//         })
+//         break;
+//       default:
+//         break;
+//     }
 } catch (error) {
   chatAIUtils.addErrorLog(error, "notificationController.prototype.executeAction", action)
 }
@@ -2874,14 +3422,20 @@ ${MNUtil.md2html(text)}
 /** @this {notificationController} */
 notificationController.prototype.refreshCustomButton = function (){
   let actionImages = chatAIConfig.getActionImages()
-  this.bigbangButton.setImageForState(this[actionImages[0]],0)
-  this.commentButton.setImageForState(this[actionImages[1]],0)
-  this.titleButton.setImageForState(this[actionImages[2]],0)
-  this.copyButton.setImageForState(this[actionImages[3]],0)
-  this.excerptButton.setImageForState(this[actionImages[4]],0)
-  this.childButton.setImageForState(this[actionImages[5]],0)
-  this.reloadButton.setImageForState(this[actionImages[6]],0)
-  this.chatButton.setImageForState(this[actionImages[7]],0)
+  if (!actionImages) {
+    MNUtil.log("No aciton images")
+    return
+  }
+  // MNUtil.log({message:"refreshCustomButton",source:"MN ChatAI",detail:actionImages})
+
+  this.bigbangButton.setImageForState(actionImages[0],0)
+  this.commentButton.setImageForState(actionImages[1],0)
+  this.titleButton.setImageForState(actionImages[2],0)
+  this.copyButton.setImageForState(actionImages[3],0)
+  this.excerptButton.setImageForState(actionImages[4],0)
+  this.childButton.setImageForState(actionImages[5],0)
+  this.reloadButton.setImageForState(actionImages[6],0)
+  this.chatButton.setImageForState(actionImages[7],0)
 }
 
 /** @this {notificationController} */
@@ -2889,9 +3443,12 @@ notificationController.prototype.getLocalFileContent = async function (path) {
     if (this.view.hidden) {
       // this.beginNotification("PDF")
       this.setNewResponse()
+      await MNUtil.delay(0.1)
     }
-    let pdfData = NSData.dataWithContentsOfURL(NSURL.fileURLWithPath(path))
+    MNUtil.waitHUD("Progress: 0%")
+    let pdfData = MNUtil.getFile(path)
     let loaded = await this.runJavaScript(`getProgress()`)
+    // MNUtil.log({source:"MN ChatAI",message:"getLocalFileContent",detail:loaded})
     while (true){
       if (loaded) {
         break
@@ -2899,7 +3456,8 @@ notificationController.prototype.getLocalFileContent = async function (path) {
       await MNUtil.delay(0.1)
       loaded = await this.runJavaScript(`getProgress()`)
     }
-    this.runJavaScript(`getDocumentContent("${pdfData.base64Encoding()}")`)
+    // MNUtil.copy(`getDocumentContent("${pdfData.base64Encoding()}")`)
+    await this.runJavaScript(`getDocumentContent("${pdfData.base64Encoding()}")`)
     // this.runJavaScript(`getDocumentContent()`)
     let processPercent = 0
     await MNUtil.delay(0.1)
@@ -2923,6 +3481,11 @@ notificationController.prototype.getLocalFileContent = async function (path) {
     let tem = await this.getFileContent()
     return tem
 }
+notificationController.prototype.currentNote = async function (allowSelection = false) {
+    let note = MNNote.new(this.noteid) ?? chatAIUtils.getFocusNote(allowSelection)
+    note = note?.realGroupNoteForTopicId()
+    return note
+}
 /**
  * @type {UIView}
  */
@@ -2931,3 +3494,4 @@ notificationController.prototype.view
  * @type {notificationController}
  */
 notificationController.prototype.addonController
+

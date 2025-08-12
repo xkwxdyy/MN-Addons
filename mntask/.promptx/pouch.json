@@ -4,17 +4,7 @@
     {
       "from": "initial",
       "command": "init",
-      "timestamp": "2025-07-23T18:14:59.877Z",
-      "args": [
-        {
-          "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mnbrowser"
-        }
-      ]
-    },
-    {
-      "from": "initialized",
-      "command": "init",
-      "timestamp": "2025-07-23T18:22:03.453Z",
+      "timestamp": "2025-08-04T17:31:58.692Z",
       "args": [
         {
           "workingDirectory": "/Users/xiakangwei/Nutstore/Github/repository/MN-addon-develop/MN-Addon/mntask"
@@ -22,5 +12,5 @@
       ]
     }
   ],
-  "lastUpdated": "2025-07-23T18:22:03.463Z"
+  "lastUpdated": "2025-08-04T17:31:58.706Z"
 }

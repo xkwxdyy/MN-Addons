@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug LocalStorage</title>
+</head>
+<body>
+    <h1>LocalStorage Debug</h1>
+    <script>
+        // 检查所有 mntask 相关的 localStorage 键
+        const keys = [
+            'mntask-tasks',
+            'mntask-pending',
+            'mntask-all-tasks',
+            'mntask-perspectives',
+            'mntask-current-view',
+            'mntask-focus-selected-perspective',
+            'mntask-library-selected-perspective'
+        ];
+
+        console.log('=== Checking MNTask LocalStorage ===');
+        
+        keys.forEach(key => {
+            const value = localStorage.getItem(key);
+            if (value) {
+                try {
+                    const parsed = JSON.parse(value);
+                    console.log(`${key}:`, parsed);
+                    if (Array.isArray(parsed)) {
+                        console.log(`  - Array length: ${parsed.length}`);
+                    }
+                } catch (e) {
+                    console.log(`${key}: ${value} (not JSON)`);
+                }
+            } else {
+                console.log(`${key}: null`);
+            }
+        });
+
+        // 在页面上显示结果
+        document.write('<pre>');
+        keys.forEach(key => {
+            const value = localStorage.getItem(key);
+            if (value) {
+                try {
+                    const parsed = JSON.parse(value);
+                    document.write(`<strong>${key}:</strong>\n`);
+                    if (Array.isArray(parsed)) {
+                        document.write(`  Array length: ${parsed.length}\n`);
+                        if (parsed.length > 0) {
+                            document.write(`  First item: ${JSON.stringify(parsed[0], null, 2).substring(0, 200)}...\n`);
+                        }
+                    } else {
+                        document.write(`  ${JSON.stringify(parsed, null, 2).substring(0, 200)}...\n`);
+                    }
+                } catch (e) {
+                    document.write(`<strong>${key}:</strong> ${value}\n`);
+                }
+            } else {
+                document.write(`<strong>${key}:</strong> <em>null</em>\n`);
+            }
+            document.write('\n');
+        });
+        document.write('</pre>');
+    </script>
+</body>
+</html>

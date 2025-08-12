@@ -452,7 +452,28 @@
             background-color: var(--hover-bg);
             color: var(--text-primary);
         }
+        .copyAll-button {
+            margin-top: 16px;
+            padding: 10px 16px;
+            background-color: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: all var(--transition-speed) ease;
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
 
+        .copyAll-button:hover {
+            background-color: var(--hover-bg);
+            color: var(--text-primary);
+        }
+        .copyAll-button.copied {
+            background-color: var(--info-color);
+            color: var(--primary-bg);
+        }
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
@@ -537,6 +558,7 @@
             </div>
         </div>
         <button class="clear-filters" onclick="logViewer.clearFilters()">清除过滤</button>
+        <button class="copyAll-button" id="copyAllButton" onclick="logViewer.copyAllLogs()">复制所有日志</button>
     </div>
     <div class="main-content">
         <div class="log-container" id="logContainer"></div>
@@ -632,6 +654,16 @@
                 
                 this.updateSourceFilters();
                 this.renderLogs();
+            }
+            copyAllLogs() {
+              let copyAllButton = document.getElementById('copyAllButton');
+                  copyAllButton.textContent = '已复制';
+                  copyAllButton.classList.add('copied');
+                  copyToClipboard(JSON.stringify(this.logs, null, 2));
+                  setTimeout(() => {
+                      copyAllButton.textContent = '复制所有日志';
+                      copyAllButton.classList.remove('copied');
+                  }, 2000);
             }
 
             loadLogs(logs) {

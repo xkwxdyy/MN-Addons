@@ -4380,6 +4380,31 @@ class MNTaskManager {
   }
 
   /**
+   * 从看板中筛选任务卡片
+   * @param {MNNote} boardNote - 看板笔记
+   * @param {Object} options - 筛选选项
+   * @param {Array<string>} options.statuses - 要筛选的状态列表
+   * @returns {Array<MNNote>} 符合条件的任务卡片列表
+   */
+  static filterTasksFromBoard(boardNote, options = {}) {
+    const { statuses = [] } = options
+    
+    // 获取看板中的所有任务卡片
+    const allTasks = this.getAllTaskCardsFromBoard(boardNote)
+    
+    // 如果没有指定状态筛选，返回所有任务
+    if (statuses.length === 0) {
+      return allTasks
+    }
+    
+    // 筛选符合状态的任务
+    return allTasks.filter(task => {
+      const titleParts = this.parseTaskTitle(task.noteTitle)
+      return statuses.includes(titleParts.status)
+    })
+  }
+
+  /**
    * 获取笔记的状态
    * @param {MNNote} note - 笔记对象
    * @returns {string} 状态字符串（'未开始'/'进行中'/'已完成'/'已归档'）

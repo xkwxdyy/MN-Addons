@@ -453,6 +453,29 @@ class MNTaskManager {
   }
 
   /**
+   * 判断卡片是否在已绑定的看板中
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 是否在已绑定的看板中
+   */
+  static isInBoundBoard(note) {
+    if (!note || !note.parentNote) return false
+    
+    const parentId = note.parentNote.noteId
+    
+    // 检查是否是任何已绑定看板的根卡片
+    const boardKeys = ['target', 'project', 'action', 'completed', 'today']
+    for (const key of boardKeys) {
+      const boardId = taskConfig.getBoardNoteId(key)
+      if (boardId && boardId === parentId) {
+        MNUtil.log(`✅ 卡片在已绑定的 ${key} 看板中`)
+        return true
+      }
+    }
+    
+    return false
+  }
+
+  /**
    * 更新任务路径
    * @param {MNNote} note - 要更新的任务卡片
    */
@@ -518,14 +541,26 @@ class MNTaskManager {
     const parentNote = focusNote.parentNote
     const isParentTaskCard = parentNote ? this.isTaskCard(parentNote) : false
     const isFocusTaskCard = this.isTaskCard(focusNote)
+    const isInBoundBoard = this.isInBoundBoard(focusNote)
+    
+    // 添加调试日志
+    MNUtil.log(`📋 卡片位置检查:`)
+    MNUtil.log(`  - 是否是任务卡片: ${isFocusTaskCard ? '✅ 是' : '❌ 否'}`)
+    MNUtil.log(`  - 是否在已绑定看板中: ${isInBoundBoard ? '✅ 是' : '❌ 否'}`)
+    if (isInBoundBoard && parentNote) {
+      MNUtil.log(`  - 所在看板: ${parentNote.noteTitle}`)
+    }
+    MNUtil.log(`  - 父卡片是否是任务卡片: ${isParentTaskCard ? '✅ 是' : '❌ 否'}`)
     
     // 判断是否需要创建临时任务
-    // 条件：1. 不是任务卡片 且 2. (没有父卡片 或 父卡片不是任务卡片)
-    const needCreateTemporary = !isFocusTaskCard && (!parentNote || !isParentTaskCard)
+    // 条件：1. 不是任务卡片 且 2. 不在已绑定看板中 且 3. (没有父卡片 或 父卡片不是任务卡片)
+    const needCreateTemporary = !isFocusTaskCard && !isInBoundBoard && (!parentNote || !isParentTaskCard)
     
     if (needCreateTemporary) {
       MNUtil.log('🆕 检测到非任务看板卡片，触发临时任务创建流程...')
       return await this.createTemporaryTask(focusNote)
+    } else if (!isFocusTaskCard && isInBoundBoard) {
+      MNUtil.log('✅ 卡片在已绑定看板中，进行正常任务制卡')
     }
     
     try {

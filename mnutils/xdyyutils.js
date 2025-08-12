@@ -9677,7 +9677,6 @@ class MNMath {
         
         // 添加操作选项
         options.push("➕ 添加新同义词组");
-        options.push("🚀 快速添加常用组（中英文/数学符号）");  // 新增
         options.push("──────────────");
         options.push("📤 导出同义词配置");
         options.push("📥 导入同义词配置");
@@ -9700,17 +9699,14 @@ class MNMath {
           continue; // 重新显示菜单，避免双弹窗
         } else if (selectedIndex === groups.length) {
           // 添加新组
-          await this.showAddSynonymGroupDialog();
+          await this.showAddSynonymDialog();
         } else if (selectedIndex === groups.length + 1) {
-          // 快速添加常用组
-          await this.showQuickAddTemplates();
-        } else if (selectedIndex === groups.length + 2) {
           // 分隔线，重新显示菜单
           continue;
-        } else if (selectedIndex === groups.length + 3) {
+        } else if (selectedIndex === groups.length + 2) {
           // 导出配置
           await this.showExportSynonymDialog();
-        } else if (selectedIndex === groups.length + 4) {
+        } else if (selectedIndex === groups.length + 3) {
           // 导入配置
           await this.showImportSynonymDialog();
         }
@@ -9721,279 +9717,133 @@ class MNMath {
     }
   }
 
-  /**
-   * 显示快速添加模板
-   */
-  static async showQuickAddTemplates() {
-    const templates = [
-      "📐 数学人名（柯西/Cauchy等）",
-      "🔢 集合符号（⊂/子集/包含等）",
-      "📊 数学运算（积分/微分/导数等）",
-      "🎯 单位圆盘（𝔻/单位圆盘/unit disk）",
-      "💻 编程术语（函数/function等）",
-      "──────────────",
-      "➕ 自定义批量添加"
-    ];
-    
-    const result = await MNUtil.userSelect(
-      "快速添加常用同义词组",
-      "选择一个模板类型",
-      templates
-    );
-    
-    if (result === null || result === 0) return;
-    
-    switch (result) {
-      case 1: // 数学人名
-        await this.addMathNamesTemplate();
-        break;
-      case 2: // 集合符号
-        await this.addSetSymbolsTemplate();
-        break;
-      case 3: // 数学运算
-        await this.addMathOperationsTemplate();
-        break;
-      case 4: // 单位圆盘
-        await this.addUnitDiskTemplate();
-        break;
-      case 5: // 编程术语
-        await this.addProgrammingTermsTemplate();
-        break;
-      case 6: // 分隔线
-        break;
-      case 7: // 自定义批量添加
-        await this.showCustomBatchAdd();
-        break;
-    }
-  }
 
   /**
-   * 添加数学人名模板
+   * 添加同义词组（多层对话框方式）
    */
-  static async addMathNamesTemplate() {
-    const commonMathNames = [
-      { name: "柯西相关", words: ["柯西", "Cauchy", "cauchy"], partial: true },
-      { name: "黎曼相关", words: ["黎曼", "Riemann", "riemann"], partial: true },
-      { name: "欧拉相关", words: ["欧拉", "Euler", "euler"], partial: true },
-      { name: "高斯相关", words: ["高斯", "Gauss", "gauss"], partial: true },
-      { name: "傅里叶相关", words: ["傅里叶", "Fourier", "fourier"], partial: true },
-      { name: "拉普拉斯相关", words: ["拉普拉斯", "Laplace", "laplace"], partial: true },
-      { name: "泰勒相关", words: ["泰勒", "Taylor", "taylor"], partial: true },
-      { name: "希尔伯特相关", words: ["希尔伯特", "Hilbert", "hilbert"], partial: true }
-    ];
+  static async showAddSynonymDialog() {
+    let continueAdding = true;
+    let addedCount = 0;
     
-    await this.selectAndAddTemplates(commonMathNames, "数学人名");
-  }
-
-  /**
-   * 添加集合符号模板
-   */
-  static async addSetSymbolsTemplate() {
-    const setSymbols = [
-      { name: "子集符号", words: ["⊂", "⊆", "子集", "包含于", "真包含"], partial: true },
-      { name: "属于符号", words: ["∈", "∉", "属于", "不属于"], partial: true },
-      { name: "并集交集", words: ["∪", "∩", "并集", "交集", "union", "intersection"], partial: true },
-      { name: "空集", words: ["∅", "空集", "empty set"], partial: true }
-    ];
-    
-    await this.selectAndAddTemplates(setSymbols, "集合符号");
-  }
-
-  /**
-   * 添加数学运算模板
-   */
-  static async addMathOperationsTemplate() {
-    const mathOperations = [
-      { name: "微积分", words: ["积分", "integral", "微分", "differential", "导数", "derivative"], partial: true },
-      { name: "极限", words: ["极限", "limit", "lim"], partial: true },
-      { name: "求和", words: ["∑", "Σ", "求和", "sum", "summation"], partial: true },
-      { name: "连续性", words: ["连续", "continuous", "不连续", "discontinuous"], partial: true },
-      { name: "可微性", words: ["可微", "differentiable", "不可微"], partial: true }
-    ];
-    
-    await this.selectAndAddTemplates(mathOperations, "数学运算");
-  }
-
-  /**
-   * 添加单位圆盘模板
-   */
-  static async addUnitDiskTemplate() {
-    const unitDisk = [
-      { name: "单位圆盘", words: ["𝔻", "单位圆盘", "unit disk", "unit disc"], partial: true },
-      { name: "实数域", words: ["ℝ", "实数", "real numbers"], partial: true },
-      { name: "复数域", words: ["ℂ", "复数", "complex numbers"], partial: true },
-      { name: "自然数", words: ["ℕ", "自然数", "natural numbers"], partial: true },
-      { name: "整数", words: ["ℤ", "整数", "integers"], partial: true },
-      { name: "有理数", words: ["ℚ", "有理数", "rational numbers"], partial: true }
-    ];
-    
-    await this.selectAndAddTemplates(unitDisk, "数学符号");
-  }
-
-  /**
-   * 添加编程术语模板
-   */
-  static async addProgrammingTermsTemplate() {
-    const programmingTerms = [
-      { name: "函数", words: ["函数", "function", "func", "方法", "method"], partial: true },
-      { name: "变量", words: ["变量", "variable", "var"], partial: true },
-      { name: "类", words: ["类", "class", "类型", "type"], partial: true },
-      { name: "接口", words: ["接口", "interface"], partial: true },
-      { name: "实现", words: ["实现", "implement", "implementation"], partial: true }
-    ];
-    
-    await this.selectAndAddTemplates(programmingTerms, "编程术语");
-  }
-
-  /**
-   * 选择并添加模板
-   */
-  static async selectAndAddTemplates(templates, category) {
-    const options = templates.map(t => `${t.name}: ${t.words.join(", ")}`);
-    options.push("✅ 全部添加");
-    
-    const result = await MNUtil.userSelect(
-      `选择要添加的${category}`,
-      "可多次选择，选择“全部添加”一次性添加所有项",
-      options
-    );
-    
-    if (result === null || result === 0) return;
-    
-    if (result === options.length) {
-      // 全部添加
-      for (const template of templates) {
-        this.addSynonymGroup(template.name, template.words, template.partial);
-      }
-      MNUtil.showHUD(`✅ 已添加 ${templates.length} 个${category}组`);
-    } else {
-      // 添加选中的
-      const template = templates[result - 1];
-      this.addSynonymGroup(template.name, template.words, template.partial);
-      MNUtil.showHUD(`✅ 已添加：${template.name}`);
-      
-      // 继续选择
-      await this.selectAndAddTemplates(templates, category);
-    }
-  }
-
-  /**
-   * 自定义批量添加
-   */
-  static async showCustomBatchAdd() {
-    return new Promise((resolve) => {
-      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        "批量添加同义词组",
-        "输入格式（每行一组）：\n组名: 词1, 词2, 词3\n\n例如：\n柯西: 柯西, Cauchy, cauchy\n单位圆: 𝔻, 单位圆盘, unit disk",
-        2,
-        "取消",
-        ["添加（普通）", "添加（开启局部替换）"],
-        (alert, buttonIndex) => {
-          if (buttonIndex === 0) {
-            resolve(false);
-            return;
-          }
-          
-          const input = alert.textFieldAtIndex(0).text;
-          if (!input) {
-            MNUtil.showHUD("请输入内容");
-            resolve(false);
-            return;
-          }
-          
-          const enablePartial = buttonIndex === 2;
-          const lines = input.split('\n').filter(line => line.trim());
-          let addedCount = 0;
-          
-          for (const line of lines) {
-            const colonIndex = line.indexOf(':');
-            if (colonIndex > 0) {
-              const name = line.substring(0, colonIndex).trim();
-              const wordsStr = line.substring(colonIndex + 1).trim();
-              const words = this.parseWords(wordsStr);
-              
-              if (name && words.length >= 2) {
-                this.addSynonymGroup(name, words, enablePartial);
-                addedCount++;
-              }
-            }
-          }
-          
-          if (addedCount > 0) {
-            MNUtil.showHUD(`✅ 已添加 ${addedCount} 个同义词组`);
-            resolve(true);
-          } else {
-            MNUtil.showHUD("未能识别有效的同义词组");
-            resolve(false);
-          }
-        }
-      );
-    });
-  }
-
-  /**
-   * 添加同义词组对话框
-   */
-  static async showAddSynonymGroupDialog() {
-    return new Promise((resolve) => {
+    while (continueAdding) {
       // 第一步：输入组名
-      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        "添加同义词组",
-        "请输入同义词组名称：",
-        2, // 输入框样式
-        "取消",
-        ["下一步"],
-        (alert, buttonIndex) => {
-          if (buttonIndex === 0) {
-            resolve(false);
-            return;
-          }
-          
-          const groupName = alert.textFieldAtIndex(0).text.trim();
-          if (!groupName) {
-            MNUtil.showHUD("❌ 请输入组名");
-            resolve(false);
-            return;
-          }
-          
-          // 第二步：输入词汇
-          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-            "添加同义词",
-            `组名：${groupName}\n\n请输入同义词，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
-            2,
-            "取消",
-            ["确定"],
-            (alert2, buttonIndex2) => {
-              if (buttonIndex2 === 0) {
-                resolve(false);
-                return;
-              }
-              
-              const wordsInput = alert2.textFieldAtIndex(0).text;
-              if (!wordsInput) {
-                MNUtil.showHUD("❌ 请输入同义词");
-                resolve(false);
-                return;
-              }
-              
-              // 使用智能解析
-              const words = this.parseWords(wordsInput);
-              
-              if (words.length < 2) {
-                MNUtil.showHUD("❌ 至少需要2个同义词");
-                resolve(false);
-                return;
-              }
-              
-              // 添加组
-              this.addSynonymGroup(groupName, words);
-              MNUtil.showHUD(`✅ 已添加同义词组：${groupName}（${words.length}个词）`);
-              resolve(true);
+      const groupName = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "添加同义词组",
+          "请输入同义词组名称：",
+          2, // 输入框样式
+          "取消",
+          ["下一步"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+              return;
             }
-          );
-        }
-      );
-    });
+            
+            const name = alert.textFieldAtIndex(0).text.trim();
+            if (!name) {
+              MNUtil.showHUD("❌ 请输入组名");
+              resolve(null);
+              return;
+            }
+            
+            resolve(name);
+          }
+        );
+      });
+      
+      if (!groupName) {
+        break; // 用户取消
+      }
+      
+      // 第二步：输入词汇
+      const words = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "添加同义词",
+          `组名：${groupName}\n\n请输入同义词，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
+          2,
+          "取消",
+          ["下一步"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+              return;
+            }
+            
+            const wordsInput = alert.textFieldAtIndex(0).text;
+            if (!wordsInput) {
+              MNUtil.showHUD("❌ 请输入同义词");
+              resolve(null);
+              return;
+            }
+            
+            // 使用智能解析
+            const parsedWords = this.parseWords(wordsInput);
+            
+            if (parsedWords.length < 2) {
+              MNUtil.showHUD("❌ 至少需要2个同义词");
+              resolve(null);
+              return;
+            }
+            
+            resolve(parsedWords);
+          }
+        );
+      });
+      
+      if (!words) {
+        continue; // 返回重新输入
+      }
+      
+      // 第三步：选择是否开启局部替换
+      const enablePartial = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "选择模式",
+          `组名：${groupName}\n词汇：${words.join(", ")}\n\n是否开启局部替换？\n• 开启：在长词中也会匹配（如"柯西"会匹配"柯西-施瓦茨"）\n• 关闭：只匹配完整的词`,
+          0,
+          "取消",
+          ["添加（普通）", "添加（开启局部替换）"],
+          (alert, buttonIndex) => {
+            if (buttonIndex === 0) {
+              resolve(null);
+              return;
+            }
+            
+            resolve(buttonIndex === 2); // 第二个按钮为开启局部替换
+          }
+        );
+      });
+      
+      if (enablePartial === null) {
+        continue; // 返回重新输入
+      }
+      
+      // 添加同义词组
+      const result = this.addSynonymGroup(groupName, words, enablePartial);
+      if (result) {
+        addedCount++;
+        const modeText = enablePartial ? "（局部替换）" : "（普通）";
+        MNUtil.showHUD(`✅ 已添加：${groupName}${modeText}`);
+      }
+      
+      // 第四步：询问是否继续添加
+      continueAdding = await new Promise((resolve) => {
+        UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+          "继续添加？",
+          `已成功添加 ${addedCount} 个同义词组\n\n是否继续添加？`,
+          0,
+          "完成",
+          ["继续添加"],
+          (alert, buttonIndex) => {
+            resolve(buttonIndex === 1);
+          }
+        );
+      });
+    }
+    
+    if (addedCount > 0) {
+      MNUtil.showHUD(`✅ 共添加 ${addedCount} 个同义词组`);
+    }
   }
 
   /**
@@ -10074,41 +9924,152 @@ class MNMath {
   }
 
   /**
-   * 编辑同义词
+   * 编辑同义词 - 调用多选界面
    */
   static async editSynonymWords(group) {
-    return new Promise((resolve) => {
+    // 调用新的多选编辑界面
+    await this.editSynonymWordsWithMultiSelect(group);
+  }
+
+  /**
+   * 使用多选界面编辑同义词
+   * @param {Object} group - 同义词组对象
+   */
+  static async editSynonymWordsWithMultiSelect(group) {
+    const selectedWords = new Set(group.words); // 默认全选现有词汇
+    let newWordsInput = "";
+    
+    // 递归显示多选对话框
+    const showMultiSelectDialog = () => {
+      // 构建显示选项
+      let displayOptions = group.words.map(word => {
+        let prefix = selectedWords.has(word) ? "✅ " : "";
+        return prefix + word;
+      });
+      
+      // 添加控制选项
+      let allSelected = selectedWords.size === group.words.length;
+      let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有词汇";
+      displayOptions.unshift(selectAllText);
+      displayOptions.unshift("🔄 反选");
+      displayOptions.unshift("➕ 添加新词汇");
+      displayOptions.push("──────────────");
+      displayOptions.push("✅ 确认保存");
+      
+      const selectedArray = Array.from(selectedWords);
+      const newWordsArray = newWordsInput ? this.parseWords(newWordsInput) : [];
+      const totalWords = [...selectedArray, ...newWordsArray];
+      
+      const message = `已选中 ${selectedWords.size}/${group.words.length} 个现有词汇\n` +
+                     (newWordsInput ? `新增：${newWordsArray.join(", ")}\n` : "") +
+                     `总计：${totalWords.length} 个词汇`;
+      
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        "编辑词汇",
-        `组名：${group.name}\n当前词汇：${group.words.join(", ")}\n\n修改词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）`,
-        2,
+        `编辑词汇 - ${group.name}`,
+        message,
+        0,
         "取消",
-        ["确定"],
+        displayOptions,
         (alert, buttonIndex) => {
           if (buttonIndex === 0) {
-            resolve(false);
+            // 用户取消
             return;
           }
           
-          const newWords = alert.textFieldAtIndex(0).text;
-          if (newWords) {
-            const words = this.parseWords(newWords);
-            if (words.length >= 2) {
-              group.words = words;
+          if (buttonIndex === 1) {
+            // 添加新词汇
+            this.showAddNewWordsDialog((input) => {
+              if (input) {
+                newWordsInput = input;
+              }
+              showMultiSelectDialog();
+            });
+            
+          } else if (buttonIndex === 2) {
+            // 反选
+            const newSelectedWords = new Set();
+            group.words.forEach(word => {
+              if (!selectedWords.has(word)) {
+                newSelectedWords.add(word);
+              }
+            });
+            selectedWords.clear();
+            newSelectedWords.forEach(word => selectedWords.add(word));
+            showMultiSelectDialog();
+            
+          } else if (buttonIndex === 3) {
+            // 全选/取消全选
+            if (allSelected) {
+              selectedWords.clear();
+            } else {
+              group.words.forEach(word => selectedWords.add(word));
+            }
+            showMultiSelectDialog();
+            
+          } else if (buttonIndex === displayOptions.length) {
+            // 确认保存
+            const selectedArray = Array.from(selectedWords);
+            const newWordsArray = newWordsInput ? this.parseWords(newWordsInput) : [];
+            const finalWords = [...selectedArray, ...newWordsArray];
+            
+            if (finalWords.length >= 2) {
+              group.words = finalWords;
               group.updatedAt = Date.now();
               this.saveSearchConfig();
-              MNUtil.showHUD(`✅ 已更新词汇（${words.length}个词）`);
-              resolve(true);
+              MNUtil.showHUD(`✅ 已更新词汇（${finalWords.length}个词）`);
             } else {
               MNUtil.showHUD("❌ 至少需要2个同义词");
-              resolve(false);
+              showMultiSelectDialog();
             }
+            
+          } else if (buttonIndex === displayOptions.length - 1) {
+            // 分隔线，重新显示
+            showMultiSelectDialog();
+            
+          } else {
+            // 用户选择了某个词汇，切换选中状态
+            const wordIndex = buttonIndex - 4; // 减去前面的控制选项
+            const word = group.words[wordIndex];
+            
+            if (selectedWords.has(word)) {
+              selectedWords.delete(word);
+            } else {
+              selectedWords.add(word);
+            }
+            
+            showMultiSelectDialog();
           }
         }
       );
-      // 注意：MarginNote 的 JSB 框架不支持 setTimeout
-      // 无法预填充输入框，用户需要手动输入新值
-    });
+    };
+    
+    showMultiSelectDialog();
+  }
+
+  /**
+   * 显示添加新词汇的输入对话框
+   */
+  static async showAddNewWordsDialog(callback) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "添加新词汇",
+      "输入新词汇，支持以下分隔方式：\n• 逗号：machine learning, deep learning\n• 分号：机器学习; 深度学习\n• 双空格：机器学习  深度学习\n• 单空格：机器 学习（仅当无其他分隔符时）",
+      2,
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          callback(null);
+          return;
+        }
+        
+        const input = alert.textFieldAtIndex(0).text;
+        if (input && input.trim()) {
+          callback(input);
+        } else {
+          callback(null);
+        }
+      }
+    );
   }
 
   /**
@@ -10649,71 +10610,164 @@ class MNMath {
   }
 
   /**
-   * 编辑触发词
+   * 编辑触发词 - 调用多选界面
    */
   static async editExclusionTriggerWords(group) {
-    return new Promise((resolve) => {
-      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        "编辑触发词",
-        `组名：${group.name}\n当前触发词：${group.triggerWords.join(", ")}\n\n修改触发词：`,
-        2,
-        "取消",
-        ["确定"],
-        (alert, buttonIndex) => {
-          if (buttonIndex === 0) {
-            resolve(false);
-            return;
-          }
-          
-          const input = alert.textFieldAtIndex(0).text;
-          if (input) {
-            const words = this.parseWords(input);
-            if (words.length > 0) {
-              this.updateExclusionGroup(group.id, { triggerWords: words });
-              MNUtil.showHUD(`✅ 已更新触发词（${words.length}个）`);
-              resolve(true);
-            } else {
-              MNUtil.showHUD("❌ 至少需要一个触发词");
-              resolve(false);
-            }
-          }
-        }
-      );
-    });
+    await this.editExclusionWordsWithMultiSelect(group, 'trigger');
   }
 
   /**
-   * 编辑排除词
+   * 编辑排除词 - 调用多选界面
    */
   static async editExclusionExcludeWords(group) {
-    return new Promise((resolve) => {
+    await this.editExclusionWordsWithMultiSelect(group, 'exclude');
+  }
+
+  /**
+   * 使用多选界面编辑排除词组的词汇
+   * @param {Object} group - 排除词组对象
+   * @param {string} type - 'trigger' 或 'exclude'
+   */
+  static async editExclusionWordsWithMultiSelect(group, type) {
+    const isTrigger = type === 'trigger';
+    const currentWords = isTrigger ? group.triggerWords : group.excludeWords;
+    const selectedWords = new Set(currentWords); // 默认全选现有词汇
+    let newWordsInput = "";
+    
+    // 递归显示多选对话框
+    const showMultiSelectDialog = () => {
+      // 构建显示选项
+      let displayOptions = currentWords.map(word => {
+        let prefix = selectedWords.has(word) ? "✅ " : "";
+        return prefix + word;
+      });
+      
+      // 添加控制选项
+      let allSelected = selectedWords.size === currentWords.length;
+      let selectAllText = allSelected ? "⬜ 取消全选" : "☑️ 全选所有词汇";
+      displayOptions.unshift(selectAllText);
+      displayOptions.unshift("🔄 反选");
+      displayOptions.unshift("➕ 添加新词汇");
+      displayOptions.push("──────────────");
+      displayOptions.push("✅ 确认保存");
+      
+      const selectedArray = Array.from(selectedWords);
+      const newWordsArray = newWordsInput ? this.parseWords(newWordsInput) : [];
+      const totalWords = [...selectedArray, ...newWordsArray];
+      
+      const title = isTrigger ? `编辑触发词 - ${group.name}` : `编辑排除词 - ${group.name}`;
+      const message = `已选中 ${selectedWords.size}/${currentWords.length} 个现有词汇\n` +
+                     (newWordsInput ? `新增：${newWordsArray.join(", ")}\n` : "") +
+                     `总计：${totalWords.length} 个词汇`;
+      
       UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        "编辑排除词",
-        `组名：${group.name}\n当前排除词：${group.excludeWords.join(", ")}\n\n修改排除词：`,
-        2,
+        title,
+        message,
+        0,
         "取消",
-        ["确定"],
+        displayOptions,
         (alert, buttonIndex) => {
           if (buttonIndex === 0) {
-            resolve(false);
+            // 用户取消
             return;
           }
           
-          const input = alert.textFieldAtIndex(0).text;
-          if (input) {
-            const words = this.parseWords(input);
-            if (words.length > 0) {
-              this.updateExclusionGroup(group.id, { excludeWords: words });
-              MNUtil.showHUD(`✅ 已更新排除词（${words.length}个）`);
-              resolve(true);
+          if (buttonIndex === 1) {
+            // 添加新词汇
+            const dialogTitle = isTrigger ? "添加新触发词" : "添加新排除词";
+            this.showAddNewWordsDialogForExclusion(dialogTitle, (input) => {
+              if (input) {
+                newWordsInput = input;
+              }
+              showMultiSelectDialog();
+            });
+            
+          } else if (buttonIndex === 2) {
+            // 反选
+            const newSelectedWords = new Set();
+            currentWords.forEach(word => {
+              if (!selectedWords.has(word)) {
+                newSelectedWords.add(word);
+              }
+            });
+            selectedWords.clear();
+            newSelectedWords.forEach(word => selectedWords.add(word));
+            showMultiSelectDialog();
+            
+          } else if (buttonIndex === 3) {
+            // 全选/取消全选
+            if (allSelected) {
+              selectedWords.clear();
             } else {
-              MNUtil.showHUD("❌ 至少需要一个排除词");
-              resolve(false);
+              currentWords.forEach(word => selectedWords.add(word));
             }
+            showMultiSelectDialog();
+            
+          } else if (buttonIndex === displayOptions.length) {
+            // 确认保存
+            const selectedArray = Array.from(selectedWords);
+            const newWordsArray = newWordsInput ? this.parseWords(newWordsInput) : [];
+            const finalWords = [...selectedArray, ...newWordsArray];
+            
+            if (finalWords.length > 0) {
+              const updateField = isTrigger ? { triggerWords: finalWords } : { excludeWords: finalWords };
+              this.updateExclusionGroup(group.id, updateField);
+              const wordType = isTrigger ? "触发词" : "排除词";
+              MNUtil.showHUD(`✅ 已更新${wordType}（${finalWords.length}个）`);
+            } else {
+              const wordType = isTrigger ? "触发词" : "排除词";
+              MNUtil.showHUD(`❌ 至少需要一个${wordType}`);
+              showMultiSelectDialog();
+            }
+            
+          } else if (buttonIndex === displayOptions.length - 1) {
+            // 分隔线，重新显示
+            showMultiSelectDialog();
+            
+          } else {
+            // 用户选择了某个词汇，切换选中状态
+            const wordIndex = buttonIndex - 4; // 减去前面的控制选项
+            const word = currentWords[wordIndex];
+            
+            if (selectedWords.has(word)) {
+              selectedWords.delete(word);
+            } else {
+              selectedWords.add(word);
+            }
+            
+            showMultiSelectDialog();
           }
         }
       );
-    });
+    };
+    
+    showMultiSelectDialog();
+  }
+
+  /**
+   * 显示添加新词汇的输入对话框（排除词组用）
+   */
+  static async showAddNewWordsDialogForExclusion(title, callback) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      title,
+      "输入新词汇，支持以下分隔方式：\n• 逗号：word1, word2\n• 分号：词汇1; 词汇2\n• 双空格：词汇1  词汇2\n• 单空格：词1 词2（仅当无其他分隔符时）",
+      2,
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          callback(null);
+          return;
+        }
+        
+        const input = alert.textFieldAtIndex(0).text;
+        if (input && input.trim()) {
+          callback(input);
+        } else {
+          callback(null);
+        }
+      }
+    );
   }
 
   /**

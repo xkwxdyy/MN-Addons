@@ -7497,7 +7497,25 @@ ${content.trim()}`;
     MNUtil.log('🎯 开始智能查找合适的父任务...')
     const candidates = []
     
-    // 1. 检查当前启动的任务
+    // 1. 检查源卡片是否已有绑定的任务
+    if (currentNote) {
+      const bindedTasks = this.getBindedTaskCards(currentNote)
+      for (const bindedTask of bindedTasks) {
+        // 只添加非完成和非归档的任务
+        if (bindedTask.status !== '已完成' && bindedTask.status !== '已归档') {
+          candidates.push({
+            note: bindedTask.note,
+            reason: '已绑定的任务',
+            priority: 90
+          })
+        }
+      }
+      if (bindedTasks.length > 0) {
+        MNUtil.log(`📎 找到 ${bindedTasks.length} 个已绑定的任务`)
+      }
+    }
+    
+    // 2. 检查当前启动的任务
     const launchedState = taskConfig.getLaunchedTaskState()
     if (launchedState.isTaskLaunched && launchedState.currentLaunchedTaskId) {
       const launchedTask = MNNote.new(launchedState.currentLaunchedTaskId)
@@ -7565,7 +7583,7 @@ ${content.trim()}`;
       }
     }
     
-    // 2. 获取所有底层任务
+    // 3. 获取所有底层任务
     const bottomTasks = MNTaskManager.getBottomLevelTasks({
       statuses: ['进行中', '未开始']
     })
@@ -7594,6 +7612,93 @@ ${content.trim()}`;
   }
   
   /**
+   * 任务搜索对话框
+   * @returns {Array<MNNote>|null} 搜索到的任务列表
+   */
+  static async searchTasksDialog() {
+    // 获取搜索关键词
+    const keyword = await MNUtil.userInputField("搜索任务", "输入任务关键词", "")
+    if (!keyword || keyword.trim() === "") {
+      return null
+    }
+    
+    // 询问是否忽略前缀
+    const ignorePrefix = await MNUtil.userConfirm("搜索选项", "是否忽略任务前缀（只搜索任务内容）？")
+    
+    MNUtil.log(`🔍 开始搜索任务: "${keyword}", 忽略前缀: ${ignorePrefix}`)
+    
+    // 在三个看板中搜索
+    const results = this.searchTasksInBoards(keyword, {
+      ignorePrefix,
+      boardKeys: ['goal', 'project', 'action']
+    })
+    
+    MNUtil.log(`✅ 搜索完成，找到 ${results.length} 个任务`)
+    return results
+  }
+  
+  /**
+   * 在指定看板中搜索任务
+   * @param {string} keyword - 搜索关键词
+   * @param {Object} options - 搜索选项
+   * @returns {Array<MNNote>} 匹配的任务列表
+   */
+  static searchTasksInBoards(keyword, options = {}) {
+    const results = []
+    const { ignorePrefix = false, boardKeys = ['project', 'action'] } = options
+    
+    MNUtil.log(`📋 在看板中搜索: ${boardKeys.join(', ')}`)
+    
+    for (const boardKey of boardKeys) {
+      const boardNoteId = taskConfig.getBoardNoteId(boardKey)
+      if (!boardNoteId) {
+        MNUtil.log(`⚠️ 看板 ${boardKey} 未配置`)
+        continue
+      }
+      
+      const boardNote = MNNote.new(boardNoteId)
+      if (!boardNote) {
+        MNUtil.log(`⚠️ 看板 ${boardKey} 不存在`)
+        continue
+      }
+      
+      // 递归搜索任务
+      const searchInNote = (note, depth = 0) => {
+        if (!note) return
+        
+        // 检查是否是任务卡片
+        if (this.isTaskCard(note)) {
+          let searchText = note.noteTitle
+          
+          if (ignorePrefix) {
+            // 只搜索内容部分（忽略前缀）
+            const titleParts = this.parseTaskTitle(note.noteTitle)
+            searchText = titleParts.content || ""
+          }
+          
+          // 不区分大小写的搜索
+          if (searchText.toLowerCase().includes(keyword.toLowerCase())) {
+            results.push(note)
+            MNUtil.log(`  ${'  '.repeat(depth)}✓ 找到: ${note.noteTitle}`)
+          }
+        }
+        
+        // 递归搜索子卡片
+        if (note.childNotes && note.childNotes.length > 0) {
+          for (const child of note.childNotes) {
+            searchInNote(child, depth + 1)
+          }
+        }
+      }
+      
+      MNUtil.log(`🔍 搜索看板: ${boardKey}`)
+      searchInNote(boardNote)
+    }
+    
+    return results
+  }
+
+  /**
    * 创建临时任务
    * @param {MNNote} sourceNote - 源卡片（非任务卡片）
    * @returns {Object} 创建结果
@@ -7620,6 +7725,11 @@ ${content.trim()}`;
         return `【${titleParts.type}】${titleParts.content} (${c.reason})`
       })
       
+      // 添加特殊选项
+      selectOptions.push('─────────────────')  // 分隔线
+      selectOptions.push('【新建独立动作】在动作看板创建独立任务')
+      selectOptions.push('【搜索更多任务...】在所有看板中搜索')
+      
       // 3. 让用户选择父任务
       const selectedIndex = await MNUtil.userSelect(
         '选择父任务',
@@ -7634,10 +7744,55 @@ ${content.trim()}`;
         }
       }
       
-      const selectedCandidate = candidates[selectedIndex - 1]
-      const parentTask = selectedCandidate.note
+      // 处理特殊选项
+      let parentTask = null
       
-      MNUtil.log(`✅ 选择的父任务: ${parentTask.noteTitle}`)
+      if (selectedIndex === selectOptions.length) {
+        // 选择了"搜索更多任务..."
+        MNUtil.log('🔍 用户选择搜索更多任务')
+        const searchResults = await this.searchTasksDialog()
+        
+        if (!searchResults || searchResults.length === 0) {
+          MNUtil.showHUD('未找到匹配的任务')
+          return {
+            type: 'failed',
+            error: '搜索结果为空'
+          }
+        }
+        
+        // 显示搜索结果供选择
+        const searchOptions = searchResults.map(task => {
+          const titleParts = this.parseTaskTitle(task.noteTitle)
+          return `【${titleParts.type}】${titleParts.content}`
+        })
+        
+        const searchIndex = await MNUtil.userSelect(
+          '选择搜索结果',
+          `找到 ${searchResults.length} 个任务`,
+          searchOptions
+        )
+        
+        if (searchIndex === 0) {
+          return {
+            type: 'cancelled',
+            reason: '用户取消选择搜索结果'
+          }
+        }
+        
+        parentTask = searchResults[searchIndex - 1]
+        
+      } else if (selectedIndex === selectOptions.length - 1) {
+        // 选择了"新建独立动作"
+        MNUtil.log('📝 用户选择创建独立动作')
+        // parentTask 保持为 null，后续会处理
+        
+      } else {
+        // 选择了候选任务
+        const selectedCandidate = candidates[selectedIndex - 1]
+        parentTask = selectedCandidate.note
+      }
+      
+      MNUtil.log(`✅ 选择的父任务: ${parentTask ? parentTask.noteTitle : '无（独立动作）'}`)
 
       const titleParts = MNMath.parseNoteTitle(sourceNote)
       const handledTitle = "「" + titleParts.type + " >> " + titleParts.prefixContent + " >> " + titleParts.content + "」"
@@ -7669,42 +7824,70 @@ ${content.trim()}`;
       }
       
       // 5. 创建新任务卡片
+      let newTaskNote = null
       
-      // MNUtil.undoGrouping(() => {
-        // 创建子卡片
-        let newTaskNote = parentTask.createChildNote(
+      if (parentTask) {
+        // 有父任务，创建子卡片
+        newTaskNote = parentTask.createChildNote(
           {title: safeSpacing(`${newTaskTitle}`), colorIndex: 3}
         )
-
-        newTaskNote.appendNoteLink(sourceNote, "To")
-        await this.convertToTaskCard(newTaskNote, "动作")
-        await this.toggleStatusForward(newTaskNote)
-        this.addOrUpdateLaunchLink(newTaskNote, sourceNote.noteURL)
-        
-        
-        // 创建双向链接
-        sourceNote.appendNoteLink(newTaskNote, "To")
-        
-        // 如果源卡片是知识点卡片，移动链接
-        try {
-          if (typeof MNMath !== 'undefined' && MNMath.isKnowledgeNote) {
-            if (MNMath.isKnowledgeNote(sourceNote)) {
-              MNUtil.log('📚 检测到知识点卡片，移动任务链接...')
-              MNMath.moveTaskCardLinksToRelatedField(sourceNote)
-            }
+      } else {
+        // 无父任务，在动作看板创建独立任务
+        const actionBoardId = taskConfig.getBoardNoteId('action')
+        if (!actionBoardId) {
+          MNUtil.showHUD('❌ 动作看板未配置')
+          return {
+            type: 'failed',
+            error: '动作看板未配置'
           }
-        } catch (e) {
-          MNUtil.log(`⚠️ 处理知识点卡片链接时出错: ${e.message}`)
         }
+        
+        const actionBoard = MNNote.new(actionBoardId)
+        if (!actionBoard) {
+          MNUtil.showHUD('❌ 无法获取动作看板')
+          return {
+            type: 'failed',
+            error: '无法获取动作看板'
+          }
+        }
+        
+        newTaskNote = actionBoard.createChildNote(
+          {title: safeSpacing(`${newTaskTitle}`), colorIndex: 3}
+        )
+        MNUtil.log('✅ 在动作看板创建了独立任务')
+      }
+
+      newTaskNote.appendNoteLink(sourceNote, "To")
+      await this.convertToTaskCard(newTaskNote, "动作")
+      await this.toggleStatusForward(newTaskNote)
+      this.addOrUpdateLaunchLink(newTaskNote, sourceNote.noteURL)
+        
+        
+      // 创建双向链接
+      sourceNote.appendNoteLink(newTaskNote, "To")
+      
+      // 如果源卡片是知识点卡片，移动链接
+      try {
+        if (typeof MNMath !== 'undefined' && MNMath.isKnowledgeNote) {
+          if (MNMath.isKnowledgeNote(sourceNote)) {
+            MNUtil.log('📚 检测到知识点卡片，移动任务链接...')
+            MNMath.moveTaskCardLinksToRelatedField(sourceNote)
+          }
+        }
+      } catch (e) {
+        MNUtil.log(`⚠️ 处理知识点卡片链接时出错: ${e.message}`)
+      }
       // })
       
       // 6. 检查是否需要转换父任务类型
-      const parentParts = MNTaskManager.parseTaskTitle(parentTask.noteTitle)
-      if (parentParts.type === '动作') {
-        MNUtil.log('🔄 父任务是动作类型，需要转换为项目...')
-        const transformResult = MNTaskManager.transformActionToProject(parentTask)
-        if (transformResult) {
-          MNUtil.log('✅ 父任务已成功转换为项目类型')
+      if (parentTask) {
+        const parentParts = MNTaskManager.parseTaskTitle(parentTask.noteTitle)
+        if (parentParts.type === '动作') {
+          MNUtil.log('🔄 父任务是动作类型，需要转换为项目...')
+          const transformResult = MNTaskManager.transformActionToProject(parentTask)
+          if (transformResult) {
+            MNUtil.log('✅ 父任务已成功转换为项目类型')
+          }
         }
       }
       
@@ -7718,8 +7901,8 @@ ${content.trim()}`;
         type: 'created',
         noteId: newTaskNote.noteId,
         title: newTaskNote.noteTitle,
-        parentId: parentTask.noteId,
-        parentTitle: parentTask.noteTitle
+        parentId: parentTask ? parentTask.noteId : null,
+        parentTitle: parentTask ? parentTask.noteTitle : '无（独立动作）'
       }
       
     } catch (error) {

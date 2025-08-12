@@ -2506,6 +2506,30 @@ class MNMath {
   }
 
   /**
+   * 判断卡片是否为知识点卡片
+   * 
+   * 知识点卡片包括：定义、命题、例子、反例、思想方法、问题、思路
+   * 
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 如果是知识点卡片返回 true，否则返回 false
+   */
+  static isKnowledgeNote(note) {
+    const noteType = this.getNoteType(note);
+    return noteType && this.knowledgeNoteTypes.includes(noteType);
+  }
+
+  /**
+   * 判断卡片是否为归类卡片
+   * 
+   * @param {MNNote} note - 要判断的卡片
+   * @returns {boolean} 如果是归类卡片返回 true，否则返回 false
+   */
+  static isClassificationNote(note) {
+    const noteType = this.getNoteType(note);
+    return noteType === "归类";
+  }
+
+  /**
    * 判断卡片自身是否为知识点卡片（不向上查找）
    * 只基于卡片自身的标题格式判断，不会查找父卡片
    * 

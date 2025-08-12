@@ -5873,8 +5873,18 @@ class MNTaskManager {
     const selectedField = customFields[selectedIndex - 1];
     
     // 让用户输入新值
-    const newValue = await MNUtil.input("编辑字段", `当前值：${selectedField.content}`, selectedField.content);
+    const inputResult = await MNUtil.input(
+      "编辑字段", 
+      `当前值：${selectedField.content}`, 
+      ["取消", "确定"],
+      { default: selectedField.content }
+    );
     
+    if (inputResult.button === 0) {
+      return false;  // 用户取消
+    }
+    
+    const newValue = inputResult.input;
     if (!newValue || newValue === selectedField.content) return false;
     
     // 更新字段
@@ -7319,16 +7329,26 @@ ${content.trim()}`;
       MNUtil.log(`✅ 选择的父任务: ${parentTask.noteTitle}`)
       
       // 4. 输入新任务标题
-      const newTaskTitle = await MNUtil.userInputSingleLine(
+      const inputResult = await MNUtil.input(
         '新任务标题',
         '请输入新任务的标题',
-        sourceNote.noteTitle || '新任务'
+        ["取消", "确定"],
+        { default: sourceNote.noteTitle || '新任务' }
       )
       
-      if (!newTaskTitle) {
+      if (inputResult.button === 0) {
         return {
           type: 'cancelled',
           reason: '用户取消输入'
+        }
+      }
+      
+      const newTaskTitle = inputResult.input
+      if (!newTaskTitle || !newTaskTitle.trim()) {
+        MNUtil.showHUD('❌ 任务标题不能为空')
+        return {
+          type: 'failed',
+          error: '任务标题为空'
         }
       }
       

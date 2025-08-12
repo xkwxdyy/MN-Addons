@@ -8293,12 +8293,14 @@ class MNMath {
   }
 
   /**
-   * 根据关键词获取激活的排除词列表
+   * 根据关键词获取激活的排除词列表和详细信息
    * @param {Array<string>} keywords - 关键词数组
-   * @returns {Array<string>} 需要排除的词汇列表
+   * @returns {Object} 包含排除词列表和详细信息的对象
    */
   static getActiveExclusions(keywords) {
     const exclusions = new Set();
+    const activeTriggers = new Set();
+    const activeGroups = [];
     const groups = this.getExclusionGroups();
     
     for (const keyword of keywords) {
@@ -8306,19 +8308,37 @@ class MNMath {
         if (!group.enabled) continue;
         
         // 检查是否匹配触发词（不区分大小写）
-        const isTrigger = group.triggerWords.some(trigger => 
+        const matchedTrigger = group.triggerWords.find(trigger => 
           trigger.toLowerCase() === keyword.toLowerCase()
         );
         
-        if (isTrigger) {
+        if (matchedTrigger) {
+          // 记录激活的触发词
+          activeTriggers.add(matchedTrigger);
+          
           // 添加所有排除词
           group.excludeWords.forEach(word => exclusions.add(word));
+          
+          // 记录激活的组（避免重复）
+          if (!activeGroups.find(g => g.id === group.id)) {
+            activeGroups.push({
+              id: group.id,
+              name: group.name,
+              triggerWords: group.triggerWords,
+              excludeWords: group.excludeWords
+            });
+          }
+          
           MNUtil.log(`触发排除词组 "${group.name}": ${keyword} → 排除 [${group.excludeWords.join(", ")}]`);
         }
       }
     }
     
-    return Array.from(exclusions);
+    return {
+      excludeWords: Array.from(exclusions),
+      triggerWords: Array.from(activeTriggers),
+      groups: activeGroups
+    };
   }
 
   /**
@@ -8703,10 +8723,10 @@ class MNMath {
         await MNUtil.delay(0.5);
       }
       
-      // 获取激活的排除词列表
-      const exclusionWords = this.getActiveExclusions(keywords);
-      if (exclusionWords.length > 0) {
-        MNUtil.showHUD(`🚫 将排除包含以下词汇的结果：${exclusionWords.join(", ")}`);
+      // 获取激活的排除词信息
+      const exclusionInfo = this.getActiveExclusions(keywords);
+      if (exclusionInfo.excludeWords.length > 0) {
+        MNUtil.showHUD(`🚫 将智能过滤包含排除词的结果`);
         await MNUtil.delay(0.5);
       }
       
@@ -8817,18 +8837,54 @@ class MNMath {
         
         // 只有所有组都有匹配时，才考虑将卡片加入结果
         if (allGroupsMatch) {
-          // 检查是否包含任何排除词
-          let containsExclusion = false;
-          for (const exclusion of exclusionWords) {
-            if (searchText.includes(exclusion)) {
-              containsExclusion = true;
-              MNUtil.log(`排除包含 "${exclusion}" 的卡片: ${title}`);
-              break;
+          // 智能排除检查
+          let shouldExclude = false;
+          
+          if (exclusionInfo.groups.length > 0) {
+            // 检查每个激活的排除词组
+            for (const group of exclusionInfo.groups) {
+              let hasExcludeWord = false;
+              let hasIndependentTriggerWord = false;
+              
+              // 1. 检查是否包含排除词
+              for (const excludeWord of group.excludeWords) {
+                if (searchText.includes(excludeWord)) {
+                  hasExcludeWord = true;
+                  break;
+                }
+              }
+              
+              if (hasExcludeWord) {
+                // 2. 创建一个临时文本，将所有排除词替换为特殊标记
+                let tempText = searchText;
+                for (const excludeWord of group.excludeWords) {
+                  // 使用全局替换，不区分大小写
+                  tempText = tempText.replace(new RegExp(excludeWord, 'gi'), '###EXCLUDED###');
+                }
+                
+                // 3. 检查触发词是否在移除排除词后仍然存在
+                for (const triggerWord of group.triggerWords) {
+                  if (tempText.includes(triggerWord)) {
+                    hasIndependentTriggerWord = true;
+                    MNUtil.log(`卡片 "${title}" 中触发词 "${triggerWord}" 独立存在`);
+                    break;
+                  }
+                }
+                
+                // 4. 决定是否排除
+                if (hasExcludeWord && !hasIndependentTriggerWord) {
+                  shouldExclude = true;
+                  MNUtil.log(`❌ 排除卡片: "${title}" (包含排除词 "${group.excludeWords.join(", ")}" 且触发词不独立存在)`);
+                  break;
+                } else if (hasExcludeWord && hasIndependentTriggerWord) {
+                  MNUtil.log(`✅ 保留卡片: "${title}" (虽包含排除词但触发词独立存在)`);
+                }
+              }
             }
           }
           
-          // 只有不包含排除词时才加入结果
-          if (!containsExclusion) {
+          // 只有不应该排除时才加入结果
+          if (!shouldExclude) {
             results.push(mnNote);
           }
         }

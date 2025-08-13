@@ -12367,7 +12367,7 @@ class HtmlMarkdownUtils {
    * @returns {string} 处理后的文本
    */
   static smartSpacing(text) {
-    if (!text) return text;
+    if (!text || text === undefined || text === null) return "";
     
     // 中文字符范围
     const cjkRegex = /[\u2e80-\u2eff\u2f00-\u2fdf\u3040-\u309f\u30a0-\u30ff\u3100-\u312f\u3200-\u32ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
@@ -12694,25 +12694,31 @@ class HtmlMarkdownUtils {
     // 替换占位符
     const replacePlaceholders = (text) => {
       if (!text) return "";
-      return text.replace(/\{A\}/g, this.smartSpacing(inputs.A || ""))
-                 .replace(/\{B\}/g, this.smartSpacing(inputs.B || ""));
+      const valueA = inputs.A || "";
+      const valueB = inputs.B || "";
+      return text.replace(/\{A\}/g, this.smartSpacing(valueA))
+                 .replace(/\{B\}/g, this.smartSpacing(valueB));
     };
     
     // 生成主要内容（根据模板类型）
-    if (template.type === "equivalence" && inputs.A && inputs.B) {
-      const spacedA = this.smartSpacing(inputs.A);
-      const spacedB = this.smartSpacing(inputs.B);
-      result.mainContent = this.createHtmlMarkdownText(
-        `${spacedA} ⇔ ${spacedB}`,
-        'equivalence'
-      );
-    } else if (template.type === "implication" && inputs.A && inputs.B) {
-      const spacedA = this.smartSpacing(inputs.A);
-      const spacedB = this.smartSpacing(inputs.B);
-      result.mainContent = this.createHtmlMarkdownText(
-        `${spacedA} ⇒ ${spacedB}`,
-        'implication'
-      );
+    if (template.type === "equivalence") {
+      const spacedA = this.smartSpacing(inputs.A || "");
+      const spacedB = this.smartSpacing(inputs.B || "");
+      if (spacedA && spacedB) {
+        result.mainContent = this.createHtmlMarkdownText(
+          `${spacedA} ⇔ ${spacedB}`,
+          'equivalence'
+        );
+      }
+    } else if (template.type === "implication") {
+      const spacedA = this.smartSpacing(inputs.A || "");
+      const spacedB = this.smartSpacing(inputs.B || "");
+      if (spacedA && spacedB) {
+        result.mainContent = this.createHtmlMarkdownText(
+          `${spacedA} ⇒ ${spacedB}`,
+          'implication'
+        );
+      }
     }
     
     // 生成正向证明
@@ -12754,35 +12760,45 @@ class HtmlMarkdownUtils {
     if (template.type === "equivalence") {
       // 等价证明：创建两个子卡片（正向和反向）
       if (proof.forwardProof) {
-        const childNoteAtoB = note.appendChildNote("");
+        const childNoteAtoB = MNNote.new();
+        childNoteAtoB.title = "";
+        note.addChild(childNoteAtoB);
         childNoteAtoB.appendMarkdownComment(proof.forwardProof);
         childNotes.push(childNoteAtoB);
       }
       
       if (proof.reverseProof) {
-        const childNoteBtoA = note.appendChildNote("");
+        const childNoteBtoA = MNNote.new();
+        childNoteBtoA.title = "";
+        note.addChild(childNoteBtoA);
         childNoteBtoA.appendMarkdownComment(proof.reverseProof);
         childNotes.push(childNoteBtoA);
       }
     } else if (template.type === "implication") {
       // 蕴涵证明：只创建一个子卡片
       if (proof.forwardProof) {
-        const childNote = note.appendChildNote("");
+        const childNote = MNNote.new();
+        childNote.title = "";
+        note.addChild(childNote);
         childNote.appendMarkdownComment(proof.forwardProof);
         childNotes.push(childNote);
       }
     } else if (template.type === "custom") {
       // 自定义证明：根据模板内容决定
       if (proof.forwardProof) {
-        const childNote = note.appendChildNote("");
+        const childNote = MNNote.new();
+        childNote.title = "";
+        note.addChild(childNote);
         childNote.appendMarkdownComment(proof.forwardProof);
         childNotes.push(childNote);
       }
       
       if (proof.reverseProof) {
-        const childNote = note.appendChildNote("");
-        childNote.appendMarkdownComment(proof.reverseProof);
-        childNotes.push(childNote);
+        const childNote2 = MNNote.new();
+        childNote2.title = "";
+        note.addChild(childNote2);
+        childNote2.appendMarkdownComment(proof.reverseProof);
+        childNotes.push(childNote2);
       }
     }
     

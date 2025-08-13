@@ -45,14 +45,14 @@ const testCases = {
     // 测试不忽略前缀
     let results = MNTaskManager.searchTasksInBoards(keyword, {
       ignorePrefix: false,
-      boardKeys: ['goal', 'project', 'action']
+      boardKeys: ['target', 'project', 'action', 'focus']
     })
     MNUtil.log(`✅ 包含前缀搜索: 找到 ${results.length} 个任务`)
     
     // 测试忽略前缀
     results = MNTaskManager.searchTasksInBoards(keyword, {
       ignorePrefix: true,
-      boardKeys: ['goal', 'project', 'action']
+      boardKeys: ['target', 'project', 'action', 'focus']
     })
     MNUtil.log(`✅ 忽略前缀搜索: 找到 ${results.length} 个任务`)
     

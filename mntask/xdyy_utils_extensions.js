@@ -7703,10 +7703,10 @@ ${content.trim()}`;
     
     MNUtil.log(`🔍 开始搜索任务: "${keyword}", 忽略前缀: ${ignorePrefix}`)
     
-    // 在三个看板中搜索
+    // 在所有任务看板中搜索（包括 Focus 看板）
     const results = this.searchTasksInBoards(keyword, {
       ignorePrefix,
-      boardKeys: ['goal', 'project', 'action']
+      boardKeys: ['target', 'project', 'action', 'focus']
     })
     
     MNUtil.log(`✅ 搜索完成，找到 ${results.length} 个任务`)

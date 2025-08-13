@@ -2381,25 +2381,6 @@ class MNMath {
   }
 
   /**
-   * 添加等价证明
-   * 
-   * @param {MNNote} note - 目标卡片
-   */
-  static async addEquivalenceProof(note) {
-    if (!note) {
-      note = MNNote.getFocusNote();
-    }
-    
-    if (!note) {
-      MNUtil.showHUD("请先选择一个卡片");
-      return;
-    }
-    
-    // 调用 HtmlMarkdownUtils 的方法
-    await HtmlMarkdownUtils.insertEquivalenceProofByPopup(note);
-  }
-
-  /**
    * 增加总结卡片
    * 
    * @param {MNNote} note - 当前卡片
@@ -11040,7 +11021,6 @@ class MNMath {
     }
     
     try {
-      this.initProofTemplates();
       const enabledTemplates = this.getEnabledProofTemplates();
       
       if (enabledTemplates.length === 0) {

@@ -1330,6 +1330,22 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     await self.pasteBoard('today')
   },
   
+  // Focus 看板处理方法
+  focusFocusBoard: function() {
+    let self = getTaskSettingController()
+    self.focusBoard('focus')
+  },
+  
+  clearFocusBoard: async function() {
+    let self = getTaskSettingController()
+    await self.clearBoard('focus')
+  },
+  
+  pasteFocusBoard: async function() {
+    let self = getTaskSettingController()
+    await self.pasteBoard('focus')
+  },
+  
   importConfigTapped:function(button){
     var commandTable = [
       {title:'☁️   from iCloud',object:self,selector:'importConfig:',param:"iCloud"},
@@ -1903,9 +1919,15 @@ taskSettingController.prototype.settingViewLayout = function (){
     taskFrame.set(this.clearCompletedBoardButton, 15+(width-30)/3, 455, (width-30)/3, 35)
     taskFrame.set(this.pasteCompletedBoardButton, 20+2*(width-30)/3, 455, (width-30)/3, 35)
     
+    // Focus 看板
+    taskFrame.set(this.focusBoardLabel, 10, 510, width-20, 35)
+    taskFrame.set(this.focusFocusBoardButton, 10, 555, (width-30)/3, 35)
+    taskFrame.set(this.clearFocusBoardButton, 15+(width-30)/3, 555, (width-30)/3, 35)
+    taskFrame.set(this.pasteFocusBoardButton, 20+2*(width-30)/3, 555, (width-30)/3, 35)
+    
     // 设置 taskBoardView 的 contentSize，确保所有按钮都可以滚动访问
-    // 最后一个按钮位于 y=455，高度 35，再加上底部边距
-    this.taskBoardView.contentSize = {width: width-2, height: 455 + 35 + 20}
+    // 最后一个按钮位于 y=555，高度 35，再加上底部边距
+    this.taskBoardView.contentSize = {width: width-2, height: 555 + 35 + 20}
     
     // 今日看板 - 已移至 WebView 实现，注释掉旧的布局
     // taskFrame.set(this.todayBoardLabel, 10, 510, width-20, 35)
@@ -2307,6 +2329,13 @@ try {
     parent: 'taskBoardView'
   })
   
+  // 创建 Focus 看板
+  this.createBoardBinding({
+    key: 'focus',
+    title: 'Focus 看板:',
+    parent: 'taskBoardView'
+  })
+  
   // 创建今日看板的 WebView
   this.createTodayBoardWebView()
   
@@ -2668,7 +2697,8 @@ taskSettingController.prototype.getBoardDisplayName = function(boardKey) {
     'target': '目标看板',
     'project': '项目看板',
     'action': '动作看板',
-    'completed': '已完成存档区'
+    'completed': '已完成存档区',
+    'focus': 'Focus 看板'
   }
   return boardNames[boardKey] || `${boardKey}看板`
 }

@@ -2999,14 +2999,12 @@ function registerAllCustomActions() {
     async function (context) {
       const { button, des, focusNote, focusNotes, self } = context;
       
-      MNUtil.undoGrouping(async () => {
-        try {
-          // 使用模板系统的新方法
-          await HtmlMarkdownUtils.insertProofByTemplate(focusNote);
-        } catch (error) {
-          MNUtil.showHUD(`❌ 错误: ${error.message}`);
-        }
-      });
+      if (!focusNote) {
+        MNUtil.showHUD("请先选择一个卡片");
+        return;
+      }
+      
+      await MNMath.addEquivalenceProof(focusNote);
     }
   );
 
@@ -3018,7 +3016,7 @@ function registerAllCustomActions() {
       
       try {
         // 调用证明模板管理界面
-        await HtmlMarkdownUtils.manageProofTemplates();
+        await MNMath.manageProofTemplates();
       } catch (error) {
         MNUtil.showHUD(`❌ 错误: ${error.message}`);
       }

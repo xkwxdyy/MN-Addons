@@ -3878,11 +3878,11 @@ class MNTaskManager {
     
     // 确认操作
     if (requireConfirm) {
-      const confirm = await MNUtil.userConfirm(
+      const confirm = await MNUtil.confirm(
         `确认${operationName}`,
         `即将对 ${taskNotes.length} 个任务执行${operationName}操作，是否继续？`
       )
-      if (!confirm) {
+      if (confirm === 0) {
         MNUtil.showHUD("操作已取消")
         return { success: 0, failed: 0, errors: [] }
       }
@@ -7617,13 +7617,15 @@ ${content.trim()}`;
    */
   static async searchTasksDialog() {
     // 获取搜索关键词
-    const keyword = await MNUtil.userInputField("搜索任务", "输入任务关键词", "")
-    if (!keyword || keyword.trim() === "") {
+    const result = await MNUtil.userInput("搜索任务", "输入任务关键词", ["取消", "确认"])
+    if (result.button === 0 || !result.input || result.input.trim() === "") {
       return null
     }
+    const keyword = result.input
     
     // 询问是否忽略前缀
-    const ignorePrefix = await MNUtil.userConfirm("搜索选项", "是否忽略任务前缀（只搜索任务内容）？")
+    const ignorePrefixChoice = await MNUtil.confirm("搜索选项", "是否忽略任务前缀（只搜索任务内容）？", ["否", "是"])
+    const ignorePrefix = ignorePrefixChoice === 1
     
     MNUtil.log(`🔍 开始搜索任务: "${keyword}", 忽略前缀: ${ignorePrefix}`)
     

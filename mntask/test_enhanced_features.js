@@ -118,7 +118,7 @@ async function runTests() {
     await testCases.testSearchTasks()
     
     // 询问是否运行交互式测试
-    const runInteractive = await MNUtil.userConfirm(
+    const runInteractive = await MNUtil.confirm(
       "交互式测试",
       "是否运行搜索对话框测试？（需要用户输入）"
     )

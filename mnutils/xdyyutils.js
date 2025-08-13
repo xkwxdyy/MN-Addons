@@ -11385,348 +11385,7 @@ class HtmlMarkdownUtils {
     }
   }
 
-  /**
-   * 批量调整所有 HtmlMarkdown 评论的层级
-   * 
-   * @param {MNNote} note - 要处理的卡片
-   * @param {string} direction - 调整方向："up" 表示层级上移（level2->level1），"down" 表示层级下移（level1->level2）
-   * @returns {number} 返回调整的评论数量
-   */
-  static adjustAllHtmlMDLevels(note, direction = "up") {
-    const comments = note.MNComments;
-    let adjustedCount = 0;
-    
-    if (!comments || comments.length === 0) {
-      MNUtil.showHUD("当前卡片没有评论");
-      return 0;
-    }
-    
-    // 遍历所有评论
-    comments.forEach((comment, index) => {
-      if (!comment || !comment.text) return;
-      
-      // 处理可能的 "- " 前缀
-      let hasLeadingDash = false;
-      let cleanText = comment.text;
-      if (cleanText.startsWith("- ")) {
-        hasLeadingDash = true;
-        cleanText = cleanText.substring(2);
-      }
-      
-      // 检查是否是 HtmlMarkdown 评论且是层级类型
-      if (this.isHtmlMDComment(cleanText)) {
-        const type = this.getSpanType(cleanText);
-        const content = this.getSpanTextContent(cleanText);
-        
-        if (this.isLevelType(type)) {
-          let newType;
-          
-          if (direction === "up") {
-            // 层级上移（数字变小）
-            newType = this.getSpanLastLevelType(type);
-          } else if (direction === "down") {
-            // 层级下移（数字变大）
-            newType = this.getSpanNextLevelType(type);
-          } else {
-            return;
-          }
-          
-          // 只有当类型真的改变时才更新
-          if (newType && newType !== type) {
-            const newHtmlText = this.createHtmlMarkdownText(content, newType);
-            comment.text = hasLeadingDash ? "- " + newHtmlText : newHtmlText;
-            adjustedCount++;
-          }
-        }
-      }
-    });
-    
-    if (adjustedCount > 0) {
-      MNUtil.showHUD(`已调整 ${adjustedCount} 个层级评论`);
-    } else {
-      MNUtil.showHUD("没有可调整的层级评论");
-    }
-    
-    return adjustedCount;
-  }
 
-  /**
-   * 根据指定的最高级别调整所有层级
-   * 
-   * @param {MNNote} note - 要处理的卡片
-   * @param {string} targetHighestLevel - 目标最高级别（如 "goal", "level1", "level2" 等）
-   * @returns {number} 返回调整的评论数量
-   */
-  static adjustHtmlMDLevelsByHighest(note, targetHighestLevel) {
-    const comments = note.MNComments;
-    if (!comments || comments.length === 0) {
-      MNUtil.showHUD("当前卡片没有评论");
-      return 0;
-    }
-    
-    // 定义层级顺序（从高到低）
-    const levelOrder = ['goal', 'level1', 'level2', 'level3', 'level4', 'level5'];
-    const targetIndex = levelOrder.indexOf(targetHighestLevel);
-    
-    if (targetIndex === -1) {
-      MNUtil.showHUD("无效的目标层级");
-      return 0;
-    }
-    
-    // 第一遍扫描：找出当前最高层级
-    let currentHighestLevel = null;
-    let currentHighestIndex = levelOrder.length;
-    
-    // 收集所有层级类型的评论信息
-    const levelComments = [];
-    
-    comments.forEach((comment, index) => {
-      if (!comment || !comment.text) return;
-      
-      let cleanText = comment.text;
-      let hasLeadingDash = false;
-      
-      if (cleanText.startsWith("- ")) {
-        hasLeadingDash = true;
-        cleanText = cleanText.substring(2);
-      }
-      
-      if (this.isHtmlMDComment(cleanText)) {
-        const type = this.getSpanType(cleanText);
-        
-        if (this.isLevelType(type)) {
-          const levelIndex = levelOrder.indexOf(type);
-          if (levelIndex !== -1) {
-            levelComments.push({
-              comment: comment,
-              index: index,
-              type: type,
-              levelIndex: levelIndex,
-              content: this.getSpanTextContent(cleanText),
-              hasLeadingDash: hasLeadingDash
-            });
-            
-            // 更新当前最高层级
-            if (levelIndex < currentHighestIndex) {
-              currentHighestIndex = levelIndex;
-              currentHighestLevel = type;
-            }
-          }
-        }
-      }
-    });
-    
-    if (levelComments.length === 0) {
-      MNUtil.showHUD("没有找到层级类型的评论");
-      return 0;
-    }
-    
-    // 计算偏移量
-    const offset = targetIndex - currentHighestIndex;
-    
-    if (offset === 0) {
-      MNUtil.showHUD(`最高层级已经是 ${targetHighestLevel}`);
-      return 0;
-    }
-    
-    // 第二遍：根据偏移量调整所有层级
-    let adjustedCount = 0;
-    
-    levelComments.forEach(item => {
-      const newLevelIndex = Math.max(0, Math.min(levelOrder.length - 1, item.levelIndex + offset));
-      const newType = levelOrder[newLevelIndex];
-      
-      if (newType !== item.type) {
-        const newHtmlText = this.createHtmlMarkdownText(item.content, newType);
-        item.comment.text = item.hasLeadingDash ? "- " + newHtmlText : newHtmlText;
-        adjustedCount++;
-      }
-    });
-    
-    if (adjustedCount > 0) {
-      const direction = offset > 0 ? "下移" : "上移";
-      MNUtil.showHUD(`已将最高层级调整为 ${targetHighestLevel}，共${direction} ${Math.abs(offset)} 级，调整了 ${adjustedCount} 个评论`);
-    }
-    
-    return adjustedCount;
-  }
-
-  /**
-   * 批量调整所有 HtmlMarkdown 评论的层级
-   * 
-   * @param {MNNote} note - 要处理的卡片
-   * @param {string} direction - 调整方向："up"（上移）或"down"（下移）
-   * @returns {number} 调整的评论数量
-   */
-  static adjustAllHtmlMDLevels(note, direction = "down") {
-    if (!note || !note.MNComments) return 0;
-    
-    let adjustedCount = 0;
-    let comments = note.MNComments;
-    
-    MNUtil.undoGrouping(() => {
-      comments.forEach((comment, index) => {
-        if (!comment || !comment.text) return;
-        
-        // 处理可能的前导 "- "
-        let text = comment.text;
-        let hasLeadingDash = false;
-        if (text.startsWith("- ")) {
-          hasLeadingDash = true;
-          text = text.substring(2);
-        }
-        
-        // 检查是否是 HtmlMarkdown 评论
-        if (!HtmlMarkdownUtils.isHtmlMDComment(text)) return;
-        
-        let type = HtmlMarkdownUtils.getSpanType(text);
-        let content = HtmlMarkdownUtils.getSpanTextContent(text);
-        
-        // 检查是否是层级类型
-        if (!HtmlMarkdownUtils.isLevelType(type)) return;
-        
-        // 根据方向获取新的层级类型
-        let newType;
-        if (direction === "up") {
-          newType = HtmlMarkdownUtils.getSpanLastLevelType(type);
-        } else {
-          newType = HtmlMarkdownUtils.getSpanNextLevelType(type);
-        }
-        
-        // 如果层级没有变化（已到边界），跳过
-        if (newType === type) return;
-        
-        // 创建新的 HtmlMarkdown 文本
-        let newHtmlText = HtmlMarkdownUtils.createHtmlMarkdownText(content, newType);
-        
-        // 保持前导破折号
-        if (hasLeadingDash) {
-          newHtmlText = "- " + newHtmlText;
-        }
-        
-        // 更新评论
-        comment.text = newHtmlText;
-        adjustedCount++;
-      });
-    });
-    
-    return adjustedCount;
-  }
-
-  /**
-   * 根据指定的最高级别调整所有层级
-   * 
-   * @param {MNNote} note - 要处理的卡片
-   * @param {string} targetHighestLevel - 目标最高级别（如 "goal", "level1", "level2" 等）
-   * @returns {Object} 返回调整结果 {adjustedCount: 数量, originalHighest: 原最高级, targetHighest: 目标最高级}
-   */
-  static adjustHtmlMDLevelsByHighest(note, targetHighestLevel) {
-    if (!note || !note.MNComments) {
-      return { adjustedCount: 0, originalHighest: null, targetHighest: targetHighestLevel };
-    }
-    
-    // 定义层级顺序映射（数字越小层级越高）
-    const levelOrder = {
-      'goal': 0,
-      'level1': 1,
-      'level2': 2,
-      'level3': 3,
-      'level4': 4,
-      'level5': 5
-    };
-    
-    // 验证目标层级是否有效
-    if (!(targetHighestLevel in levelOrder)) {
-      MNUtil.showHUD(`无效的目标层级: ${targetHighestLevel}`);
-      return { adjustedCount: 0, originalHighest: null, targetHighest: targetHighestLevel };
-    }
-    
-    // 收集所有层级类型的 HtmlMarkdown 评论
-    let levelComments = [];
-    let comments = note.MNComments;
-    
-    comments.forEach((comment, index) => {
-      if (!comment || !comment.text) return;
-      
-      // 处理前导 "- "
-      let text = comment.text;
-      let hasLeadingDash = false;
-      if (text.startsWith("- ")) {
-        hasLeadingDash = true;
-        text = text.substring(2);
-      }
-      
-      if (!HtmlMarkdownUtils.isHtmlMDComment(text)) return;
-      
-      let type = HtmlMarkdownUtils.getSpanType(text);
-      let content = HtmlMarkdownUtils.getSpanTextContent(text);
-      
-      if (!HtmlMarkdownUtils.isLevelType(type)) return;
-      
-      levelComments.push({
-        index: index,
-        comment: comment,
-        type: type,
-        content: content,
-        hasLeadingDash: hasLeadingDash,
-        order: levelOrder[type]
-      });
-    });
-    
-    if (levelComments.length === 0) {
-      MNUtil.showHUD("没有找到层级类型的 HtmlMarkdown 评论");
-      return { adjustedCount: 0, originalHighest: null, targetHighest: targetHighestLevel };
-    }
-    
-    // 找出当前最高层级（order 值最小的）
-    let currentHighestOrder = Math.min(...levelComments.map(item => item.order));
-    let currentHighestLevel = Object.keys(levelOrder).find(key => levelOrder[key] === currentHighestOrder);
-    
-    // 计算需要调整的偏移量
-    let targetOrder = levelOrder[targetHighestLevel];
-    let offset = targetOrder - currentHighestOrder;
-    
-    if (offset === 0) {
-      MNUtil.showHUD(`当前最高级已经是 ${targetHighestLevel}`);
-      return { adjustedCount: 0, originalHighest: currentHighestLevel, targetHighest: targetHighestLevel };
-    }
-    
-    // 批量调整所有层级
-    let adjustedCount = 0;
-    
-    MNUtil.undoGrouping(() => {
-      levelComments.forEach(item => {
-        let newOrder = item.order + offset;
-        
-        // 确保不超出边界
-        if (newOrder < 0) newOrder = 0;
-        if (newOrder > 5) newOrder = 5;
-        
-        // 找到对应的新层级类型
-        let newType = Object.keys(levelOrder).find(key => levelOrder[key] === newOrder);
-        
-        if (newType && newType !== item.type) {
-          // 创建新的 HtmlMarkdown 文本
-          let newHtmlText = HtmlMarkdownUtils.createHtmlMarkdownText(item.content, newType);
-          
-          // 保持前导破折号
-          if (item.hasLeadingDash) {
-            newHtmlText = "- " + newHtmlText;
-          }
-          
-          // 更新评论
-          item.comment.text = newHtmlText;
-          adjustedCount++;
-        }
-      });
-    });
-    
-    return {
-      adjustedCount: adjustedCount,
-      originalHighest: currentHighestLevel,
-      targetHighest: targetHighestLevel
-    };
-  }
 
   /**
    * 增加上一级评论
@@ -12403,21 +12062,10 @@ class HtmlMarkdownUtils {
     const spacedA = this.smartSpacing(propositionA);
     const spacedB = this.smartSpacing(propositionB);
     
-    // 生成两个方向的证明
-    const proofAtoB = this.createHtmlMarkdownText(
-      `若 ${spacedA} 成立，则 ${spacedB} 成立`,
-      'implication'
-    );
-    
-    const proofBtoA = this.createHtmlMarkdownText(
-      `若 ${spacedB} 成立，则 ${spacedA} 成立`,
-      'implication'
-    );
-    
-    const equivalence = this.createHtmlMarkdownText(
-      `${spacedA} ⇔ ${spacedB}`,
-      'equivalence'
-    );
+    // 生成两个方向的证明（纯文本格式）
+    const proofAtoB = `若 ${spacedA} 成立，则 ${spacedB} 成立`;
+    const proofBtoA = `若 ${spacedB} 成立，则 ${spacedA} 成立`;
+    const equivalence = `${spacedA} ⇔ ${spacedB}`;
     
     return {
       proofAtoB,
@@ -12708,43 +12356,31 @@ class HtmlMarkdownUtils {
                  .replace(/\{B\}/g, this.smartSpacing(valueB));
     };
     
-    // 生成主要内容（根据模板类型）
+    // 生成主要内容（根据模板类型）- 纯文本格式
     if (template.type === "equivalence") {
       const spacedA = this.smartSpacing(inputs.A || "");
       const spacedB = this.smartSpacing(inputs.B || "");
       if (spacedA && spacedB) {
-        result.mainContent = this.createHtmlMarkdownText(
-          `${spacedA} ⇔ ${spacedB}`,
-          'equivalence'
-        );
+        result.mainContent = `${spacedA} ⇔ ${spacedB}`;
       }
     } else if (template.type === "implication") {
       const spacedA = this.smartSpacing(inputs.A || "");
       const spacedB = this.smartSpacing(inputs.B || "");
       if (spacedA && spacedB) {
-        result.mainContent = this.createHtmlMarkdownText(
-          `${spacedA} ⇒ ${spacedB}`,
-          'implication'
-        );
+        result.mainContent = `${spacedA} ⇒ ${spacedB}`;
       }
     }
     
-    // 生成正向证明
+    // 生成正向证明（纯文本格式）
     if (template.forwardTemplate) {
       const forwardText = replacePlaceholders(template.forwardTemplate);
-      result.forwardProof = this.createHtmlMarkdownText(
-        forwardText,
-        'implication'
-      );
+      result.forwardProof = forwardText;
     }
     
-    // 生成反向证明（如果存在）
+    // 生成反向证明（纯文本格式）
     if (template.reverseTemplate) {
       const reverseText = replacePlaceholders(template.reverseTemplate);
-      result.reverseProof = this.createHtmlMarkdownText(
-        reverseText,
-        'implication'
-      );
+      result.reverseProof = reverseText;
     }
     
     return result;

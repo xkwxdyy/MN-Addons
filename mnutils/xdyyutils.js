@@ -11011,7 +11011,7 @@ class MNMath {
   
 
   /**
-   * 添加等价证明（简化版，只创建子卡片）
+   * 添加等价证明（集成模板系统和智能空格处理）
    * @param {MNNote} note - 目标笔记
    */
   static async addEquivalenceProof(note) {
@@ -11021,6 +11021,9 @@ class MNMath {
     }
     
     try {
+      // 初始化模板配置
+      this.initProofTemplates();
+      
       const enabledTemplates = this.getEnabledProofTemplates();
       
       if (enabledTemplates.length === 0) {
@@ -11043,35 +11046,48 @@ class MNMath {
       
       const selectedTemplate = enabledTemplates[selectedTemplateIndex - 1];
       
-      // 收集输入
+      // 收集输入数据
       const inputs = {};
+      
+      // 检查模板是否需要命题A
       if (selectedTemplate.forwardTemplate && selectedTemplate.forwardTemplate.includes('{A}')) {
         const propositionA = await this.showInputDialog(
           "输入命题 A",
-          "请输入第一个命题",
+          "请输入第一个命题（例如：A是B的子集）",
           "下一步"
         );
-        if (!propositionA) return;
+        if (!propositionA) {
+          MNUtil.showHUD("已取消");
+          return;
+        }
         inputs.A = propositionA;
       }
       
+      // 检查模板是否需要命题B
       if ((selectedTemplate.forwardTemplate && selectedTemplate.forwardTemplate.includes('{B}')) ||
           (selectedTemplate.reverseTemplate && selectedTemplate.reverseTemplate.includes('{B}'))) {
         const propositionB = await this.showInputDialog(
           "输入命题 B", 
-          "请输入第二个命题",
+          "请输入第二个命题（例如：B包含A）",
           "确定"
         );
-        if (!propositionB) return;
+        if (!propositionB) {
+          MNUtil.showHUD("已取消");
+          return;
+        }
         inputs.B = propositionB;
       }
       
       // 创建子卡片
       MNUtil.undoGrouping(() => {
+        // 替换占位符，使用 Pangu.spacing 处理中英文间距
         const replacePlaceholders = (text) => {
           if (!text) return "";
-          return text.replace(/\{A\}/g, inputs.A || "")
-                     .replace(/\{B\}/g, inputs.B || "");
+          // 使用 Pangu.spacing 处理中英文间距
+          const spacedA = inputs.A ? Pangu.spacing(inputs.A) : "";
+          const spacedB = inputs.B ? Pangu.spacing(inputs.B) : "";
+          return text.replace(/\{A\}/g, spacedA)
+                     .replace(/\{B\}/g, spacedB);
         };
         
         // 正向证明子卡片
@@ -11083,7 +11099,7 @@ class MNMath {
           }
         }
         
-        // 反向证明子卡片（仅等价证明）
+        // 反向证明子卡片（仅等价证明类型）
         if (selectedTemplate.type === "equivalence" && selectedTemplate.reverseTemplate) {
           const reverseTitle = replacePlaceholders(selectedTemplate.reverseTemplate);
           const reverseNote = MNNote.new({ title: reverseTitle });
@@ -11099,6 +11115,499 @@ class MNMath {
       
     } catch (error) {
       MNUtil.showHUD(`❌ 错误: ${error.message}`);
+      MNUtil.addErrorLog(error, "addEquivalenceProof", {
+        noteId: note?.noteId,
+        noteTitle: note?.noteTitle
+      });
+    }
+  }
+
+  // ==================== 证明模板管理系统 ====================
+  
+  /**
+   * 初始化证明模板配置
+   */
+  static initProofTemplates() {
+    if (!this.proofTemplates) {
+      this.proofTemplates = this.loadProofTemplates();
+    }
+    return this.proofTemplates;
+  }
+
+  /**
+   * 从存储加载证明模板配置
+   */
+  static loadProofTemplates() {
+    try {
+      // 先尝试从本地加载
+      const localConfig = NSUserDefaults.standardUserDefaults().objectForKey("MNMath_ProofTemplates");
+      let config = localConfig ? JSON.parse(localConfig) : null;
+      
+      // 如果没有本地配置，从 iCloud 加载
+      if (!config) {
+        try {
+          const cloudStore = NSUbiquitousKeyValueStore.defaultStore();
+          if (cloudStore) {
+            const cloudConfig = cloudStore.objectForKey("MNMath_ProofTemplates");
+            if (cloudConfig) {
+              config = JSON.parse(cloudConfig);
+              // 同步到本地
+              NSUserDefaults.standardUserDefaults().setObjectForKey(cloudConfig, "MNMath_ProofTemplates");
+            }
+          }
+        } catch (cloudError) {
+          // iCloud 不可用时忽略错误
+        }
+      }
+      
+      // 如果还是没有配置，返回默认配置
+      if (!config) {
+        config = this.getDefaultProofTemplates();
+        this.saveProofTemplates(); // 保存默认配置
+      }
+      
+      return config;
+    } catch (error) {
+      MNUtil.showHUD("加载证明模板失败，使用默认配置");
+      return this.getDefaultProofTemplates();
+    }
+  }
+
+  /**
+   * 获取默认证明模板配置
+   */
+  static getDefaultProofTemplates() {
+    return {
+      templates: [
+        {
+          id: "template_equivalence_standard",
+          name: "标准等价证明",
+          type: "equivalence",
+          forwardTemplate: "若 {A} 成立，则 {B} 成立",
+          reverseTemplate: "若 {B} 成立，则 {A} 成立",
+          enabled: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        },
+        {
+          id: "template_implication_standard",
+          name: "标准蕴涵证明",
+          type: "implication",
+          forwardTemplate: "若 {A} 成立，则 {B} 成立",
+          reverseTemplate: "",
+          enabled: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+      ],
+      lastModified: Date.now(),
+      version: "1.0"
+    };
+  }
+
+  /**
+   * 保存证明模板配置
+   */
+  static saveProofTemplates() {
+    try {
+      if (!this.proofTemplates) {
+        this.initProofTemplates();
+      }
+      
+      this.proofTemplates.lastModified = Date.now();
+      const configStr = JSON.stringify(this.proofTemplates);
+      
+      // 保存到本地
+      NSUserDefaults.standardUserDefaults().setObjectForKey(configStr, "MNMath_ProofTemplates");
+      
+      // 如果开启了 iCloud 同步，保存到 iCloud
+      try {
+        if (typeof toolbarConfig !== 'undefined' && toolbarConfig.iCloudSync) {
+          const cloudStore = NSUbiquitousKeyValueStore.defaultStore();
+          if (cloudStore) {
+            cloudStore.setObjectForKey(configStr, "MNMath_ProofTemplates");
+            cloudStore.synchronize();
+          }
+        }
+      } catch (cloudError) {
+        // iCloud 同步失败不影响本地保存
+      }
+      
+      return true;
+    } catch (error) {
+      MNUtil.showHUD("保存证明模板失败: " + error.message);
+      return false;
+    }
+  }
+
+  /**
+   * 获取所有证明模板
+   */
+  static getProofTemplates() {
+    this.initProofTemplates();
+    return this.proofTemplates.templates || [];
+  }
+  
+  /**
+   * 获取所有启用的证明模板
+   */
+  static getEnabledProofTemplates() {
+    const allTemplates = this.getProofTemplates();
+    return allTemplates.filter(template => template.enabled);
+  }
+  
+  /**
+   * 显示输入对话框
+   * @param {string} title - 对话框标题
+   * @param {string} message - 对话框消息
+   * @param {string} confirmText - 确认按钮文本
+   * @returns {Promise<string|null>} 输入文本或null（如果取消）
+   */
+  static async showInputDialog(title, message, confirmText) {
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        title,
+        message,
+        2, // 输入框样式
+        "取消",
+        [confirmText],
+        (alert, buttonIndex) => {
+          if (buttonIndex === 1) {
+            const text = alert.textFieldAtIndex(0).text;
+            resolve(text);
+          } else {
+            resolve(null);
+          }
+        }
+      );
+    });
+  }
+
+  // ==================== 证明模板管理界面 ====================
+  
+  /**
+   * 证明模板管理主界面
+   */
+  static async manageProofTemplates() {
+    try {
+      this.initProofTemplates();
+      
+      while (true) {
+        const templates = this.getProofTemplates();
+        const templateList = templates.map(t => 
+          `${t.enabled ? '✅' : '❌'} ${t.name} (${t.type})`
+        );
+        
+        const options = [
+          "📝 添加新模板",
+          "📋 编辑模板",
+          "🗑️ 删除模板",
+          "🔄 启用/禁用模板",
+          "📥 导入模板",
+          "📤 导出模板",
+          "🔧 重置为默认",
+          "❌ 关闭"
+        ];
+        
+        let message = `当前模板 (${templates.length} 个):\n`;
+        templateList.forEach((item, index) => {
+          message += `${index + 1}. ${item}\n`;
+        });
+        
+        const choice = await MNUtil.userSelect(
+          "证明模板管理",
+          message,
+          options
+        );
+        
+        if (choice === 0 || choice === 8) break; // 取消或关闭
+        
+        switch (choice) {
+          case 1: // 添加新模板
+            await this.addNewTemplate();
+            break;
+          case 2: // 编辑模板
+            await this.editTemplateBySelection();
+            break;
+          case 3: // 删除模板
+            await this.deleteTemplateBySelection();
+            break;
+          case 4: // 启用/禁用模板
+            await this.toggleTemplateBySelection();
+            break;
+          case 5: // 导入模板
+            MNUtil.showHUD("导入功能开发中...");
+            break;
+          case 6: // 导出模板
+            MNUtil.showHUD("导出功能开发中...");
+            break;
+          case 7: // 重置为默认
+            await this.resetToDefaultTemplates();
+            break;
+        }
+      }
+      
+    } catch (error) {
+      MNUtil.showHUD(`❌ 管理模板时出错: ${error.message}`);
+      MNUtil.addErrorLog(error, "manageProofTemplates");
+    }
+  }
+  
+  /**
+   * 添加新模板
+   */
+  static async addNewTemplate() {
+    try {
+      const name = await this.showInputDialog(
+        "模板名称",
+        "请输入模板名称（例如：充分必要条件证明）",
+        "下一步"
+      );
+      if (!name) return;
+      
+      const typeOptions = ["等价证明", "蕴涵证明", "自定义证明"];
+      const typeChoice = await MNUtil.userSelect(
+        "选择模板类型",
+        "请选择证明模板的类型：",
+        typeOptions
+      );
+      if (typeChoice === 0) return;
+      
+      const typeMap = { 1: "equivalence", 2: "implication", 3: "custom" };
+      const type = typeMap[typeChoice];
+      
+      const forwardTemplate = await this.showInputDialog(
+        "正向证明模板",
+        "请输入正向证明模板（用 {A} 和 {B} 作为占位符）",
+        "下一步"
+      );
+      if (!forwardTemplate) return;
+      
+      let reverseTemplate = "";
+      if (type === "equivalence") {
+        reverseTemplate = await this.showInputDialog(
+          "反向证明模板",
+          "请输入反向证明模板（用 {A} 和 {B} 作为占位符）",
+          "完成"
+        );
+        if (reverseTemplate === null) return;
+      }
+      
+      const newTemplate = {
+        id: "template_" + Date.now(),
+        name: name,
+        type: type,
+        forwardTemplate: forwardTemplate,
+        reverseTemplate: reverseTemplate,
+        enabled: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      
+      this.proofTemplates.templates.push(newTemplate);
+      this.saveProofTemplates();
+      
+      MNUtil.showHUD(`✅ 模板"${name}"已添加`);
+      
+    } catch (error) {
+      MNUtil.showHUD(`❌ 添加模板失败: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 通过选择编辑模板
+   */
+  static async editTemplateBySelection() {
+    try {
+      const templates = this.getProofTemplates();
+      if (templates.length === 0) {
+        MNUtil.showHUD("❌ 没有可编辑的模板");
+        return;
+      }
+      
+      const templateOptions = templates.map(t => t.name);
+      const choice = await MNUtil.userSelect(
+        "选择要编辑的模板",
+        "请选择要编辑的模板：",
+        templateOptions
+      );
+      
+      if (choice === 0) return;
+      
+      const template = templates[choice - 1];
+      await this.editTemplate(template);
+      
+    } catch (error) {
+      MNUtil.showHUD(`❌ 编辑模板失败: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 编辑单个模板
+   */
+  static async editTemplate(template) {
+    try {
+      const editOptions = [
+        "📝 编辑名称",
+        "🔄 编辑类型",
+        "➡️ 编辑正向模板",
+        "⬅️ 编辑反向模板",
+        "✅ 完成编辑"
+      ];
+      
+      while (true) {
+        let info = `当前模板信息:\n`;
+        info += `名称: ${template.name}\n`;
+        info += `类型: ${template.type}\n`;
+        info += `正向: ${template.forwardTemplate}\n`;
+        info += `反向: ${template.reverseTemplate || '(无)'}\n`;
+        
+        const choice = await MNUtil.userSelect(
+          `编辑模板: ${template.name}`,
+          info,
+          editOptions
+        );
+        
+        if (choice === 0 || choice === 5) break;
+        
+        switch (choice) {
+          case 1: // 编辑名称
+            const newName = await this.showInputDialog(
+              "编辑名称",
+              `当前名称: ${template.name}`,
+              "确定"
+            );
+            if (newName) template.name = newName;
+            break;
+            
+          case 2: // 编辑类型
+            const typeOptions = ["等价证明", "蕴涵证明", "自定义证明"];
+            const typeChoice = await MNUtil.userSelect("选择类型", "请选择新的类型：", typeOptions);
+            if (typeChoice > 0) {
+              const typeMap = { 1: "equivalence", 2: "implication", 3: "custom" };
+              template.type = typeMap[typeChoice];
+            }
+            break;
+            
+          case 3: // 编辑正向模板
+            const newForward = await this.showInputDialog(
+              "编辑正向模板",
+              `当前: ${template.forwardTemplate}`,
+              "确定"
+            );
+            if (newForward) template.forwardTemplate = newForward;
+            break;
+            
+          case 4: // 编辑反向模板
+            const newReverse = await this.showInputDialog(
+              "编辑反向模板",
+              `当前: ${template.reverseTemplate || '(无)'}`,
+              "确定"
+            );
+            if (newReverse !== null) template.reverseTemplate = newReverse;
+            break;
+        }
+        
+        template.updatedAt = Date.now();
+      }
+      
+      this.saveProofTemplates();
+      MNUtil.showHUD(`✅ 模板"${template.name}"已更新`);
+      
+    } catch (error) {
+      MNUtil.showHUD(`❌ 编辑模板失败: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 通过选择删除模板
+   */
+  static async deleteTemplateBySelection() {
+    try {
+      const templates = this.getProofTemplates();
+      if (templates.length === 0) {
+        MNUtil.showHUD("❌ 没有可删除的模板");
+        return;
+      }
+      
+      const templateOptions = templates.map(t => t.name);
+      const choice = await MNUtil.userSelect(
+        "选择要删除的模板",
+        "请选择要删除的模板：",
+        templateOptions
+      );
+      
+      if (choice === 0) return;
+      
+      const template = templates[choice - 1];
+      const confirmed = await MNUtil.confirm(
+        "确认删除",
+        `确定要删除模板"${template.name}"吗？此操作不可撤销。`
+      );
+      
+      if (confirmed) {
+        this.proofTemplates.templates = templates.filter(t => t.id !== template.id);
+        this.saveProofTemplates();
+        MNUtil.showHUD(`✅ 模板"${template.name}"已删除`);
+      }
+      
+    } catch (error) {
+      MNUtil.showHUD(`❌ 删除模板失败: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 通过选择切换模板启用状态
+   */
+  static async toggleTemplateBySelection() {
+    try {
+      const templates = this.getProofTemplates();
+      if (templates.length === 0) {
+        MNUtil.showHUD("❌ 没有可操作的模板");
+        return;
+      }
+      
+      const templateOptions = templates.map(t => 
+        `${t.enabled ? '✅' : '❌'} ${t.name}`
+      );
+      const choice = await MNUtil.userSelect(
+        "启用/禁用模板",
+        "请选择要切换状态的模板：",
+        templateOptions
+      );
+      
+      if (choice === 0) return;
+      
+      const template = templates[choice - 1];
+      template.enabled = !template.enabled;
+      template.updatedAt = Date.now();
+      
+      this.saveProofTemplates();
+      MNUtil.showHUD(`✅ 模板"${template.name}"已${template.enabled ? '启用' : '禁用'}`);
+      
+    } catch (error) {
+      MNUtil.showHUD(`❌ 切换模板状态失败: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 重置为默认模板
+   */
+  static async resetToDefaultTemplates() {
+    try {
+      const confirmed = await MNUtil.confirm(
+        "重置确认",
+        "确定要重置为默认模板吗？这将删除所有自定义模板。"
+      );
+      
+      if (confirmed) {
+        this.proofTemplates = this.getDefaultProofTemplates();
+        this.saveProofTemplates();
+        MNUtil.showHUD("✅ 已重置为默认模板");
+      }
+      
+    } catch (error) {
+      MNUtil.showHUD(`❌ 重置模板失败: ${error.message}`);
     }
   }
 

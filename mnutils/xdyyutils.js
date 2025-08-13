@@ -11046,7 +11046,9 @@ class HtmlMarkdownUtils {
     idea: '💡',
     method: '✨',
     check: '🔍',
-    sketch: '✏️'
+    sketch: '✏️',
+    equivalence: '⇔',
+    implication: '⇒'
   };
   static prefix = {
     danger: '',
@@ -11067,7 +11069,9 @@ class HtmlMarkdownUtils {
     idea: '思路：',
     method: '方法：',
     check: 'CHECK',
-    sketch: 'SKETCH'
+    sketch: 'SKETCH',
+    equivalence: '',
+    implication: ''
   };
   static styles = {
     // 格外注意
@@ -11126,7 +11130,11 @@ class HtmlMarkdownUtils {
       if (!handledText) {
         return '';
       }
-      return `<span id="${type}" style="${this.styles[type]} ">${this.icons[type]} ${this.prefix[type]}${handledText}</span>`;
+      // 防御性编程：确保 icons 和 prefix 不会返回 undefined
+      const icon = this.icons[type] || '';
+      const prefix = this.prefix[type] || '';
+      const style = this.styles[type] || '';
+      return `<span id="${type}" style="${style} ">${icon} ${prefix}${handledText}</span>`;
     }
   }
 
@@ -12760,45 +12768,50 @@ class HtmlMarkdownUtils {
     if (template.type === "equivalence") {
       // 等价证明：创建两个子卡片（正向和反向）
       if (proof.forwardProof) {
-        const childNoteAtoB = MNNote.new();
-        childNoteAtoB.title = "";
-        note.addChild(childNoteAtoB);
-        childNoteAtoB.appendMarkdownComment(proof.forwardProof);
-        childNotes.push(childNoteAtoB);
+        const childNoteAtoB = MNNote.new({ title: "" });
+        if (childNoteAtoB) {
+          note.addChild(childNoteAtoB);
+          childNoteAtoB.appendMarkdownComment(proof.forwardProof);
+          childNotes.push(childNoteAtoB);
+        }
       }
       
       if (proof.reverseProof) {
-        const childNoteBtoA = MNNote.new();
-        childNoteBtoA.title = "";
-        note.addChild(childNoteBtoA);
-        childNoteBtoA.appendMarkdownComment(proof.reverseProof);
-        childNotes.push(childNoteBtoA);
+        const childNoteBtoA = MNNote.new({ title: "" });
+        if (childNoteBtoA) {
+          note.addChild(childNoteBtoA);
+          childNoteBtoA.appendMarkdownComment(proof.reverseProof);
+          childNotes.push(childNoteBtoA);
+        }
       }
     } else if (template.type === "implication") {
       // 蕴涵证明：只创建一个子卡片
       if (proof.forwardProof) {
-        const childNote = MNNote.new();
-        childNote.title = "";
-        note.addChild(childNote);
-        childNote.appendMarkdownComment(proof.forwardProof);
-        childNotes.push(childNote);
+        const childNote = MNNote.new({ title: "" });
+        if (childNote) {
+          note.addChild(childNote);
+          childNote.appendMarkdownComment(proof.forwardProof);
+          childNotes.push(childNote);
+        }
       }
     } else if (template.type === "custom") {
       // 自定义证明：根据模板内容决定
       if (proof.forwardProof) {
-        const childNote = MNNote.new();
-        childNote.title = "";
-        note.addChild(childNote);
-        childNote.appendMarkdownComment(proof.forwardProof);
-        childNotes.push(childNote);
+        const childNote = MNNote.new({ title: "" });
+        if (childNote) {
+          note.addChild(childNote);
+          childNote.appendMarkdownComment(proof.forwardProof);
+          childNotes.push(childNote);
+        }
       }
       
       if (proof.reverseProof) {
-        const childNote2 = MNNote.new();
-        childNote2.title = "";
-        note.addChild(childNote2);
-        childNote2.appendMarkdownComment(proof.reverseProof);
-        childNotes.push(childNote2);
+        const childNote2 = MNNote.new({ title: "" });
+        if (childNote2) {
+          note.addChild(childNote2);
+          childNote2.appendMarkdownComment(proof.reverseProof);
+          childNotes.push(childNote2);
+        }
       }
     }
     

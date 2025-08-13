@@ -2993,7 +2993,7 @@ function registerAllCustomActions() {
     },
   );
 
-  // addEquivalenceProof - 添加等价证明
+  // addEquivalenceProof - 添加等价证明（使用模板）
   global.registerCustomAction(
     "addEquivalenceProof",
     async function (context) {
@@ -3001,12 +3001,27 @@ function registerAllCustomActions() {
       
       MNUtil.undoGrouping(async () => {
         try {
-          // 使用 MNMath 类的方法
-          await MNMath.addEquivalenceProof(focusNote);
+          // 使用模板系统的新方法
+          await HtmlMarkdownUtils.insertProofByTemplate(focusNote);
         } catch (error) {
           MNUtil.showHUD(`❌ 错误: ${error.message}`);
         }
       });
+    }
+  );
+
+  // manageProofTemplates - 管理证明模板
+  global.registerCustomAction(
+    "manageProofTemplates",
+    async function (context) {
+      const { button, des, focusNote, focusNotes, self } = context;
+      
+      try {
+        // 调用证明模板管理界面
+        await HtmlMarkdownUtils.manageProofTemplates();
+      } catch (error) {
+        MNUtil.showHUD(`❌ 错误: ${error.message}`);
+      }
     }
   );
 

@@ -11048,7 +11048,7 @@ class HtmlMarkdownUtils {
     check: '🔍',
     sketch: '✏️',
     equivalence: '⇔',
-    implication: '⇒'
+    implication: ''
   };
   static prefix = {
     danger: '',
@@ -11071,7 +11071,7 @@ class HtmlMarkdownUtils {
     check: 'CHECK',
     sketch: 'SKETCH',
     equivalence: '',
-    implication: ''
+    implication: '下证：'
   };
   static styles = {
     // 格外注意
@@ -12816,9 +12816,6 @@ class HtmlMarkdownUtils {
     }
     
     // 在父卡片中添加子卡片的链接
-    childNotes.forEach(childNote => {
-      note.appendNoteLink(childNote, "To");
-    });
   }
 
   /**

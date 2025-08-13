@@ -70,6 +70,9 @@ function update(plugins) {
         nameContainer.style.flexWrap = "wrap";
         nameContainer.style.gap = "8px";
         nameContainer.style.alignItems = "center";
+        nameContainer.style.overflow = "scroll";
+        nameContainer.style.whiteSpace = "nowrap";
+        nameContainer.style.width = "calc(100vw - 50px)";
 
         const pluginName = document.createElement("span");
         pluginName.textContent = plugin.name;
@@ -81,6 +84,7 @@ function update(plugins) {
         bottomContainer.style.justifyContent = "space-between";
         bottomContainer.style.alignItems = "center";
         bottomContainer.style.height = "20px";
+        bottomContainer.style.width = "calc(100vw - 50px)";
 
         const installBtn = document.createElement("button");
         installBtn.style.flexShrink = "0";

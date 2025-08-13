@@ -817,6 +817,11 @@ class MNUtil {
     let words = this.segmentit.doSegment(str,{simple:true}).filter(word=>!/^\s*$/.test(word))
     return words
   }
+  /**
+   * 
+   * @param {string} str 
+   * @returns {number}
+   */
   static wordCountBySegmentit(str) {
     //对中文而言计算的是词数
     if (!this.segmentit) {
@@ -2726,6 +2731,10 @@ try {
     return undefined
   }
   }
+  /**
+   * 
+   * @param {"AddToReview"|"AddToTOC"|"BackupDB"|"BindSplit"|"BookTOC"|"BookPageList"|"BookMarkList"|"BookSketchList"|"BookCardList"|"BookSearch"|"BookPageFlip"|"BookPageScroll"|"BookPageNumber"|"BookMarkAdd"|"BookMarkRemove"|"ClearTemp"|"ClearFormat1"|"ClearFormat2"|"CommonCopy"|"CollapseExtend"|"ContinueExcerpt"|"DBVaults"|"DraftList"|"EditAddTitle"|"EditAddText"|"EditAppendComment"|"EditArrangeNotes"|"EditUndo"|"EditRedo"|"EditCut"|"EditCopy"|"EditCopyLink"|"EditDeleteNote"|"EditDocLayers"|"EditPaste"|"EditPDFPages"|"EditMarkdown"|"EditTextBox"|"EditTextMode"|"EditImageBox"|"EditGroupNotes"|"EditLinkNotes"|"EditMultiSel"|"EditMergeNotes"|"EditOcclusion"|"EditOutlineIncLevel"|"EditOutlineDecLevel"|"EditReference"|"EditSelAll"|"EditTagNote"|"EditUnmergeNote"|"EditColorNoteIndex0"|"EditColorNoteIndex1"|"EditColorNoteIndex2"|"EditColorNoteIndex3"|"EditColorNoteIndex4"|"EditColorNoteIndex5"|"EditColorNoteIndex6"|"EditColorNoteIndex7"|"EditColorNoteIndex8"|"EditColorNoteIndex9"|"EditColorNoteIndex10"|"EditColorNoteIndex11"|"EditColorNoteIndex12"|"EditColorNoteIndex13"|"EditColorNoteIndex14"|"EditColorNoteIndex15"|"ExcerptToolSettings"|"ExcerptToolSelect"|"ExcerptToolCustom0"|"ExcerptToolCustom1"|"ExcerptToolCustom2"|"ExcerptToolCustom3"|"ExcerptToolSketch"|"EmphasisCloze"|"ExportPKG"|"ExportVault"|"ExportMapPDF"|"ExportDocPDF"|"ExportOmni"|"ExportWord"|"ExportMind"|"ExportAnki"|"ExtendSplit"|"ExtendMargin"|"ExtendPopup"|"ExpandExtend"|"FocusNote"|"FocusParent"|"FoldHighlight"|"FullTextSearch"|"FlashcardsPlay"|"FlashcardsStop"|"FlashcardFlip"|"FlashcardLocal"|"FlashcardAgain"|"FlashcardHard"|"FlashcardGood"|"FlashcardEasy"|"FlashcardStarred"|"FlashcardSpeech"|"GlobalBranchStyle"|"GoBack"|"GoForward"|"GoiCloud"|"GoManual"|"GoNewFeatures"|"GoSettings"|"GoUserGuide"|"HideSketch"|"HighlightShortcut1"|"HighlightShortcut2"|"HighlightShortcut3"|"HighlightShortcut4"|"InAppPurchase"|"InsertBlank"|"ManageDocs"|"MergeTo"|"MindmapSnippetMode"|"NotebookOutline"|"NotebookOutlineEdit"|"NewSiblingNote"|"NewChildNote"|"NewParentNote"|"OpenTrash"|"OpenExtensions"|"PdfCrop"|"RemoveFromMap"|"SendToMap"|"ShareLicenses"|"SharePackage"|"SplitBook"|"SyncMindMapToBook"|"SyncBookToMindMap"|"SyncWindowPos"|"SyncDeletion"|"SetAsEmphasis"|"SetCloneCopyMode"|"SetCommentHighlight"|"SetRefCopyMode"|"SetTitleHighlight"|"SourceHighlight"|"SnippetMode"|"SelBranchStyle0"|"SelBranchStyle1"|"SelBranchStyle2"|"SelBranchStyle3"|"SelBranchStyle4"|"SelBranchStyle60"|"SelBranchStyle61"|"SelBranchStyle64"|"SelBranchStyle7"|"SelBranchStyle100"|"SelectBranch"|"ShowSketch"|"TabNextFile"|"TabPrevFile"|"TextToTitle"|"Translate"|"ToggleAddFile"|"ToggleBookLeft"|"ToggleBookBottom"|"ToggleCards"|"ToggleDocument"|"ToggleExpand"|"ToggleFullDoc"|"ToggleSplit"|"ToggleSidebar"|"ToggleTabsBar"|"ToggleTextLink"|"ToggleMindMap"|"ToggleMoreSettings"|"ToggleReview"|"ToggleResearch"|"UIStatusURL"|"ViewCollapseRows"|"ViewCollapseAll"|"ViewDocCardGroup"|"ViewExpandAll"|"ViewExpandLevel0"|"ViewExpandLevel1"|"ViewExpandLevel2"|"ViewExpandLevel3"|"ViewExpandLevel4"|"ViewExpandLevel5"|"ViewExpandLevel6"|"ViewExpandLevel7"|"ViewExpandRows"|"ViewMapCardGroup"|"ZoomToFit"} command 
+   */
   static excuteCommand(command){
     let urlPre = "marginnote4app://command/"
     if (command) {
@@ -3128,7 +3137,16 @@ try {
     noteConfig.url = note.noteURL
     noteConfig.excerptText = note.excerptText
     noteConfig.isMarkdownExcerpt = note.excerptTextMarkdown
-    noteConfig.isImageExcerpt = !!note.excerptPic
+    if (this.isBlankNote(note)) {
+      noteConfig.isImageExcerpt = false
+    }else{
+      noteConfig.isImageExcerpt = !!note.excerptPic
+    }
+    if (note.textFirst !== undefined) {
+      noteConfig.textFirst = note.textFirst
+    }else{
+      noteConfig.textFirst = false
+    }
     noteConfig.date = {
       create:note.createDate.toLocaleString(),
       modify:note.modifiedDate.toLocaleString(),
@@ -3577,6 +3595,21 @@ static NSValue2String(v) {
     .join(" ")
     .trim()
 }
+/**
+ * 
+ * @param {MNNote} note 
+ * @returns {boolean}
+ */
+static isBlankNote(note){//指有图片摘录但图片分辨率为1x1的空白图片
+  if (note.excerptPic) {
+    let imageData = MNUtil.getMediaByHash(note.excerptPic.paint)
+    let image = UIImage.imageWithData(imageData)
+    if (image.size.width === 1 && image.size.height === 1) {
+      return true
+    }
+  }
+  return false
+}
 }
 
 class MNConnection{
@@ -3891,17 +3924,32 @@ static async uploadWebDAVFile(url, username, password, fileContent) {
     MNUtil.showHUD("Download failed")
     return undefined
   }
-    /**
+  /**
+   * Retrieves the image data from the current document controller or other document controllers if the document map split mode is enabled.
    * 
-   * @param {MbBookNote} note 
-   * @returns 
+   * This method checks for image data in the current document controller's selection. If no image is found, it checks the focused note within the current document controller.
+   * If the document map split mode is enabled, it iterates through all document controllers to find the image data. If a pop-up selection info is available, it also checks the associated document controller.
+   * 
+   * @param {boolean} [checkImageFromNote=true] - Whether to check the focused note for image data.
+   * @param {boolean} [checkDocMapSplitMode=false] - Whether to check other document controllers if the document map split mode is enabled.
+   * @returns {NSData|undefined} The image data if found, otherwise undefined.
    */
-  static getImageFromNote(note,checkTextFirst = false) {
+  static getImageFromNote(note,checkTextFirst = true) {
     if (note.excerptPic) {
-      if (checkTextFirst && note.textFirst) {
-        //检查发现图片已经转为文本，因此略过
-      }else{
-        return MNUtil.getMediaByHash(note.excerptPic.paint)
+      let isBlankNote = MNUtil.isBlankNote(note)
+      if (!isBlankNote) {//实际为文字留白
+        if (checkTextFirst && note.textFirst) {
+          //检查发现图片已经转为文本，因此略过
+        }else{
+          return MNUtil.getMediaByHash(note.excerptPic.paint)
+        }
+      }
+    }else{
+      let text = note.excerptText
+      if (note.excerptTextMarkdown) {
+        if (MNUtil.hasMNImages(text.trim())) {
+          return MNUtil.getMNImageFromMarkdown(text)
+        }
       }
     }
     if (note.comments.length) {
@@ -3916,7 +3964,7 @@ static async uploadWebDAVFile(url, username, password, fileContent) {
           imageData = MNUtil.getMediaByHash(comment.q_hpic.paint)
           break
         }
-        
+
       }
       if (imageData) {
         return imageData
@@ -5170,6 +5218,19 @@ class MNNote{
   get id(){
     return this.note.noteId
   }
+  get type(){
+    let type = "textNote"
+    let isBlankNote = MNUtil.isBlankNote(this)
+    if (isBlankNote) {
+      type = "blankTextNote"
+      return type
+    }
+    if (this.excerptPic && !this.textFirst) {
+      type = "imageNote"
+      return type
+    }
+    return type
+  }
   get notebookId() {
     return this.note.notebookId
   }
@@ -5398,13 +5459,21 @@ class MNNote{
     }
   }
   get isOCR() {
-    if (this.note.excerptPic?.paint) {
-      return this.note.textFirst
+    if (this.excerptPic) {
+      if (MNUtil.isBlankNote(this)) {
+        return false
+      }else{
+        return this.textFirst
+      }
     }
     return false
   }
   get textFirst() {
-    return this.note.textFirst
+    let textFirst = this.note.textFirst
+    if (textFirst === undefined) {
+      textFirst = false
+    }
+    return textFirst
   }
   get title() {
     return this.note.noteTitle ?? ""
@@ -5649,8 +5718,16 @@ class MNNote{
     return this.notes.reduce((acc, note) => {
       const text = note.excerptText?.trim()
       if (text) {
-        if (!note.excerptPic?.paint || this.isOCR) {
-          acc.push(text)
+        switch (note.type) {
+          case "textNote":
+          case "blankTextNote":
+            acc.push(text)
+            break;
+          case "imageNote":
+            break;
+        
+          default:
+            break;
         }
       }
       return acc
@@ -5705,18 +5782,33 @@ class MNNote{
   get allText() {
 
     const { mainExcerptText } = this
-    const retVal =
-      mainExcerptText && (!this.note.excerptPic?.paint || this.isOCR)
-        ? [mainExcerptText]
-        : []
+    const retVal = []
+    switch (this.type) {
+      case "textNote":
+      case "blankTextNote":
+        retVal.push(mainExcerptText)
+        break;
+      case "imageNote":
+        break;
+      default:
+        break;
+    }
     this.note.comments.forEach(k => {
       if (k.type == "TextNote" || k.type == "HtmlNote") {
         const text = k.text.trim()
         if (text) retVal.push(text)
       } else if (k.type == "LinkNote") {
-        const note = MNUtil.db.getNoteById(k.noteid)
-        const text = note?.excerptText?.trim()
-        if (text && (!note?.excerptPic?.paint || this.isOCR)) retVal.push(text)
+        const note = MNNote.new(k.noteid)
+        switch (note.type) {
+          case "textNote":
+          case "blankTextNote":
+            retVal.push(note.excerptText)
+            break;
+          case "imageNote":
+            break;
+          default:
+            break;
+        }
       }
     })
     return retVal.join("\n\n")
@@ -6325,13 +6417,22 @@ try {
    * 支持检测摘录图片,markdown摘录中的MN图片,图片评论,合并的图片摘录
    * @returns {boolean}
    */
-  hasImage(){
+  hasImage(checkTextFirst = true){
     let note = this
     if (note.excerptPic) {
-      if (checkTextFirst && note.textFirst) {
-        //检查发现图片已经转为文本，因此略过
+      if (MNUtil.isBlankNote(note)) {
+        let text = note.excerptText
+        if (note.excerptTextMarkdown) {
+          if (MNUtil.hasMNImages(text.trim())) {
+            return true
+          }
+        }
       }else{
-        return true
+        if (checkTextFirst && note.textFirst) {
+          //检查发现图片已经转为文本，因此略过
+        }else{
+          return true
+        }
       }
     }else{
       let text = note.excerptText
@@ -7019,7 +7120,16 @@ try {
     noteConfig.url = note.noteURL
     noteConfig.excerptText = note.excerptText
     noteConfig.isMarkdownExcerpt = note.excerptTextMarkdown
-    noteConfig.isImageExcerpt = !!note.excerptPic
+    if (this.isBlankNote(note)) {
+      noteConfig.isImageExcerpt = false
+    }else{
+      noteConfig.isImageExcerpt = !!note.excerptPic
+    }
+    if (note.textFirst !== undefined) {
+      noteConfig.textFirst = note.textFirst
+    }else{
+      noteConfig.textFirst = false
+    }
     noteConfig.date = {
       create:note.createDate.toLocaleString(),
       modify:note.modifiedDate.toLocaleString(),
@@ -7246,8 +7356,18 @@ try {
     /**
    * 
    * @param {MbBookNote|MNNote} note 
+   * @param {boolean} checkTextFirst 
+   * @returns {boolean}
    */
-  static hasImageInNote(note){
+  static hasImageInNote(note,checkTextFirst = true){
+    let type = MNUtil.typeOf(note)
+    if (type === "MNNote") {
+      return note.hasImage(checkTextFirst)
+    }else if (type === "MbBookNote") {
+      note = MNNote.new(note.noteId)
+      return note.hasImage(checkTextFirst)
+    }
+
     if (note.excerptPic && !note.textFirst) {
       return true
     }
@@ -7466,10 +7586,20 @@ try {
    */
   static getImageFromNote(note,checkTextFirst = true) {
     if (note.excerptPic) {
-      if (checkTextFirst && note.textFirst) {
-        //检查发现图片已经转为文本，因此略过
+      let isBlankNote = MNUtil.isBlankNote(note)
+      if (isBlankNote) {//实际为文字留白
+        let text = note.excerptText
+        if (note.excerptTextMarkdown) {
+          if (MNUtil.hasMNImages(text.trim())) {
+            return MNUtil.getMNImageFromMarkdown(text)
+          }
+        }
       }else{
-        return MNUtil.getMediaByHash(note.excerptPic.paint)
+        if (checkTextFirst && note.textFirst) {
+          //检查发现图片已经转为文本，因此略过
+        }else{
+          return MNUtil.getMediaByHash(note.excerptPic.paint)
+        }
       }
     }else{
       let text = note.excerptText
@@ -7512,12 +7642,22 @@ try {
   static getImageInfoFromNote(note,checkTextFirst = false) {
     let imageInfo = {}
     if (note.excerptPic) {
-      if (checkTextFirst && note.textFirst) {
-        //检查发现图片已经转为文本，因此略过
+      let isBlankNote = MNUtil.isBlankNote(note)
+      if (isBlankNote) {//实际为文字留白
+        let text = note.excerptText
+        if (note.excerptTextMarkdown) {
+          if (MNUtil.hasMNImages(text.trim())) {
+            imageInfo.data = MNUtil.getMNImageFromMarkdown(text)
+            imageInfo.source = "excerptTextMarkdown"
+          }
+        }
       }else{
-        imageInfo.data = MNUtil.getMediaByHash(note.excerptPic.paint)
-        imageInfo.source = "excerptPic"
-        // return MNUtil.getMediaByHash(note.excerptPic.paint)
+        if (checkTextFirst && note.textFirst) {
+          //检查发现图片已经转为文本，因此略过
+        }else{
+          imageInfo.data = MNUtil.getMediaByHash(note.excerptPic.paint)
+          imageInfo.source = "excerptPic"
+        }
       }
     }else{
       let text = note.excerptText
@@ -7560,10 +7700,20 @@ try {
   static getImagesFromNote(note,checkTextFirst = false) {
     let imageDatas = []
     if (note.excerptPic) {
-      if (checkTextFirst && note.textFirst) {
-        //检查发现图片已经转为文本，因此略过
+      let isBlankNote = MNUtil.isBlankNote(note)
+      if (isBlankNote) {//实际为文字留白
+        let text = note.excerptText
+        if (note.excerptTextMarkdown) {
+          if (MNUtil.hasMNImages(text.trim())) {
+            imageDatas.push(MNUtil.getMNImageFromMarkdown(text))
+          }
+        }
       }else{
-        imageDatas.push(MNUtil.getMediaByHash(note.excerptPic.paint))
+        if (checkTextFirst && note.textFirst) {
+          //检查发现图片已经转为文本，因此略过
+        }else{
+          imageDatas.push(MNUtil.getMediaByHash(note.excerptPic.paint))
+        }
       }
     }else{
       let text = note.excerptText

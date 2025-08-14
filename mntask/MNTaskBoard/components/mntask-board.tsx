@@ -202,7 +202,8 @@ export default function MNTaskBoard() {
     return activeFocusTasks.length + activePendingTasks.length
   }
 
-  const focusTasksCount = allTasks.filter((task) => task.isFocusTask && !task.completed).length
+  // 计算筛选后的焦点任务数量
+  const focusTasksCount = filteredTasks.filter((task) => !task.completed).length
 
   // 搜索相关处理函数
   const handleSearchSelectTask = (task: Task) => {
@@ -314,8 +315,8 @@ export default function MNTaskBoard() {
     }
   }
 
-  // 排序逻辑：优先焦点任务 -> 焦点任务(按order) -> 普通任务(按创建时间)
-  const sortedTasks = [...filteredTasks.filter((task) => !task.completed)].sort((a, b) => {
+  // 排序函数：优先焦点任务 -> 焦点任务(按order) -> 普通任务(按创建时间)
+  const sortFocusTasks = (a: Task, b: Task) => {
     if (a.isPriorityFocus && !b.isPriorityFocus) return -1
     if (!a.isPriorityFocus && b.isPriorityFocus) return 1
 
@@ -327,7 +328,7 @@ export default function MNTaskBoard() {
     } else {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     }
-  })
+  }
 
 
 
@@ -586,21 +587,23 @@ export default function MNTaskBoard() {
               </div>
 
               {/* 焦点任务区域 */}
-              {focusTasks.length > 0 && (
+              {filteredTasks.length > 0 && (
                 <div className="mb-6 md:mb-8">
                   <div className="flex items-center gap-2 mb-4 md:mb-6">
                     <Target className="w-4 h-4 md:w-5 md:h-5 text-red-400" />
                     <h2 className="text-lg md:text-xl font-semibold text-white">
                       {getFocusSelectedPerspective ? `${getFocusSelectedPerspective.name} - 焦点任务` : "焦点任务"}
                     </h2>
-                    <Badge className="bg-red-500/20 text-red-300 border-red-500/30">{focusTasksCount}</Badge>
+                    <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
+                      {filteredTasks.filter(task => !task.completed).length}
+                    </Badge>
                   </div>
 
                   {/* 分离优先焦点任务和普通焦点任务 */}
                   {(() => {
-                    const activeFocusTasks = focusTasks.filter(task => !task.completed)
-                    const priorityFocusTasks = activeFocusTasks.filter(task => task.isPriorityFocus)
-                    const normalFocusTasks = activeFocusTasks.filter(task => !task.isPriorityFocus)
+                    const activeFocusTasks = filteredTasks.filter(task => !task.completed)
+                    const priorityFocusTasks = activeFocusTasks.filter(task => task.isPriorityFocus).sort(sortFocusTasks)
+                    const normalFocusTasks = activeFocusTasks.filter(task => !task.isPriorityFocus).sort(sortFocusTasks)
 
                     return (
                       <>

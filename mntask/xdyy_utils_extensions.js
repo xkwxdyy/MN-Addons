@@ -520,8 +520,9 @@ class MNTaskManager {
    * 转换为任务卡片
    * @param {MNNote} note - 要转换的卡片（如果为空则使用焦点卡片）
    * @param {string} taskType - 指定的任务类型（可选）
+   * @param {boolean} skipParentTransform - 是否跳过父卡片自动升级（批量处理时使用）
    */
-  static async convertToTaskCard(note, taskType = null) {
+  static async convertToTaskCard(note, taskType = null, skipParentTransform = false) {
     // 获取要转换的卡片
     const focusNote = note || MNNote.getFocusNote()
     if (!focusNote) {
@@ -587,7 +588,10 @@ class MNTaskManager {
             // 父卡片是动作类型，子卡片不是任务卡片，自动设置子卡片为动作类型
             MNUtil.log(`🎯 自动推断：父卡片是动作类型，子卡片设为动作类型，父卡片将转为项目类型`)
             taskType = '动作'
-            shouldTransformParentToProject = true
+            // 批量处理时跳过父卡片升级，由批量处理统一处理
+            if (!skipParentTransform) {
+              shouldTransformParentToProject = true
+            }
           }
         }
       } else {
@@ -5067,6 +5071,9 @@ class MNTaskManager {
     // ========== 批量处理阶段 ==========
     MNUtil.log(`\n🔧 开始处理卡片...`);
     
+    // 收集需要升级的父卡片（用 Map 去重）
+    const parentsToUpgrade = new Map();
+    
     for (const note of notes) {
       try {
         // 如果这个卡片在取消列表中，跳过处理
@@ -5081,6 +5088,19 @@ class MNTaskManager {
           // 使用用户选择的类型
           taskType = selectedType;
           MNUtil.log(`📋 处理卡片 (使用选择的类型 ${taskType}): ${note.noteTitle}`);
+          
+          // 检查父卡片是否需要升级
+          const parentNote = note.parentNote;
+          if (taskType === '动作' && parentNote && this.isTaskCard(parentNote)) {
+            const parentParts = this.parseTaskTitle(parentNote.noteTitle);
+            if (parentParts.type === '动作') {
+              // 父卡片是动作类型，且子卡片也选择了动作，需要将父卡片升级为项目
+              if (!parentsToUpgrade.has(parentNote.noteId)) {
+                parentsToUpgrade.set(parentNote.noteId, parentNote);
+                MNUtil.log(`📌 标记父卡片待升级：${parentNote.noteTitle}`);
+              }
+            }
+          }
         } else {
           // 已是任务卡片，让 convertToTaskCard 处理字段更新
           taskType = null;
@@ -5088,7 +5108,9 @@ class MNTaskManager {
         }
         
         // 调用 convertToTaskCard 处理单个卡片
-        const result = await this.convertToTaskCard(note, taskType);
+        // 注意：批量处理时，我们不让 convertToTaskCard 自动升级父卡片
+        // 而是统一在最后处理，避免重复升级
+        const result = await this.convertToTaskCard(note, taskType, true); // 第三个参数 skipParentTransform = true
         
         // 记录结果
         MNUtil.log(`  结果类型: ${result.type}`);
@@ -5123,6 +5145,49 @@ class MNTaskManager {
       }
     }
     
+    // ========== 父卡片升级阶段 ==========
+    if (parentsToUpgrade.size > 0) {
+      MNUtil.log(`\n🔄 === 开始升级父卡片 ===`);
+      MNUtil.log(`📋 需要升级的父卡片数量: ${parentsToUpgrade.size}`);
+      
+      for (const [parentId, parentNote] of parentsToUpgrade) {
+        try {
+          MNUtil.log(`🔄 升级父卡片: ${parentNote.noteTitle}`);
+          const transformResult = this.transformActionToProject(parentNote);
+          if (transformResult) {
+            MNUtil.log(`✅ 父卡片已成功升级为项目类型`);
+            
+            // 升级后需要重新处理所有子卡片的链接位置
+            // 因为父卡片从动作变成了项目，链接应该从"信息"字段移动到对应状态字段
+            for (const childNote of parentNote.childNotes) {
+              if (this.isTaskCard(childNote)) {
+                const childParts = this.parseTaskTitle(childNote.noteTitle);
+                const childStatus = childParts.status || '未开始';
+                
+                // 查找父卡片中指向子卡片的链接
+                const parentParsed = this.parseTaskComments(parentNote);
+                for (const link of parentParsed.links) {
+                  if (link.linkedNoteId === childNote.noteId) {
+                    MNUtil.log(`📍 移动链接到 ${childStatus} 字段: ${childNote.noteTitle}`);
+                    this.moveCommentToField(parentNote, link.index, childStatus, false);
+                    break;
+                  }
+                }
+              }
+            }
+            
+            // 刷新父卡片
+            parentNote.refresh();
+          } else {
+            MNUtil.log(`❌ 父卡片升级失败`);
+          }
+        } catch (error) {
+          MNUtil.log(`❌ 升级父卡片时出错: ${error.message || error}`);
+          MNUtil.log(`  父卡片标题: ${parentNote.noteTitle}`);
+        }
+      }
+    }
+    
     // 添加汇总日志
     MNUtil.log(`\n📊 批处理结果汇总:`);
     MNUtil.log(`  总计: ${results.total} 个`);
@@ -5131,6 +5196,9 @@ class MNTaskManager {
     MNUtil.log(`  跳过: ${results.skipped.length} 个`);
     MNUtil.log(`  取消: ${results.cancelled.length} 个`);
     MNUtil.log(`  失败: ${results.failed.length} 个`);
+    if (parentsToUpgrade.size > 0) {
+      MNUtil.log(`  父卡片升级: ${parentsToUpgrade.size} 个`);
+    }
     
     return results;
   }

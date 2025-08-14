@@ -5010,15 +5010,87 @@ class MNTaskManager {
       total: notes.length
     };
     
-    // 处理每个卡片
+    MNUtil.log(`\n🚀 === 开始批量处理卡片 ===`);
+    MNUtil.log(`📋 待处理卡片数量: ${notes.length}`);
+    
+    // ========== 预检查阶段 ==========
+    // 分析每个卡片，确定哪些需要选择类型
+    const needsTypeSelection = [];
+    const alreadyTaskCards = [];
+    
+    for (const note of notes) {
+      // 检查是否已经是任务卡片
+      if (this.isTaskCard(note)) {
+        alreadyTaskCards.push(note);
+        MNUtil.log(`✅ 已是任务卡片: ${note.noteTitle}`);
+        continue;
+      }
+      
+      // 不是任务卡片，需要选择类型
+      // 批量处理时不进行自动推断，统一让用户选择
+      needsTypeSelection.push(note);
+      MNUtil.log(`❓ 需要选择类型: ${note.noteTitle}`);
+    }
+    
+    // ========== 统一询问类型 ==========
+    let selectedType = null;
+    
+    if (needsTypeSelection.length > 0) {
+      MNUtil.log(`\n📝 有 ${needsTypeSelection.length} 张卡片需要选择任务类型`);
+      
+      const taskTypes = ["目标", "关键结果", "项目", "动作"];
+      const selectedIndex = await MNUtil.userSelect(
+        "选择任务类型", 
+        `将为 ${needsTypeSelection.length} 张卡片设置任务类型`, 
+        taskTypes
+      );
+      
+      if (selectedIndex === 0) {
+        // 用户取消了选择
+        MNUtil.log(`❌ 用户取消了类型选择`);
+        
+        // 将需要选择类型的卡片都标记为取消
+        for (const note of needsTypeSelection) {
+          results.cancelled.push({
+            type: 'cancelled',
+            noteId: note.noteId,
+            title: note.noteTitle,
+            reason: '用户取消选择类型'
+          });
+        }
+      } else {
+        selectedType = taskTypes[selectedIndex - 1];
+        MNUtil.log(`✅ 用户选择了类型: ${selectedType}`);
+      }
+    }
+    
+    // ========== 批量处理阶段 ==========
+    MNUtil.log(`\n🔧 开始处理卡片...`);
+    
     for (const note of notes) {
       try {
-        // 所有卡片都走 convertToTaskCard 路径
-        // convertToTaskCard 内部会处理已是任务卡片和新卡片的不同情况
-        const result = await this.convertToTaskCard(note);
+        // 如果这个卡片在取消列表中，跳过处理
+        if (needsTypeSelection.includes(note) && selectedType === null) {
+          MNUtil.log(`⏭️ 跳过已取消的卡片: ${note.noteTitle}`);
+          continue;
+        }
         
-        // 添加日志
-        MNUtil.log(`📋 处理卡片: ${note.noteTitle}`);
+        // 确定要传递的任务类型
+        let taskType = null;
+        if (needsTypeSelection.includes(note)) {
+          // 使用用户选择的类型
+          taskType = selectedType;
+          MNUtil.log(`📋 处理卡片 (使用选择的类型 ${taskType}): ${note.noteTitle}`);
+        } else {
+          // 已是任务卡片，让 convertToTaskCard 处理字段更新
+          taskType = null;
+          MNUtil.log(`📋 处理卡片 (更新任务字段): ${note.noteTitle}`);
+        }
+        
+        // 调用 convertToTaskCard 处理单个卡片
+        const result = await this.convertToTaskCard(note, taskType);
+        
+        // 记录结果
         MNUtil.log(`  结果类型: ${result.type}`);
         if (result.error) {
           MNUtil.log(`  错误信息: ${result.error}`);

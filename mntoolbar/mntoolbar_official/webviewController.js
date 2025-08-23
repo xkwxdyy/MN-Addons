@@ -1353,12 +1353,14 @@ toolbarController.prototype.customActionByDes = async function (button,actionDes
       //如果返回true则表示菜单弹出已执行，则不再执行下面的代码
       return
     }
+    // MNUtil.copy(actionDes)
     await toolbarUtils.customActionByDes(actionDes,button,this,false)
 
     while ("onFinish" in actionDes) {
       actionDes = actionDes.onFinish
+      let delay = actionDes.delay ?? 0.1
       await MNUtil.delay(delay)
-      await toolbarUtils.customActionByDes(actionDes,button)
+      await toolbarUtils.customActionByDes(actionDes,button,this,false)
     }
     return new Promise((resolve, reject) => {
       resolve()
@@ -1767,7 +1769,6 @@ toolbarController.prototype.popupReplaceAgain = async function (button) {
 toolbarController.prototype.customActionMenu =  function (button,des) {
   let buttonX = toolbarUtils.getButtonFrame(button).x//转化成相对于studyview的
   try {
-    let selector = "customActionByMenu:"
     let object = this
     function tableItem(title,params,checked=false) {
       let des = {des:params,button:button}
@@ -1796,31 +1797,10 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
       }
       return true
     }
-
-
-    // if (des.action === "chatAI" && des.target) {
-    //   if (des.target === "menu") {
-    //     this.onClick = true
-    //     let promptKeys = chatAIConfig.getConfig("promptNames")
-    //     let prompts = chatAIConfig.prompts
-    //     var commandTable = promptKeys.map(promptKey=>{
-    //       let title = prompts[promptKey].title.trim()
-    //       return {title:"🚀   "+title,object:this,selector:'customActionByMenu:',param:{des:{action:"chatAI",prompt:title},button:button}}
-    //     })
-    //     let width = 250
-    //     if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-    //       this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-    //     }else{
-    //       this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-    //     }
-    //     return true
-    //   }
-    // }
     if (des.target && des.target === "menu") {
       this.onClick = true
       var commandTable
       let width = 250
-      let selector = "customActionByMenu:"
       switch (des.action) {
         case "chatAI":
           let promptKeys = chatAIConfig.getConfig("promptNames")
@@ -1828,47 +1808,92 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
           let numberOfPrompts = des.numberOfPrompts ?? promptKeys.length
           commandTable = promptKeys.slice(0,numberOfPrompts).map(promptKey=>{
             let title = prompts[promptKey].title.trim()
-            return tableItem("🚀   "+title, {action:"chatAI",prompt:title})
+            if ('onFinish' in des) {
+              return tableItem("🚀   "+title, {action:"chatAI",prompt:title,onFinish:des.onFinish})
+            }else{
+              return tableItem("🚀   "+title, {action:"chatAI",prompt:title})
+            }
           })
           break;
         case "insertSnippet":
           commandTable = des.menuItems.map(item => {
             item.action = "insertSnippet"
+            if ('onFinish' in des) {
+              item.onFinish = des.onFinish
+            }
             return tableItem(item.menuTitle,item)
             // return this.tableItem(item.menuTitle, selector,{des:item,button:button})
             // return {title:item.menuTitle,object:this,selector:'customActionByMenu:',param:{des:item,button:button}}
           })
           break;
         case "paste":
-          commandTable = [
-            tableItem("default",{action:"paste",target:"default"}),
-            tableItem("title",{action:"paste",target:"title"}),
-            tableItem("excerpt",{action:"paste",target:"excerpt"}),
-            tableItem("appendTitle",{action:"paste",target:"appendTitle"}),
-            tableItem("appendExcerpt",{action:"paste",target:"appendExcerpt"}),
-          ]
+          if ('onFinish' in des) {
+            commandTable = [
+              tableItem("default",{action:"paste",target:"default",onFinish:des.onFinish}),
+              tableItem("title",{action:"paste",target:"title",onFinish:des.onFinish}),
+              tableItem("excerpt",{action:"paste",target:"excerpt",onFinish:des.onFinish}),
+              tableItem("appendTitle",{action:"paste",target:"appendTitle",onFinish:des.onFinish}),
+              tableItem("appendExcerpt",{action:"paste",target:"appendExcerpt",onFinish:des.onFinish}),
+            ]
+          }else{
+            commandTable = [
+              tableItem("default",{action:"paste",target:"default"}),
+              tableItem("title",{action:"paste",target:"title"}),
+              tableItem("excerpt",{action:"paste",target:"excerpt"}),
+              tableItem("appendTitle",{action:"paste",target:"appendTitle"}),
+              tableItem("appendExcerpt",{action:"paste",target:"appendExcerpt"}),
+            ]
+          }
+
           break;
         case "ocr":
-          commandTable = [
-            tableItem("option", {action:"ocr",target:"option"}),
-            tableItem("clipboard", {action:"ocr",target:"clipboard"}),
-            tableItem("comment", {action:"ocr",target:"comment"}),
-            tableItem("excerpt", {action:"ocr",target:"excerpt"}),
-            tableItem("editor", {action:"ocr",target:"editor"}),
-            tableItem("chatModeReference", {action:"ocr",target:"chatModeReference"})
-          ]
+          if ('onFinish' in des) {
+            commandTable = [
+              tableItem("option", {action:"ocr",target:"option",onFinish:des.onFinish}),
+              tableItem("clipboard", {action:"ocr",target:"clipboard",onFinish:des.onFinish}),
+              tableItem("comment", {action:"ocr",target:"comment",onFinish:des.onFinish}),
+              tableItem("excerpt", {action:"ocr",target:"excerpt",onFinish:des.onFinish}),
+              tableItem("editor", {action:"ocr",target:"editor",onFinish:des.onFinish}),
+              tableItem("childNote", {action:"ocr",target:"childNote",onFinish:des.onFinish}),
+              tableItem("chatModeReference", {action:"ocr",target:"chatModeReference",onFinish:des.onFinish})
+            ]
+          }else{
+            commandTable = [
+              tableItem("option", {action:"ocr",target:"option"}),
+              tableItem("clipboard", {action:"ocr",target:"clipboard"}),
+              tableItem("comment", {action:"ocr",target:"comment"}),
+              tableItem("excerpt", {action:"ocr",target:"excerpt"}),
+              tableItem("editor", {action:"ocr",target:"editor"}),
+              tableItem("childNote", {action:"ocr",target:"childNote"}),
+              tableItem("chatModeReference", {action:"ocr",target:"chatModeReference"})
+            ]
+          }
+
           break;
         case "setTimer":
-          commandTable = [
-            tableItem("⏰  Clock Mode", {action:"setTimer",timerMode:"clock"}),
-            tableItem("⏱️  Count Up", {action:"setTimer",timerMode:"countUp"}),
-            tableItem("⏱️  Countdown: 5mins", {action:"setTimer",timerMode:"countdown",minutes:5}),
-            tableItem("⏱️  Countdown: 10mins", {action:"setTimer",timerMode:"countdown",minutes:10}),
-            tableItem("⏱️  Countdown: 15mins", {action:"setTimer",timerMode:"countdown",minutes:15}),
-            tableItem("🍅  Countdown: 25mins", {action:"setTimer",timerMode:"countdown",minutes:25}),
-            tableItem("⏱️  Countdown: 40mins", {action:"setTimer",timerMode:"countdown",minutes:40}),
-            tableItem("⏱️  Countdown: 60mins", {action:"setTimer",timerMode:"countdown",minutes:60}),
-          ]
+          if ('onFinish' in des) {
+            commandTable = [
+              tableItem("⏰  Clock Mode", {action:"setTimer",timerMode:"clock",onFinish:des.onFinish}),
+              tableItem("⏱️  Count Up", {action:"setTimer",timerMode:"countUp",onFinish:des.onFinish}),
+              tableItem("⏱️  Countdown: 5mins", {action:"setTimer",timerMode:"countdown",minutes:5,onFinish:des.onFinish}),
+              tableItem("⏱️  Countdown: 10mins", {action:"setTimer",timerMode:"countdown",minutes:10,onFinish:des.onFinish}),
+              tableItem("⏱️  Countdown: 15mins", {action:"setTimer",timerMode:"countdown",minutes:15,onFinish:des.onFinish}),
+              tableItem("🍅  Countdown: 25mins", {action:"setTimer",timerMode:"countdown",minutes:25,onFinish:des.onFinish}),
+              tableItem("⏱️  Countdown: 40mins", {action:"setTimer",timerMode:"countdown",minutes:40,onFinish:des.onFinish}),
+              tableItem("⏱️  Countdown: 60mins", {action:"setTimer",timerMode:"countdown",minutes:60,onFinish:des.onFinish}),
+            ]
+          }else{
+            commandTable = [
+              tableItem("⏰  Clock Mode", {action:"setTimer",timerMode:"clock"}),
+              tableItem("⏱️  Count Up", {action:"setTimer",timerMode:"countUp"}),
+              tableItem("⏱️  Countdown: 5mins", {action:"setTimer",timerMode:"countdown",minutes:5}),
+              tableItem("⏱️  Countdown: 10mins", {action:"setTimer",timerMode:"countdown",minutes:10}),
+              tableItem("⏱️  Countdown: 15mins", {action:"setTimer",timerMode:"countdown",minutes:15}),
+              tableItem("🍅  Countdown: 25mins", {action:"setTimer",timerMode:"countdown",minutes:25}),
+              tableItem("⏱️  Countdown: 40mins", {action:"setTimer",timerMode:"countdown",minutes:40}),
+              tableItem("⏱️  Countdown: 60mins", {action:"setTimer",timerMode:"countdown",minutes:60}),
+            ]
+          }
           break;
         case "search":
           let names = browserConfig.entrieNames
@@ -1876,27 +1901,58 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
           var commandTable = names.map(name=>{
             let title = entries[name].title
             let engine = entries[name].engine
-            return tableItem(title, {action:"search",engine:engine})
+            if ('onFinish' in des) {
+              return tableItem(title, {action:"search",engine:engine,onFinish:des.onFinish})
+            }else{
+              return tableItem(title, {action:"search",engine:engine})
+            }
             // return {title:title,object:this,selector:'customActionByMenu:',param:{des:{action:"search",engine:engine},button:button}}
           })
           break;
         case "copy":
+          if ('onFinish' in des) {
           commandTable = [
-            tableItem("selectionText", {action:"copy",target:"selectionText"}),
-            tableItem("selectionImage", {action:"copy",target:"selectionImage"}),
-            tableItem("title", {action:"copy",target:"title"}),
-            tableItem("excerpt", {action:"copy",target:"excerpt"}),
-            tableItem("excerpt (OCR)", {action:"copy",target:"excerptOCR"}),
-            tableItem("notesText", {action:"copy",target:"notesText"}),
-            tableItem("comment", {action:"copy",target:"comment"}),
-            tableItem("noteId", {action:"copy",target:"noteId"}),
-            tableItem("noteURL", {action:"copy",target:"noteURL"}),
-            tableItem("noteMarkdown", {action:"copy",target:"noteMarkdown"}),
-            tableItem("noteMarkdown (OCR)", {action:"copy",target:"noteMarkdownOCR"}),
-            tableItem("noteWithDecendentsMarkdown", {action:"copy",target:"noteWithDecendentsMarkdown"}),
+            tableItem("selectionText", {action:"copy",target:"selectionText",onFinish:des.onFinish}),
+            tableItem("selectionImage", {action:"copy",target:"selectionImage",onFinish:des.onFinish}),
+            tableItem("title", {action:"copy",target:"title",onFinish:des.onFinish}),
+            tableItem("excerpt", {action:"copy",target:"excerpt",onFinish:des.onFinish}),
+            tableItem("excerpt (OCR)", {action:"copy",target:"excerptOCR",onFinish:des.onFinish}),
+            tableItem("notesText", {action:"copy",target:"notesText",onFinish:des.onFinish}),
+            tableItem("comment", {action:"copy",target:"comment",onFinish:des.onFinish}),
+            tableItem("noteId", {action:"copy",target:"noteId",onFinish:des.onFinish}),
+            tableItem("noteURL", {action:"copy",target:"noteURL",onFinish:des.onFinish}),
+            tableItem("noteMarkdown", {action:"copy",target:"noteMarkdown",onFinish:des.onFinish}),
+            tableItem("noteMarkdown (OCR)", {action:"copy",target:"noteMarkdownOCR",onFinish:des.onFinish}),
+            tableItem("noteWithDecendentsMarkdown", {action:"copy",target:"noteWithDecendentsMarkdown",onFinish:des.onFinish}),
           ]
+          }else{            
+            commandTable = [
+              tableItem("selectionText", {action:"copy",target:"selectionText"}),
+              tableItem("selectionImage", {action:"copy",target:"selectionImage"}),
+              tableItem("title", {action:"copy",target:"title"}),
+              tableItem("excerpt", {action:"copy",target:"excerpt"}),
+              tableItem("excerpt (OCR)", {action:"copy",target:"excerptOCR"}),
+              tableItem("notesText", {action:"copy",target:"notesText"}),
+              tableItem("comment", {action:"copy",target:"comment"}),
+              tableItem("noteId", {action:"copy",target:"noteId"}),
+              tableItem("noteURL", {action:"copy",target:"noteURL"}),
+              tableItem("noteMarkdown", {action:"copy",target:"noteMarkdown"}),
+              tableItem("noteMarkdown (OCR)", {action:"copy",target:"noteMarkdownOCR"}),
+              tableItem("noteWithDecendentsMarkdown", {action:"copy",target:"noteWithDecendentsMarkdown"}),
+            ]
+          }
           break;
         case "showInFloatWindow":
+          if ('onFinish' in des) {
+          commandTable = [
+            tableItem("noteInClipboard", {action:"showInFloatWindow",target:"noteInClipboard",onFinish:des.onFinish}),
+            tableItem("currentNote", {action:"showInFloatWindow",target:"currentNote",onFinish:des.onFinish}),
+            tableItem("currentChildMap", {action:"showInFloatWindow",target:"currentChildMap",onFinish:des.onFinish}),
+            tableItem("parentNote", {action:"showInFloatWindow",target:"parentNote",onFinish:des.onFinish}),
+            tableItem("currentNoteInMindMap", {action:"showInFloatWindow",target:"currentNoteInMindMap",onFinish:des.onFinish}),
+          ]
+          }else{
+            
           commandTable = [
             tableItem("noteInClipboard", {action:"showInFloatWindow",target:"noteInClipboard"}),
             tableItem("currentNote", {action:"showInFloatWindow",target:"currentNote"}),
@@ -1904,13 +1960,23 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
             tableItem("parentNote", {action:"showInFloatWindow",target:"parentNote"}),
             tableItem("currentNoteInMindMap", {action:"showInFloatWindow",target:"currentNoteInMindMap"}),
           ]
+          }
           break;
         case "addImageComment":
+          if ('onFinish' in des) {
+          commandTable = [
+            tableItem("photo", {action:"addImageComment",source:"photo",onFinish:des.onFinish}),
+            tableItem("camera", {action:"addImageComment",source:"camera",onFinish:des.onFinish}),
+            tableItem("file", {action:"addImageComment",source:"file",onFinish:des.onFinish}),
+          ]
+          }else{
+            
           commandTable = [
             tableItem("photo", {action:"addImageComment",source:"photo"}),
             tableItem("camera", {action:"addImageComment",source:"camera"}),
             tableItem("file", {action:"addImageComment",source:"file"}),
           ]
+          }
           break;
         case "removeTags":
           let focusNote = MNNote.getFocusNote()
@@ -1923,7 +1989,11 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
             return true
           }
           commandTable = focusNote.tags.map(tag=>{
-            return tableItem("#"+tag, {action:"removeTags",tag:tag})
+            if ('onFinish' in des) {
+              return tableItem("#"+tag, {action:"removeTags",tag:tag,onFinish:des.onFinish})
+            }else{
+              return tableItem("#"+tag, {action:"removeTags",tag:tag})
+            }
           })
           break;
         default:

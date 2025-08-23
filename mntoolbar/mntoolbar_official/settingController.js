@@ -456,6 +456,10 @@ webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
       MNUtil.showHUD("wait for init")
       await MNUtil.delay(1)
     }
+    // MNUtil.copy(`updatePopupReplaceConfigEncoded("${encodeURIComponent(JSON.stringify(popupConfig))}");
+    // updateTargetActionsEncoded("${encodeURIComponent(JSON.stringify(config))}");
+    // updateConfigList();
+    // `)
     self.runJavaScript(`updatePopupReplaceConfigEncoded("${encodeURIComponent(JSON.stringify(popupConfig))}");
     updateTargetActionsEncoded("${encodeURIComponent(JSON.stringify(config))}");
     updateConfigList();
@@ -980,6 +984,7 @@ ${input}
   addOption:async function (params) {
     Menu.dismissCurrentMenu()
     let item = params.item
+    MNUtil.log(item)
     let config = params.currentDes
     if (item.startsWith("onFinish.")) {
       let items = item.split(".")

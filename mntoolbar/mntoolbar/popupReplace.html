@@ -17,6 +17,9 @@
         display: flex;
         justify-content: center;
         user-select: none;
+        overscroll-behavior-x: none;
+        -webkit-overflow-scrolling: none;
+        overflow-x: hidden;
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
@@ -31,6 +34,9 @@
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         padding: 10px 10px;
+        overscroll-behavior-x: none;
+        -webkit-overflow-scrolling: none;
+        overflow-x: hidden;
     }
 
     /* 配置页标题 */
@@ -211,7 +217,7 @@
     let initialized = false
     // 按钮数据
     const allPopupButtons = [
-        "copy", "copyOCR", "toggleTitle", "toggleCopyMode", "toggleGroupMode", "insertAI", "aiFromNote", "moveNoteTo", "linkNoteTo", "noteHighlight", "blankHighlight", "mergeHighlight", "delHighlight", "sendHighlight", "foldHighlight", "textHighlight", "paintHighlight", "sourceHighlight", "setTitleHighlight", "setCommentHighlight", "setEmphasisHighlight", "sourceHighlightOfNote", "highStyleColor0", "highStyleColor1", "highStyleColor2", "highStyleColor3", "highlightType1", "highlightType2", "highlightType3", "highlightType4", "highlightShortcut1", "highlightShortcut2", "highlightShortcut3", "highlightShortcut4", "highlightShortcut5", "highlightShortcut6", "highlightShortcut7", "highlightShortcut8", "editHashtags", "deleteNote", "commentNote", "pasteToNote", "mergeIntoNote", "focusCurrentNote", "draftCurrentNote", "collapseBlank", "collapseBlankOnPage", "cancelBlankOnPage", "setBlankLayer", "insertBlank", "insertTranslation", "addToTOC", "addToReview", "addSelToReivew", "speechText", "speechHighlight", "goWiki", "goPalette", "goWikiNote", "goDictionary", "goToMindMap", "newGroupChild", "splitBook", "pasteOnPage", "textboxOnPage", "fullTextOnPage", "imageboxOnPage", "cameraOnPage", "moreOperations", "dragDrop", "exportCards", "newGroupMenu", "showInlineChatForNote", "showInlineChat", "selectBranch", "ocrForNote", "textFirstForNote", "aiMenuPlaceholder"
+        "copy", "copyOCR", "toggleTitle", "toggleCopyMode", "toggleGroupMode", "insertAI", "aiFromNote", "moveNoteTo", "linkNoteTo", "noteHighlight", "blankHighlight", "mergeHighlight", "delHighlight", "sendHighlight", "foldHighlight", "textHighlight", "paintHighlight", "sourceHighlight", "setTitleHighlight", "setCommentHighlight", "setEmphasisHighlight", "sourceHighlightOfNote", "highStyleColor0", "highStyleColor1", "highStyleColor2", "highStyleColor3", "highlightType1", "highlightType2", "highlightType3", "highlightType4", "highlightShortcut1", "highlightShortcut2", "highlightShortcut3", "highlightShortcut4", "highlightShortcut5", "highlightShortcut6", "highlightShortcut7", "highlightShortcut8", "editHashtags", "deleteNote", "commentNote", "pasteToNote", "mergeIntoNote", "focusCurrentNote", "draftCurrentNote", "collapseBlank", "collapseBlankOnPage", "cancelBlankOnPage", "setBlankLayer", "insertBlank", "insertTranslation", "addToTOC", "addToReview", "addSelToReivew", "speechText", "speechHighlight", "goWiki", "goPalette", "goWikiNote", "goDictionary", "goToMindMap", "newGroupChild", "splitBook", "pasteOnPage", "textboxOnPage", "fullTextOnPage", "imageboxOnPage", "cameraOnPage", "moreOperations", "dragDrop", "exportCards", "newGroupMenu", "showInlineChatForNote", "showInlineChat", "selectBranch", "ocrForNote", "textFirstForNote", "aiMenuPlaceholder","editFavorites"
     ];
 
     let popupReplaceConfig = {};

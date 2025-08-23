@@ -126,18 +126,9 @@ JSB.newAddon = function (mainPath) {
         }
         MNUtil.delay(0.2).then(()=>{
           self.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS
+          // toolbarUtils.refreshColorImage()
+          MNUtil.postNotification("refreshToolbarButton", {})
         })
-        
-        // 夏大鱼羊 - begin: 笔记本打开时也刷新按钮配置
-        setTimeout(function() {
-          if (typeof global !== 'undefined' && global.forceRefreshButtons) {
-            if (typeof MNUtil !== 'undefined' && MNUtil.log) {
-              MNUtil.log("🔄 笔记本打开，刷新自定义按钮配置");
-            }
-            global.forceRefreshButtons();
-          }
-        }, 500);
-        // 夏大鱼羊 - end
           
       },
 
@@ -813,6 +804,7 @@ try {
       },
       onRefreshToolbarButton: function (sender) {
         try {
+        toolbarConfig.refreshColorImage()
         self.addonController.setToolbarButton()
         if (self.settingController) {
           self.settingController.setButtonText()
@@ -901,10 +893,24 @@ try {
         self.checkPopoverController()
         toolbarConfig.toggleToolbarDirection(source)
       },
+      refreshColor:function () {
+        self.checkPopoverController()
+        // toolbarUtils.refreshColorImage()
+        MNUtil.postNotification("refreshToolbarButton", {})
+      },
         // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
       toggleAddon:async function (button) {
       try {
         if (typeof MNUtil === 'undefined') return
+        // let imageData = MNUtil.getFile(toolbarUtils.mainPath+"/dot.png")
+        // let beginTime = Date.now()
+        // let newImageBase64 = toolbarUtils.changePngColor(imageData.base64Encoding(), "#FF5733")
+        // let newImageData = MNUtil.dataFromBase64(newImageBase64,"png")
+        // let endTime = Date.now()
+        // MNUtil.log("changePngColor time:"+(endTime-beginTime))
+        // // MNUtil.copy(newImageBase64)
+        // MNUtil.copy(newImageData)
+        // return
       // let options = {
       //     method: "GET",
       //     headers: {
@@ -937,7 +943,8 @@ try {
             self.tableItem('🗂️   卡片预处理模式  ',"togglePreprocess", undefined, toolbarConfig.windowState.preprocess),
             self.tableItem('📖   粗读模式  ',"toggleRoughReading", undefined, toolbarConfig.windowState.roughReading),
             self.tableItem('📄   Document', 'openDocument:'),
-            self.tableItem('🔄   Manual Sync','manualSync:')
+            self.tableItem('🔄   Manual Sync','manualSync:'),
+            self.tableItem('🎨   Refresh Color','refreshColor:')
         ];
         if (self.addonBar.frame.x < 100) {
           self.popoverController = MNUtil.getPopoverAndPresent(button,commandTable,200,4)

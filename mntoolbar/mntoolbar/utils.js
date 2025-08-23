@@ -178,6 +178,7 @@ class toolbarUtils {
   static textView
   static init(mainPath){
   try {
+    let beginTime = Date.now()
     this.app = Application.sharedInstance()
     this.data = Database.sharedInstance()
     this.focusWindow = this.app.focusWindow
@@ -186,6 +187,8 @@ class toolbarUtils {
     this.errorLog = [this.version]
     this.topOffset = MNUtil.isMacOS()?30:22
     this.bottomOffset = MNUtil.isMacOS()?0:10
+    let endTime = Date.now()
+    MNUtil.log("toolbarUtils initialized ("+(endTime-beginTime)+"ms)")
       } catch (error) {
     this.addErrorLog(error, "init")
   }
@@ -720,6 +723,7 @@ try {
     MNUtil.showHUD('标题已复制')
     return true
   }
+
   static async copy(des) {
     try {
     let focusNote = MNNote.getFocusNote()
@@ -913,6 +917,188 @@ try {
   static copyImage(imageData) {
     UIPasteboard.generalPasteboard().setDataForPasteboardType(imageData,"public.png")
   }
+  static atob(str) {
+    // 补全 Base64 字符串
+    let output = str.replace(/-/g, '+').replace(/_/g, '/');
+    switch (output.length % 4) {
+      case 2: output += '=='; break;
+      case 3: output += '='; break;
+    }
+
+    try {
+      // 尝试 UTF-8 解码
+      return CryptoJS.enc.Base64.parse(output).toString(CryptoJS.enc.Utf8);
+    } catch (e) {
+      // 如果失败，回退到 Latin1（二进制兼容）
+      return CryptoJS.enc.Base64.parse(output).toString(CryptoJS.enc.Latin1);
+    }
+  }
+  static btoa(str) {
+      // Encode the string to a WordArray
+      const wordArray = CryptoJS.enc.Utf8.parse(str);
+      // Convert the WordArray to Base64
+      const base64 = CryptoJS.enc.Base64.stringify(wordArray);
+      return base64;
+  }
+  /**
+   * 在纯 JavaScript 中更改 PNG 图片的颜色，不使用 Canvas 或 Buffer。
+   * 此方法通过修改 PNG 的 PLTE (调色板) 数据块来实现。
+   * 它仅适用于使用调色板的索引色 PNG 图片。
+   *
+   * @param {string} base64String 原始 PNG 图片的 Base64 字符串。
+   * @param {string} hexColor 目标颜色的十六进制字符串 (例如, '#FF0000')。
+   * @param {Array<number>} [sourceRgb=[255, 255, 255]] 要被替换的源颜色RGB数组，默认为白色。
+   * @returns {string|null} 返回一个新的带 'data:image/png;base64,' 前缀的 Base64 字符串，如果失败则返回 null。
+   */
+  static changePngColor(base64String, hexColor, sourceRgb = [255, 255, 255]) {
+try {
+    /**
+     * 使用 CryptoJS 实现 btoa，用于处理二进制字符串。
+     * @param {string} str - 二进制字符串 (每个字符代表一个字节)。
+     * @returns {string} - Base64 编码的字符串。
+     */
+    function btoa_crypto(str) {
+        // 使用 Latin1 将二进制字符串解析为 WordArray
+        const wordArray = CryptoJS.enc.Latin1.parse(str);
+        // 将 WordArray 转换为 Base64
+        return CryptoJS.enc.Base64.stringify(wordArray);
+    }
+
+    /**
+     * 使用 CryptoJS 实现 atob，用于处理二进制字符串。
+     * @param {string} str - Base64 编码的字符串。
+     * @returns {string} - 解码后的二进制字符串。
+     */
+    function atob_crypto(str) {
+        // 解析 Base64 字符串为 WordArray
+        const wordArray = CryptoJS.enc.Base64.parse(str);
+        // 将 WordArray 转换为 Latin1 编码的字符串 (二进制兼容)
+        return wordArray.toString(CryptoJS.enc.Latin1);
+    }
+    /**
+     * 将十六进制颜色转换为 RGB 数组。
+     * @param {string} hex - 十六进制颜色字符串。
+     * @returns {Array<number>} - RGB 数组 [r, g, b]。
+     */
+    function hexToRgb(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return [r, g, b];
+    }
+
+    /**
+     * 计算 PNG 块的 CRC-32 校验和。
+     * 这是一个标准的 CRC-32 实现。
+     */
+    const crc32 = (function() {
+        const table = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+            let c = i;
+            for (let k = 0; k < 8; k++) {
+                c = ((c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1));
+            }
+            table[i] = c;
+        }
+        return function(bytes) {
+            let crc = -1;
+            for (let i = 0; i < bytes.length; i++) {
+                crc = (crc >>> 8) ^ table[(crc ^ bytes[i]) & 0xFF];
+            }
+            return (crc ^ -1) >>> 0;
+        };
+    })();
+        // 1. 解码 Base64 字符串为 Uint8Array
+        // 移除可能存在的 data URI scheme
+        // MNUtil.log("开始移除 data URI scheme")
+        const base64Data = base64String.split(',')[1] || base64String;
+        // MNUtil.log("开始解码 Base64 字符串")
+        const binaryString = atob_crypto(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        // MNUtil.log("开始验证 PNG 文件签名")
+        // 2. 验证 PNG 文件签名
+        // MNUtil.log("开始验证 PNG 文件签名")
+        const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+        for (let i = 0; i < pngSignature.length; i++) {
+            if (bytes[i] !== pngSignature[i]) {
+                MNUtil.log("错误：文件不是一个有效的 PNG。");
+                return null;
+            }
+        }
+        // MNUtil.log("开始转换颜色")
+        const newRgb = hexToRgb(hexColor);
+        let foundPlte = false;
+
+        // 3. 遍历 PNG 的数据块
+        // MNUtil.log("开始遍历 PNG 的数据块")
+        let i = 8; // 从第一个块开始 (跳过8字节的文件签名)
+        while (i < bytes.length) {
+            // 使用 DataView 来方便地读取大端序的32位整数
+            const view = new DataView(bytes.buffer);
+            const length = view.getUint32(i, false); // 块数据的长度
+            const type = String.fromCharCode(bytes[i + 4], bytes[i + 5], bytes[i + 6], bytes[i + 7]); // 块类型
+
+            const chunkDataStart = i + 8;
+            const chunkDataEnd = chunkDataStart + length;
+            const crcStart = chunkDataEnd;
+
+            // 4. 找到并修改 PLTE (调色板) 块
+            if (type === 'PLTE') {
+                foundPlte = true;
+                // 遍历调色板中的颜色 (每种颜色3个字节: R, G, B)
+                for (let p = chunkDataStart; p < chunkDataEnd; p += 3) {
+                    const r = bytes[p];
+                    const g = bytes[p + 1];
+                    const b = bytes[p + 2];
+
+                    // 如果找到源颜色 (默认为白色)，就替换为新颜色
+                    if (r === sourceRgb[0] && g === sourceRgb[1] && b === sourceRgb[2]) {
+                    //     console.log("找到源颜色，替换为新颜色")
+                        
+                        bytes[p] = newRgb[0];
+                        bytes[p + 1] = newRgb[1];
+                        bytes[p + 2] = newRgb[2];
+                    }
+                }
+
+                // 5. 重新计算修改后块的 CRC 校验和
+                // CRC 的计算范围是块类型和块数据
+                const chunkTypeAndData = bytes.subarray(i + 4, chunkDataEnd);
+                const newCrc = crc32(chunkTypeAndData);
+                view.setUint32(crcStart, newCrc, false); // 将新的 CRC 写回
+            }
+
+            if (type === 'IEND') {
+                break; // 到达文件末尾
+            }
+
+            // 移动到下一个块的起始位置
+            i = crcStart + 4;
+        }
+
+        if (!foundPlte) {
+            MNUtil.log("警告：这个 PNG 文件没有 PLTE (调色板) 块。此方法无法处理真彩色 PNG。");
+            return null;
+        }
+
+        // 6. 将修改后的字节数组重新编码为 Base64 字符串
+        // MNUtil.log("开始重新编码为 Base64 字符串")
+        let newBinaryString = '';
+        bytes.forEach(byte => {
+            newBinaryString += String.fromCharCode(byte);
+        });
+        const newBase64 = btoa_crypto(newBinaryString);
+        // MNUtil.log("重新编码为 Base64 字符串完成:"+newBase64)
+        return 'data:image/png;base64,' + newBase64;
+  
+} catch (error) {
+  toolbarUtils.addErrorLog(error, "changePngColor")
+  return null
+}
+}
   static studyController() {
     return this.app.studyController(this.focusWindow)
   }
@@ -5994,7 +6180,8 @@ class toolbarConfig {
   "selectBranch",
   "ocrForNote",
   "textFirstForNote",
-  "aiMenuPlaceholder"
+  "aiMenuPlaceholder",
+  "editFavorites"
 ]
   static defaultPopupReplaceConfig = {
     noteHighlight:{enabled:false,target:"",name:"noteHighlight"},
@@ -6075,6 +6262,7 @@ class toolbarConfig {
     ocrForNote:{enabled:false,target:"",name:"ocrForNote"},
     textFirstForNote:{enabled:false,target:"",name:"textFirstForNote"},
     aiMenuPlaceholder:{enabled:false,target:"",name:"aiMenuPlaceholder"},
+    editFavorites:{enabled:false,target:"",name:"editFavorites"},
   }
   static defalutImageScale = {
     "color0":2.4,
@@ -6120,6 +6308,7 @@ class toolbarConfig {
   // static defaultConfig = {showEditorWhenEditingNote:false}
   static init(mainPath){
     // this.config = this.getByDefault("MNToolbar_config",this.defaultConfig)
+    let beginTime = Date.now()
     try {
     this.mainPath = mainPath
     this.dynamic = this.getByDefault("MNToolbar_dynamic",false)
@@ -6183,6 +6372,8 @@ class toolbarConfig {
     // 夏大鱼羊 - end
     this.initImage()
     this.checkCloudStore(false)
+    let endTime = Date.now()
+    MNUtil.log("toolbarConfig initialized ("+(endTime-beginTime)+"ms)")
   }
   static checkCloudStore(notification = true){//用于替代initCloudStore
     if (!this.cloudStore) {
@@ -6465,8 +6656,91 @@ class toolbarConfig {
     return false
   }
   }
+  static rgbaArrayToHexArray(rgbaArray, includeAlpha = false, toUpperCase = false) {
+    return rgbaArray.map(rgba => {
+      // 确保RGB分量在0-255范围内
+      const r = Math.max(0, Math.min(255, Math.round(rgba.r)));
+      const g = Math.max(0, Math.min(255, Math.round(rgba.g)));
+      const b = Math.max(0, Math.min(255, Math.round(rgba.b)));
+
+      // 确保alpha分量在0-1范围内
+      const a = Math.max(0, Math.min(1, rgba.a));
+
+      // 将每个颜色分量转换为两位的十六进制
+      const rHex = r.toString(16).padStart(2, '0');
+      const gHex = g.toString(16).padStart(2, '0');
+      const bHex = b.toString(16).padStart(2, '0');
+
+      let hex;
+      if (includeAlpha) {
+        // 将alpha分量从0-1转换为0-255，然后转换为两位的十六进制
+        const aHex = Math.round(a * 255).toString(16).padStart(2, '0');
+        // 组合成8位HEX颜色值
+        hex = `#${rHex}${gHex}${bHex}${aHex}`;
+      } else {
+        // 组合成6位HEX颜色值
+        hex = `#${rHex}${gHex}${bHex}`;
+      }
+
+      // 根据参数决定是否转换为大写
+      return toUpperCase ? hex.toUpperCase() : hex;
+    });
+  }
+  static getCurrentNotebookExcerptColor(){
+    let options = MNUtil.currentNotebook.options
+    if ("excerptColorTemplate" in options && options.useTopicTool2) {
+      let excerptColorTemplate = options.excerptColorTemplate
+      let colors = this.rgbaArrayToHexArray(excerptColorTemplate,true)
+      return colors
+    }else{
+      return ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
+    }
+  }
+  static refreshColorImage(){
+  try {
+    let beginTime = Date.now()
+
+    // MNUtil.log("refreshColorImage")
+    let colors = this.getCurrentNotebookExcerptColor()
+    colors.forEach((color,index)=>{
+      let key = "color"+index
+      if (this.getAction(key).image.startsWith("color")) {
+        if (this.preColors[index] === color) {
+          // MNUtil.log("无需修改颜色")
+          // 如果颜色相同，则不修改
+          return
+        }
+        // MNUtil.log(key)
+        let tem = this.imageScale[key]
+        let scale = 2
+        if (tem) {
+          scale = tem.scale
+        }else if (key in toolbarConfig.defalutImageScale) {
+          scale = toolbarConfig.defalutImageScale[key]
+        }
+        let newImageBase64 = toolbarUtils.changePngColor(this.dotBase64, color)
+        if (newImageBase64) {
+          //更新颜色缓存
+          this.preColors[index] = color
+          let newImageData = MNUtil.dataFromBase64(newImageBase64,"png")
+          // newImageData.writeToFileAtomically(this.mainPath+"/color"+index+".png",false)
+          let image = UIImage.imageWithDataScale(newImageData,scale)
+          this.imageConfigs[key] = image
+        }
+      }
+    })
+    let endTime = Date.now()
+    MNUtil.log("refreshColorImage ("+(endTime-beginTime)+"ms)")
+    
+  } catch (error) {
+    toolbarUtils.addErrorLog(error, "refreshColorImage")
+  }
+  }
   static initImage(){
     try {
+    this.dotBase64 = MNUtil.getFile(this.mainPath+"/dot.png").base64Encoding()
+    this.preColors = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
+
     let keys = this.getDefaultActionKeys()
     this.imageScale = toolbarConfig.getByDefault("MNToolbar_imageScale",{})
     // MNUtil.copyJSON(this.imageScale)

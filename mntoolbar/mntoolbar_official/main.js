@@ -82,6 +82,8 @@ JSB.newAddon = function (mainPath) {
         }
         MNUtil.delay(0.2).then(()=>{
           self.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS
+          // toolbarUtils.refreshColorImage()
+          MNUtil.postNotification("refreshToolbarButton", {})
         })
           
       },
@@ -756,6 +758,7 @@ try {
       },
       onRefreshToolbarButton: function (sender) {
         try {
+        toolbarConfig.refreshColorImage()
         self.addonController.setToolbarButton()
         if (self.settingController) {
           self.settingController.setButtonText()
@@ -830,10 +833,24 @@ try {
         self.checkPopoverController()
         toolbarConfig.toggleToolbarDirection(source)
       },
+      refreshColor:function () {
+        self.checkPopoverController()
+        // toolbarUtils.refreshColorImage()
+        MNUtil.postNotification("refreshToolbarButton", {})
+      },
         // if (self.popoverController) {self.popoverController.dismissPopoverAnimated(true);}
       toggleAddon:async function (button) {
       try {
         if (typeof MNUtil === 'undefined') return
+        // let imageData = MNUtil.getFile(toolbarUtils.mainPath+"/dot.png")
+        // let beginTime = Date.now()
+        // let newImageBase64 = toolbarUtils.changePngColor(imageData.base64Encoding(), "#FF5733")
+        // let newImageData = MNUtil.dataFromBase64(newImageBase64,"png")
+        // let endTime = Date.now()
+        // MNUtil.log("changePngColor time:"+(endTime-beginTime))
+        // // MNUtil.copy(newImageBase64)
+        // MNUtil.copy(newImageData)
+        // return
       // let options = {
       //     method: "GET",
       //     headers: {
@@ -864,7 +881,8 @@ try {
             self.tableItem('🌟   Dynamic   ', "toggleDynamic",undefined,toolbarConfig.dynamic),
             self.tableItem('🌟   Direction   '+(toolbarConfig.vertical(true)?'↕️':'↔️'), selector,"dynamic"),
             self.tableItem('📄   Document', 'openDocument:'),
-            self.tableItem('🔄   Manual Sync','manualSync:')
+            self.tableItem('🔄   Manual Sync','manualSync:'),
+            self.tableItem('🎨   Refresh Color','refreshColor:')
         ];
         if (self.addonBar.frame.x < 100) {
           self.popoverController = MNUtil.getPopoverAndPresent(button,commandTable,200,4)

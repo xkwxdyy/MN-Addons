@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>com.mnaddon.mntaskboard.alfred</string>
+	<key>category</key>
+	<string>Productivity</string>
+	<key>connections</key>
+	<dict>
+		<key>8E5A4E17-5F80-4C7E-8E27-4F4A1F7B2B8A</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>2A3B4C5D-6E7F-8G9H-1I2J-3K4L5M6N7O8P</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>MN-Addon Team</string>
+	<key>description</key>
+	<string>快速启动 MN 任务看板，支持不同视图模式</string>
+	<key>disabled</key>
+	<false/>
+	<key>name</key>
+	<string>MNTaskBoard</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>keyword</key>
+				<string>task</string>
+				<key>subtext</key>
+				<string>启动 MN 任务看板 (可选: focus, kanban, perspective)</string>
+				<key>text</key>
+				<string>MN 任务看板</string>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.keyword</string>
+			<key>uid</key>
+			<string>8E5A4E17-5F80-4C7E-8E27-4F4A1F7B2B8A</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>./start-mntaskboard.sh "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string>start-mntaskboard.sh</string>
+				<key>type</key>
+				<integer>8</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>2A3B4C5D-6E7F-8G9H-1I2J-3K4L5M6N7O8P</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string># MNTaskBoard Alfred Workflow
+
+快速启动 MN 任务看板的 Alfred Workflow。
+
+## 使用方法
+
+1. 在 Alfred 中输入 `task` 启动默认视图
+2. 使用 `task focus` 启动焦点视图
+3. 使用 `task kanban` 启动看板视图
+4. 使用 `task perspective` 启动透视视图
+
+## 功能特点
+
+- 智能检测服务器是否已运行
+- 自动安装依赖（如果需要）
+- 支持多种视图模式
+- 自动在浏览器中打开
+
+## 安装
+
+1. 双击 MNTaskBoard.alfredworkflow 文件
+2. Alfred 会自动导入此工作流
+3. 开始使用 `task` 关键字
+
+Created by MN-Addon Team</string>
+	<key>uidata</key>
+	<dict>
+		<key>8E5A4E17-5F80-4C7E-8E27-4F4A1F7B2B8A</key>
+		<dict>
+			<key>xpos</key>
+			<integer>40</integer>
+			<key>ypos</key>
+			<integer>40</integer>
+		</dict>
+		<key>2A3B4C5D-6E7F-8G9H-1I2J-3K4L5M6N7O8P</key>
+		<dict>
+			<key>xpos</key>
+			<integer>240</integer>
+			<key>ypos</key>
+			<integer>40</integer>
+		</dict>
+	</dict>
+	<key>version</key>
+	<string>1.0</string>
+	<key>webaddress</key>
+	<string>https://github.com/xkwxdyy/MN-Addons</string>
+</dict>
+</plist>

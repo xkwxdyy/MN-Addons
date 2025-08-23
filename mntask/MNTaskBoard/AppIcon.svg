@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 渐变定义 -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 阴影滤镜 -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-opacity="0.3"/>
+    </filter>
+    
+    <filter id="cardShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  
+  <!-- 背景圆角矩形 -->
+  <rect x="80" y="80" width="864" height="864" rx="180" ry="180" 
+        fill="url(#bgGradient)" filter="url(#shadow)"/>
+  
+  <!-- 主看板背景 -->
+  <rect x="160" y="200" width="704" height="560" rx="32" ry="32" 
+        fill="rgba(255,255,255,0.95)" filter="url(#cardShadow)"/>
+  
+  <!-- 看板列 -->
+  <!-- 第一列 -->
+  <rect x="200" y="240" width="180" height="480" rx="16" ry="16" 
+        fill="rgba(255,255,255,0.8)" stroke="rgba(102,126,234,0.3)" stroke-width="2"/>
+  
+  <!-- 第二列 -->
+  <rect x="422" y="240" width="180" height="480" rx="16" ry="16" 
+        fill="rgba(255,255,255,0.8)" stroke="rgba(118,75,162,0.3)" stroke-width="2"/>
+  
+  <!-- 第三列 -->
+  <rect x="644" y="240" width="180" height="480" rx="16" ry="16" 
+        fill="rgba(255,255,255,0.8)" stroke="rgba(245,87,108,0.3)" stroke-width="2"/>
+  
+  <!-- 任务卡片 -->
+  <!-- 第一列的卡片 -->
+  <rect x="220" y="280" width="140" height="60" rx="12" ry="12" 
+        fill="url(#cardGradient)" filter="url(#cardShadow)"/>
+  <rect x="220" y="360" width="140" height="60" rx="12" ry="12" 
+        fill="url(#accentGradient)" filter="url(#cardShadow)"/>
+  
+  <!-- 第二列的卡片 -->
+  <rect x="442" y="300" width="140" height="60" rx="12" ry="12" 
+        fill="url(#cardGradient)" filter="url(#cardShadow)"/>
+  <rect x="442" y="400" width="140" height="60" rx="12" ry="12" 
+        fill="url(#accentGradient)" filter="url(#cardShadow)"/>
+  <rect x="442" y="500" width="140" height="60" rx="12" ry="12" 
+        fill="url(#cardGradient)" filter="url(#cardShadow)"/>
+  
+  <!-- 第三列的卡片 -->
+  <rect x="664" y="320" width="140" height="60" rx="12" ry="12" 
+        fill="url(#accentGradient)" filter="url(#cardShadow)"/>
+  <rect x="664" y="420" width="140" height="60" rx="12" ry="12" 
+        fill="url(#cardGradient)" filter="url(#cardShadow)"/>
+  <rect x="664" y="520" width="140" height="60" rx="12" ry="12" 
+        fill="url(#accentGradient)" filter="url(#cardShadow)"/>
+  <rect x="664" y="620" width="140" height="60" rx="12" ry="12" 
+        fill="url(#cardGradient)" filter="url(#cardShadow)"/>
+  
+  <!-- 顶部装饰元素 -->
+  <circle cx="280" cy="140" r="24" fill="url(#accentGradient)" filter="url(#cardShadow)"/>
+  <circle cx="340" cy="140" r="24" fill="url(#cardGradient)" filter="url(#cardShadow)"/>
+  <circle cx="400" cy="140" r="24" fill="url(#bgGradient)" filter="url(#cardShadow)"/>
+  
+  <!-- 底部品牌标识 -->
+  <rect x="400" y="820" width="224" height="4" rx="2" ry="2" fill="url(#accentGradient)"/>
+  
+  <!-- 焦点任务标识 -->
+  <circle cx="750" cy="140" r="32" fill="url(#cardGradient)" filter="url(#shadow)"/>
+  <circle cx="750" cy="140" r="20" fill="white"/>
+  <circle cx="750" cy="140" r="12" fill="url(#accentGradient)"/>
+</svg>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.mnaddon.mntaskboard.launchbar</string>
+    <key>CFBundleName</key>
+    <string>MNTaskBoard</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>LBAbbreviation</key>
+    <string>task</string>
+    <key>LBDescription</key>
+    <dict>
+        <key>LBSummary</key>
+        <string>快速启动 MN 任务看板，支持多种视图模式</string>
+        <key>LBRequirements</key>
+        <string>需要安装 Node.js 和 pnpm</string>
+        <key>LBAuthor</key>
+        <string>MN-Addon Team</string>
+        <key>LBEmail</key>
+        <string>support@mnaddon.com</string>
+        <key>LBWebsiteURL</key>
+        <string>https://github.com/xkwxdyy/MN-Addons</string>
+    </dict>
+    <key>LBScripts</key>
+    <dict>
+        <key>LBDefaultScript</key>
+        <dict>
+            <key>LBScriptName</key>
+            <string>default.js</string>
+            <key>LBRunInBackground</key>
+            <false/>
+            <key>LBRequiresArgument</key>
+            <false/>
+            <key>LBAcceptedArgumentTypes</key>
+            <array>
+                <string>string</string>
+            </array>
+        </dict>
+    </dict>
+    <key>LBTextInputTitle</key>
+    <string>启动 MNTaskBoard</string>
+    <key>LBAssociatedApplication</key>
+    <string>com.apple.Safari</string>
+</dict>
+</plist>

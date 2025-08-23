@@ -19,8 +19,8 @@
 ### 核心文件说明
 | 文件 | 规模 | 作用 | 重要性 |
 |------|------|------|--------|
-| **mnutils.js** | 6,878行 | 核心 API 封装，提供 9 个主要类 | ⭐⭐⭐⭐⭐ |
-| **xdyyutils.js** | 6,175行 | 学术场景扩展，13 种卡片类型 | ⭐⭐⭐⭐ |
+| **mnutils.js** | 8,439行 | 核心 API 封装，提供 10 个主要类 | ⭐⭐⭐⭐⭐ |
+| **xdyyutils.js** | 15,560+行 | 学术场景扩展，13 种卡片类型 | ⭐⭐⭐⭐ |
 | **main.js** | - | 插件入口，业务逻辑实现 | ⭐⭐⭐ |
 | **mnaddon.json** | - | 插件配置清单 | ⭐⭐⭐ |
 
@@ -33,21 +33,22 @@
 
 ## 📖 核心 API 参考 - mnutils.js
 
-> mnutils.js 是 MNUtils 框架的核心，提供了 9 个主要类和超过 300 个 API 方法。这些 API 覆盖了 MarginNote 的所有核心功能。
+> mnutils.js 是 MNUtils 框架的核心，提供了 10 个主要类和超过 500 个 API 方法。这些 API 覆盖了 MarginNote 的所有核心功能。
 
 ### 🔧 MNUtils 核心类总览
 
 | 类名 | 代码行数 | 主要功能 | API 数量 |
 |------|----------|----------|----------|
-| **Menu** | 1-139 | 弹出菜单 UI 组件 | 12 |
-| **MNUtil** | 140-2787 | 核心工具类，系统级功能 | 304+ |
-| **MNConnection** | 2788-3171 | 网络请求、WebView、WebDAV | 14 |
-| **MNButton** | 3172-3754 | 自定义按钮 UI 组件 | 27 |
-| **MNDocument** | 3755-3879 | PDF 文档操作接口 | 14 |
-| **MNNotebook** | 3880-4172 | 笔记本/学习集管理 | 35 |
-| **MNNote** | 4173-6337 | 笔记核心类 | 149+ |
-| **MNComment** | 6338-6757 | 评论/内容管理 | 20+ |
-| **MNExtensionPanel** | 6758-6878 | 插件面板控制 | 11 |
+| **Menu** | 1-171 | 弹出菜单 UI 组件 | 12 |
+| **MNLog** | 173-315 | 日志管理系统 | 11 |
+| **MNUtil** | 316-3730 | 核心工具类，系统级功能 | 400+ |
+| **MNConnection** | 3731-4191 | 网络请求、WebView、WebDAV | 16 |
+| **MNButton** | 4192-4774 | 自定义按钮 UI 组件 | 27 |
+| **MNDocument** | 4775-4902 | PDF 文档操作接口 | 14 |
+| **MNNotebook** | 4903-5199 | 笔记本/学习集管理 | 35 |
+| **MNNote** | 5200-7890 | 笔记核心类 | 180+ |
+| **MNComment** | 7891-8316 | 评论/内容管理 | 22+ |
+| **MNExtensionPanel** | 8317-8439 | 插件面板控制 | 20+ |
 
 ### 📌 Menu 类 - 弹出菜单组件
 
@@ -98,9 +99,73 @@ menu.show();
 - 记得在适当时机调用 `dismiss()` 关闭菜单
 - 可以通过 `rowHeight` 和 `fontSize` 调整菜单外观
 
-### 2. MNUtil 类 - 核心工具类 ⭐⭐⭐⭐⭐
+### 2. MNLog 类 - 日志管理系统 ⭐⭐⭐⭐
 
-MNUtil 是整个框架的核心，提供了 304+ 个静态方法。所有方法都是静态的，直接通过 `MNUtil.methodName()` 调用。
+MNLog 是一个全新的日志管理类，提供了结构化的日志记录和查看功能。
+
+```javascript
+class MNLog {
+  // 静态属性
+  static logs = []              // 日志数组
+  
+  // 核心方法
+  static updateLog(log)         // 更新日志到视图
+  static showLogViewer()        // 显示日志查看器
+  static getLogObject(log, defaultLevel = "INFO", defaultSource = "Default")  // 获取格式化的日志对象
+  
+  // 日志级别方法
+  static log(log, detail = undefined)      // 通用日志
+  static info(log, source = undefined)     // 信息级别
+  static error(log, source = undefined)    // 错误级别  
+  static debug(log, source = undefined)    // 调试级别
+  static warn(log, source = undefined)     // 警告级别
+  
+  // 工具方法
+  static clearLogs()            // 清空所有日志
+  static showHUD(message, duration = 2, view = this.currentWindow)  // 显示 HUD 并记录日志
+}
+
+// 使用示例
+// 1. 记录不同级别的日志
+MNLog.info("操作成功", "MyPlugin");
+MNLog.error("文件未找到", "FileManager");
+MNLog.debug({ action: "loadNote", noteId: "xxx" });
+
+// 2. 记录结构化日志
+MNLog.log({
+  message: "批处理完成",
+  level: "INFO",
+  source: "BatchProcessor",
+  detail: { processed: 10, failed: 2 }
+});
+
+// 3. 显示 HUD 并自动记录
+MNLog.showHUD("保存成功", 1.5);
+
+// 4. 打开日志查看器
+MNLog.showLogViewer();
+```
+
+**日志对象格式**:
+```javascript
+{
+  message: string,       // 日志消息
+  level: string,         // 级别: INFO/ERROR/DEBUG/WARN
+  source: string,        // 来源标识
+  timestamp: number,     // 时间戳
+  detail: string         // 详细信息（JSON 字符串）
+}
+```
+
+**最佳实践**:
+- 使用不同级别区分日志重要性
+- 为日志指定 source 便于过滤
+- 结构化日志便于分析和调试
+- 日志数组最多保留 1000 条，自动清理旧日志
+
+### 3. MNUtil 类 - 核心工具类 ⭐⭐⭐⭐⭐
+
+MNUtil 是整个框架的核心，提供了 400+ 个静态方法。所有方法都是静态的，直接通过 `MNUtil.methodName()` 调用。
 
 ```javascript
 class MNUtil {
@@ -283,6 +348,186 @@ class MNUtil {
   static get popUpNoteInfo()      // 弹出菜单的笔记信息
   static get popUpSelectionInfo() // 弹出菜单的选择区域信息
   
+  // === 新增方法（100+ 个） ===
+  // 颜色管理
+  static rgbaToHex(rgba, includeAlpha, toUpperCase)  // RGBA 转 HEX
+  static rgbaArrayToHexArray(rgbaArray, includeAlpha, toUpperCase)
+  static getNotebookExcerptColorById(notebookId)
+  static noteColorByNotebookIdAndColorIndex(notebookId, colorIndex)
+  static getNoteColorHex(colorIndex)
+  static parseHexColor(hex)
+  static hexColorAlpha(hex, alpha)
+  static hexColor(hex)
+  
+  // 文本处理
+  static countWords(str)                // 统计字数（中英文）
+  static removePunctuationOnlyElements(arr)  // 移除纯标点元素
+  static doSegment(str)                 // 分词
+  static wordCountBySegmentit(str)      // 基于分词的字数统计
+  static mergeWhitespace(str)           // 合并空白字符
+  static escapeString(str)              // 转义字符串
+  static removeMarkdownFormat(markdownStr)  // 移除 Markdown 格式
+  
+  // 笔记本管理增强
+  static allNotebookIds()               // 获取所有笔记本 ID
+  static allDocumentNotebooks(option)   // 获取所有文档笔记本
+  static allReviewGroups(option)        // 获取所有复习组
+  static allStudySets(option)           // 获取所有学习集
+  static notesInStudySet(studySetId)    // 获取学习集中的笔记
+  static chatNotesInStudySet(studySetId)  // 获取学习集中的聊天笔记
+  static notebookExists(notebookId, checkNotes)  // 检查笔记本是否存在
+  static async openNotebook(notebook, needConfirm)  // 打开笔记本
+  
+  // 文档管理
+  static allDocuments()                 // 获取所有文档
+  static allDocumentIds()               // 获取所有文档 ID
+  static getNoteFileById(noteId)        // 根据笔记 ID 获取文件
+  static findToc(md5, excludeNotebookId)  // 查找目录
+  static getDocTocNotes(md5, notebookId)  // 获取文档目录笔记
+  static getPageContent(pageNo)         // 获取页面内容
+  static openDoc(md5, notebookId)       // 打开文档
+  
+  // PDF 导入增强
+  static dataFromBase64(base64, type)   // Base64 转数据
+  static async importPDFFromBase64(pdfBase64, option)
+  static async importPDFFromData(pdfData)
+  static async importPDFFromFileAndOpen(notebookId)
+  
+  // UI 增强
+  static waitHUD(message, view)         // 等待 HUD
+  static async stopHUD(delay, view)     // 停止 HUD
+  static alert(message)                 // 警告弹窗
+  static async confirm(mainTitle, subTitle, items)  // 确认弹窗
+  static async userSelect(mainTitle, subTitle, items)  // 用户选择
+  static async input(title, subTitle, items, options)  // 输入弹窗
+  static async userInput(title, subTitle, items, options)  // 用户输入
+  
+  // 文件操作增强
+  static createFolderDev(path)          // 创建文件夹（包括中间目录）
+  static getFileFold(path)              // 获取文件所在文件夹
+  static copyFile(sourcePath, targetPath)  // 复制文件
+  static async importFile(UTI)          // 导入文件
+  static async importJSONFromFile()     // 导入 JSON 文件
+  static saveFile(filePath, UTI)        // 保存文件
+  
+  // JavaScript 执行
+  static async runJavaScript(webview, script)  // 在 WebView 中执行 JS
+  
+  // 动画与交互
+  static async animate(func, time)      // 动画执行
+  static checkSender(sender, window)    // 检查发送者
+  static isDescendantOfStudyView(view)  // 检查视图层级
+  static isDescendantOfCurrentWindow(view)
+  
+  // 观察者模式增强
+  static addObservers(observer, kv)     // 批量添加观察者
+  static removeObservers(observer, notifications)  // 批量移除观察者
+  // 各种特定事件的观察者方法...
+  
+  // JSON 与数据处理
+  static isValidJSON(jsonString)        // 验证 JSON
+  static getValidJSON(jsonString, debug)  // 获取有效 JSON
+  static stringify(object)              // 对象转字符串
+  static deepEqual(obj1, obj2, keysToIgnore)  // 深度比较
+  static unique(arr, noEmpty)           // 数组去重
+  static typeOf(object)                 // 获取类型
+  
+  // 撤销/重做
+  static undo(notebookId)               // 撤销
+  static redo(notebookId)               // 重做
+  
+  // URL 处理
+  static parseURL(urlString)            // 解析 URL
+  static openURL(url, mode)             // 打开 URL
+  static openWith(config, addon)        // 使用特定插件打开
+  static genNSURL(url)                  // 生成 NSURL
+  
+  // 图像处理
+  static compressImage(imageData, quality)  // 压缩图片
+  static copyImage(imageData)           // 复制图片
+  static getImage(path, scale)          // 获取图片
+  static getDocImage(checkImageFromNote, checkDocMapSplitMode)
+  
+  // 媒体处理
+  static getMediaByHash(hash)           // 根据 hash 获取媒体
+  static replaceMNImagesWithBase64(markdown)  // 替换 MN 图片为 Base64
+  static isPureMNImages(markdown)       // 检查是否纯 MN 图片
+  static hasMNImages(markdown)          // 检查是否包含 MN 图片
+  static getMNImageFromMarkdown(markdown)  // 从 Markdown 提取 MN 图片
+  
+  // 云存储
+  static getCloudDataByKey(key)         // 获取云数据
+  static setCloudDataByKey(data, key)   // 设置云数据
+  static readCloudKey(key)              // 读取云键值
+  static setCloudKey(key, value)        // 设置云键值
+  
+  // 本地存储
+  static getLocalDataByKey(key)         // 获取本地数据
+  static getLocalDataByKeyWithDefaultAndBackup(key, defaultValue, backUpFile)
+  static setLocalDataByKey(data, key)   // 设置本地数据
+  
+  // 加密与安全
+  static xorEncryptDecrypt(input, key)  // XOR 加密/解密
+  static MD5(data)                      // MD5 哈希
+  
+  // 模板渲染
+  static render(template, config)       // Mustache 模板渲染
+  static createJsonEditor(htmlPath)     // 创建 JSON 编辑器
+  
+  // AST 与 Markdown
+  static markdown2AST(markdown)         // Markdown 转 AST
+  static buildTree(tokens)              // 构建树结构
+  static processList(items)             // 处理列表项
+  static AST2Mindmap(note, ast, level)  // AST 转脑图
+  static getConfig(text)                // 获取配置
+  
+  // 链接处理
+  static hasBackLink(from, to)          // 检查反向链接
+  static extractMarginNoteLinks(text)   // 提取 MarginNote 链接
+  
+  // 状态码
+  static getStatusCodeDescription(code)  // HTTP 状态码描述
+  
+  // 实用工具
+  static getRandomElement(arr)          // 随机获取元素
+  static constrain(value, min, max)     // 约束数值范围
+  static emojiNumber(index)             // 数字转 emoji
+  static tableItem(title, object, selector, params, checked)
+  static moveElement(arr, element, direction)  // 移动数组元素
+  static UUID()                          // 生成 UUID
+  static getDateObject()                 // 获取日期对象
+  static getNoteObject(note, opt)       // 获取笔记对象
+  static NSValue2String(v)              // NSValue 转字符串
+  static CGRectString2CGRect(str)       // 字符串转 CGRect
+  static isBlankNote(note)              // 检查是否空白笔记
+  static isNSNull(obj)                  // 检查是否 NSNull
+  static strCode(str)                   // 获取字符串字节数
+  static textMatchPhrase(text, query)   // 文本匹配（支持 .AND. .OR.）
+  static excuteCommand(command)         // 执行命令
+  static sort(arr, type)                // 数组排序
+  static postNotification(name, userInfo)  // 发送通知
+  static getPopoverAndPresent(sender, commandTable, width, preferredPosition)
+  static parseWinRect(winRect)          // 解析窗口矩形
+  static getFileName(fullPath)          // 获取文件名
+  static getFile(path)                  // 获取文件
+  static data2string(data)              // 数据转字符串
+  static readJSON(path)                 // 读取 JSON
+  static writeJSON(path, object)        // 写入 JSON
+  static readText(path)                 // 读取文本
+  static writeText(path, string)        // 写入文本
+  static readTextFromUrlSync(url)       // 同步读取 URL 文本
+  static async readTextFromUrlAsync(url, option)  // 异步读取 URL 文本
+  static isAddonRunning(addonName)      // 检查插件是否运行
+  static md2html(md)                    // Markdown 转 HTML
+  static getColorIndex(color)           // 获取颜色索引
+  static getNoteId(note)                // 获取笔记 ID
+  static crash()                         // 崩溃（调试用）
+  static checkDataDir()                 // 检查数据目录
+  static addHistory(type, detail)       // 添加历史记录
+  static importNotebook(path, merge)    // 导入笔记本
+  static isNoteInReview(noteId)         // 检查笔记是否在复习中
+  static getMNUtilVersion()             // 获取 MNUtil 版本
+  
   // === 其他实用方法 ===
   static readFile(path)          // 读取文件内容
   static writeFile(path, data)   // 写入文件
@@ -338,9 +583,9 @@ if (MNUtil.isMN4()) {
 }
 ```
 
-### 3. MNNote 类 - 笔记核心类 ⭐⭐⭐⭐⭐
+### 4. MNNote 类 - 笔记核心类 ⭐⭐⭐⭐⭐
 
-MNNote 是最重要的类之一，提供了 149+ 个属性和方法。
+MNNote 是最重要的类之一，提供了 180+ 个属性和方法。
 
 ```javascript
 class MNNote {
@@ -445,6 +690,30 @@ class MNNote {
   static getFocusNote()                  // 获取当前焦点笔记
   static getFocusNotes()                 // 获取当前焦点笔记（数组形式）
   static getSelectedNotes()              // 获取选中的笔记数组
+  
+  // === 新增静态方法（30+） ===
+  static errorLog = []                   // 错误日志数组
+  static addErrorLog(error, source, info)  // 添加错误日志
+  static getNoteExcerptTextPic(note)     // 获取笔记摘录文本图片
+  static exportPic(pic)                  // 导出图片
+  static focusInMindMapById(noteId, delay)  // 根据 ID 在脑图中聚焦
+  static focusInDocumentById(noteId, delay)  // 根据 ID 在文档中聚焦
+  static focusInFloatMindMapById(noteId, delay)  // 根据 ID 在浮动脑图中聚焦
+  static focusInMindMap(note, delay)     // 在脑图中聚焦笔记
+  static focusInDocument(note, delay)    // 在文档中聚焦笔记
+  static focusInFloatMindMap(note, delay)  // 在浮动脑图中聚焦笔记
+  static get currentChildMap()           // 获取当前子脑图
+  static get focusNote()                 // 获取焦点笔记（getter）
+  static hasImageInNote(note, checkTextFirst)  // 检查笔记是否有图片
+  static fromSelection(docController)    // 从选择创建笔记
+  static get focusNotes()               // 获取焦点笔记数组（getter）
+  static buildHierarchy(notes)          // 构建层级结构
+  static getNotesByRange(range)         // 根据范围获取笔记
+  static clone(note, notebookId)        // 克隆笔记
+  static getImageFromNote(note, checkTextFirst)  // 从笔记获取图片
+  static getImageInfoFromNote(note, checkTextFirst)  // 获取笔记图片信息
+  static getImagesFromNote(note, checkTextFirst)  // 获取笔记所有图片
+  static exist(noteId)                  // 检查笔记是否存在
 }
 ```
 
@@ -474,7 +743,7 @@ let childConfig = {
 let child = note.createChildNote(childConfig);
 ```
 
-### 4. MNComment 类 - 评论系统
+### 5. MNComment 类 - 评论系统
 
 支持多种评论类型，管理笔记中的各种内容。
 
@@ -509,6 +778,8 @@ class MNComment {
   // === 静态方法 ===
   static from(note)     // 从笔记获取所有评论
   static getCommentType(comment) // 根据评论对象判断类型
+  static commentBelongsToType(comment, types)  // 检查评论是否属于指定类型
+  static new(comment, index, note)  // 创建新的 MNComment 实例
 }
 ```
 
@@ -518,7 +789,7 @@ class MNComment {
 - `imageComment`: 图片评论
 - `mergedImageComment`: 合并的图片评论（通常是摘录图片）
 
-### 5. MNConnection 类 - 网络请求与 WebView 管理
+### 6. MNConnection 类 - 网络请求与 WebView 管理
 
 提供网络请求、WebDAV 支持和 WebView 控制功能。
 
@@ -538,14 +809,17 @@ class MNConnection {
   
   // === WebDAV 支持 ===
   static readWebDAVFile(url, username, password)      // 读取 WebDAV 文件
+  static readWebDAVFileWithDelegate(url, username, password)  // 使用代理读取 WebDAV
   static uploadWebDAVFile(url, username, password, content)  // 上传到 WebDAV
   
   // === 实用工具 ===
   static btoa(str)                      // Base64 编码
   static getOnlineImage(url, scale=3)   // 下载在线图片
+  static getImageFromNote(note, checkTextFirst = true)  // 从笔记获取图片
   
   // === ChatGPT API 支持 ===
-  static initRequestForChatGPT(history, apikey, url, model, temperature)
+  static initRequestForChatGPT(history, apikey, url, model, temperature, funcIndices=[])
+  static initRequestForChatGPTWithoutStream(history, apikey, url, model, temperature, funcIndices=[])
 }
 ```
 
@@ -573,7 +847,7 @@ if (image) {
 }
 ```
 
-### 6. MNButton 类 - 自定义按钮组件
+### 7. MNButton 类 - 自定义按钮组件
 
 创建和管理自定义按钮 UI 元素。
 
@@ -606,7 +880,7 @@ let button = new MNButton({
 }, parentView);
 ```
 
-### 7. MNDocument 类 - 文档操作接口
+### 8. MNDocument 类 - 文档操作接口
 
 管理 PDF 文档的核心类。
 
@@ -641,7 +915,7 @@ class MNDocument {
 }
 ```
 
-### 8. MNNotebook 类 - 笔记本管理
+### 9. MNNotebook 类 - 笔记本管理
 
 管理笔记本（学习集、文档笔记本、复习组）。
 
@@ -677,17 +951,34 @@ class MNNotebook {
 }
 ```
 
-### 9. MNExtensionPanel 类 - 扩展面板管理
+### 10. MNExtensionPanel 类 - 扩展面板管理
 
 控制插件的扩展面板 UI。
 
 ```javascript
 class MNExtensionPanel {
-  // 主要通过 MNUtil 的静态方法访问
-  // MNUtil.extensionPanelController  // 获取控制器
-  // MNUtil.extensionPanelView        // 获取视图
-  // MNUtil.extensionPanelOn          // 是否显示
-  // MNUtil.toggleExtensionPanel()    // 切换显示/隐藏
+  // === 静态属性 ===
+  static subviews = {}                  // 子视图存储
+  
+  // === 访问器 ===
+  static get currentWindow()            // 当前窗口
+  static get subviewNames()             // 子视图名称列表
+  static get app()                      // 应用实例
+  static get studyController()          // 学习控制器
+  static get controller()               // 扩展面板控制器
+  static get view()                     // 扩展面板视图
+  static get frame()                    // 面板框架
+  static get width()                    // 面板宽度
+  static get height()                   // 面板高度
+  static get on()                       // 是否显示
+  
+  // === 控制方法 ===
+  static hideExtentionPanel(window)     // 隐藏扩展面板
+  static toggle()                       // 切换显示/隐藏
+  static show(name = undefined)         // 显示面板或子视图
+  static subview(name)                  // 获取子视图
+  static addSubview(name, view)         // 添加子视图
+  static removeSubview(name)            // 移除子视图
 }
 ```
 
@@ -703,12 +994,11 @@ class MNExtensionPanel {
 
 | 模块 | 功能 | 使用场景 | 代码位置 |
 |------|------|----------|----------|
-| **MNMath** | 数学卡片管理系统 | 知识结构化、学术笔记 | 第 5 行开始 |
-| **MNLiterature** | 文献管理（占位符） | 未实现 | 第 3670 行 |
-| **HtmlMarkdownUtils** | HTML 样式工具 | 富文本展示、层级管理 | 第 3674 行开始 |
-| **Pangu** | 中文排版优化 | 中英文混排、数学符号 | 第 4680 行开始 |
-| **String.prototype** | 字符串扩展 (85+ 方法) | 文本处理、格式转换 | 多处扩展 |
-| **MNNote.prototype** | 笔记扩展 (30+ 方法) | 工作流、批量操作 | 多处扩展 |
+| **MNMath** | 数学卡片管理系统 | 知识结构化、学术笔记 | 第 49 行开始 |
+| **HtmlMarkdownUtils** | HTML 样式工具 | 富文本展示、层级管理 | 第 11634 行开始 |
+| **Pangu** | 中文排版优化 | 中英文混排、数学符号 | 第 13249 行开始 |
+| **String.prototype** | 字符串扩展 (95+ 方法) | 文本处理、格式转换 | 第 13359 行开始 |
+| **MNNote.prototype** | 笔记扩展 (70+ 方法) | 工作流、批量操作 | 第 13858 行开始 |
 
 ### MNMath 类 - 数学卡片管理系统 ⭐⭐⭐⭐⭐
 
@@ -849,6 +1139,14 @@ static types = {
 - `fields`: 字段列表
 
 #### 完整 API 方法列表
+
+⚠️ **重要更新**：MNMath 类已大幅扩展，新增了 200+ 个方法，主要包括：
+- **搜索管理系统**（40+ 方法）：支持多根目录搜索、同义词组、排除组等高级搜索功能
+- **证明模板系统**（15+ 方法）：数学证明模板管理和生成
+- **字段内容管理**（50+ 方法）：高级字段操作、内容提取和移动
+- **双向链接管理**（20+ 方法）：智能链接维护和清理
+- **评论管理增强**（30+ 方法）：批量选择、移动、删除和提取
+- **批处理增强**（10+ 方法）：批量标题转换、类型转换等
 
 ##### 核心制卡方法
 
@@ -1050,6 +1348,83 @@ static getFieldContentIndexArr(note, field)
 
 // 移动内容到指定字段（高级版本，支持更多选项）
 static moveContentToField(note, content, field, options)
+
+// === 新增：搜索管理系统（40+ 方法） ===
+static initSearchConfig()              // 初始化搜索配置
+static loadSearchConfig()              // 加载搜索配置
+static saveSearchConfig()              // 保存搜索配置
+static getCurrentSearchRoot()          // 获取当前搜索根目录
+static getAllSearchRoots()             // 获取所有搜索根目录
+static addSearchRoot(noteId, name)     // 添加搜索根目录
+static deleteSearchRoot(key)           // 删除搜索根目录
+static async searchNotesInDescendants(keywords, rootNoteId, selectedTypes)  // 搜索后代笔记
+static async showSearchDialog()        // 显示搜索对话框
+static createSearchResultCard(results, keywords, rootName)  // 创建搜索结果卡片
+
+// === 新增：同义词组管理（30+ 方法） ===
+static getSynonymGroups()              // 获取同义词组
+static addSynonymGroup(name, words, partialReplacement)  // 添加同义词组
+static updateSynonymGroup(id, updates) // 更新同义词组
+static deleteSynonymGroup(id)          // 删除同义词组
+static expandKeywordsWithSynonyms(keywords)  // 使用同义词扩展关键词
+static async manageSynonymGroupsUI()   // 管理同义词组界面
+
+// === 新增：排除组管理（20+ 方法） ===
+static getExclusionGroups()            // 获取排除组
+static addExclusionGroup(name, triggerWords, excludeWords)  // 添加排除组
+static updateExclusionGroup(id, updates)  // 更新排除组
+static deleteExclusionGroup(id)        // 删除排除组
+static getActiveExclusions(keywords)   // 获取活动的排除项
+static async manageExclusionGroups()   // 管理排除组界面
+
+// === 新增：证明模板管理（15+ 方法） ===
+static initProofTemplates()            // 初始化证明模板
+static loadProofTemplates()            // 加载证明模板
+static saveProofTemplates()            // 保存证明模板
+static getProofTemplates()             // 获取证明模板
+static async addEquivalenceProof(note) // 添加等价证明
+static async manageProofTemplates()    // 管理证明模板界面
+static createEquivalenceProof(propositionA, propositionB)  // 创建等价证明
+static generateProofFromTemplate(template, inputs)  // 从模板生成证明
+
+// === 新增：评论批量管理（30+ 方法） ===
+static manageCommentsByPopup(note)     // 通过弹窗管理评论
+static showCommentMultiSelectDialog(note, commentOptions, selectedIndices, callback)  // 多选对话框
+static performMove(note, moveCommentIndexArr, targetIndex)  // 执行移动
+static performDelete(note, deleteCommentIndexArr)  // 执行删除
+static performExtract(note, extractCommentIndexArr)  // 执行提取
+static handleExtractedNoteLinks(originalNote, extractedNote, extractCommentIndexArr)  // 处理提取的链接
+
+// === 新增：字段内容高级操作（50+ 方法） ===
+static showFieldSelectionForMove(note, callback)  // 字段选择界面
+static showFieldInternalPositionDialog(note, fieldName, callback)  // 字段内部位置对话框
+static parseFieldAllContents(note, fieldObj)  // 解析字段所有内容
+static getFieldHtmlMarkdownComments(note, fieldName)  // 获取字段 HTML Markdown 评论
+static retainFieldContentOnly(note, keepTitle)  // 仅保留字段内容
+static retainFieldContentByName(note, fieldName)  // 按名称保留字段内容
+static deleteCommentsByFieldPopup(note)  // 通过弹窗删除字段评论
+
+// === 新增：双向链接管理（20+ 方法） ===
+static async updateBidirectionalLink(note)  // 更新双向链接
+static async removeBidirectionalLinks(note)  // 移除双向链接
+static removeApplicationFieldLink(targetNote, sourceNoteId)  // 移除应用字段链接
+static addApplicationFieldLink(targetNote, sourceNote)  // 添加应用字段链接
+static removeLinkToNote(note, targetNoteIdOrUrl)  // 移除到笔记的链接
+static removeDuplicateLinksInLastField(note)  // 移除最后字段的重复链接
+
+// === 新增：定义卡片目录（10+ 方法） ===
+static findDefinitionCards(startNote, maxCount)  // 查找定义卡片
+static async selectDefinitionCard(definitionCards, canContinue)  // 选择定义卡片
+static reorderContainsFieldLinks(defNote)  // 重新排序包含字段链接
+static async showDefinitionCatalog()   // 显示定义目录
+
+// === 新增：配置导入导出（20+ 方法） ===
+static exportSearchConfig()            // 导出搜索配置
+static async importSearchConfig()      // 导入搜索配置
+static exportSynonymGroups()           // 导出同义词组
+static async importSynonymGroups(jsonStr)  // 导入同义词组
+static async exportFullSearchConfig()  // 导出完整搜索配置
+static async importFullSearchConfig()  // 导入完整搜索配置
 ```
 
 #### 使用示例
@@ -1128,10 +1503,14 @@ static createHtmlMarkdownText(text, type = 'none')
 class Pangu {
   // === 主要方法 ===
   static spacing(text)              // 自动添加空格优化排版
-  static autoSpacingPage()          // 自动优化整个页面
-  static spacingPageBody()          // 优化页面主体内容
-  static addSpaceAtNode(node)       // 为指定节点添加空格
-  static canIgnoreNode(node)        // 判断节点是否可忽略
+  static autoSpacingPage()          // 自动优化整个页面（未实现）
+  static spacingPageBody()          // 优化页面主体内容（未实现）
+  static addSpaceAtNode(node)       // 为指定节点添加空格（未实现）
+  static canIgnoreNode(node)        // 判断节点是否可忽略（未实现）
+  
+  // === 新增方法 ===
+  static convertToFullwidth(symbols) // 转换为全角字符
+  static toFullwidth(text)          // 文本转全角
   
   // === 转换规则 ===
   // 1. CJK 字符与英文/数字之间添加空格
@@ -1238,11 +1617,39 @@ class HtmlMarkdownUtils {
   static updateSpanContent(html, newContent) // 更新 span 内容
   static changeSpanType(html, newType)   // 改变 span 类型
   
+  // === 新增方法 ===
+  static isLevelType(type)               // 判断是否层级类型
+  static getHtmlMDCommentIndexAndTypeObjArr(note)  // 获取 HTML MD 评论索引和类型
+  static isHtmlMDComment(comment)         // 判断是否 HTML MD 评论
+  static changeHtmlMDCommentTypeToNextLevel(comment)  // 改变到下一级
+  static changeHtmlMDCommentTypeToLastLevel(comment)  // 改变到上一级
+  static getLastHtmlMDComment(note)      // 获取最后的 HTML MD 评论
+  static hasHtmlMDComment(note)          // 是否有 HTML MD 评论
+  static addSameLevelHtmlMDComment(note, text, type)  // 添加同级评论
+  static addNextLevelHtmlMDComment(note, text, type)  // 添加下一级评论
+  static addLastLevelHtmlMDComment(note, text, type)  // 添加上一级评论
+  static autoAddLevelHtmlMDComment(note, text, goalLevel)  // 自动添加层级评论
+  static adjustAllHtmlMDLevels(note, direction)  // 调整所有层级
+  static adjustHtmlMDLevelsByHighest(note, targetHighestLevel)  // 按最高级调整
+  static upwardMergeWithStyledComments(rootFocusNote, firstLevelType)  // 向上合并样式评论
+  static convertFieldContentToHtmlMDByPopup(note)  // 通过弹窗转换字段内容
+  static getFieldNonHtmlMDContents(note, fieldName)  // 获取字段非 HTML MD 内容
+  static getAllNonHtmlMDContents(note)   // 获取所有非 HTML MD 内容
+  static getCommentFieldInfo(note, commentIndex)  // 获取评论字段信息
+  static showFieldContentSelectionPopup(note, contents, fieldName)  // 显示字段内容选择弹窗
+  static showFieldContentMultiSelectDialog(note, contents, fieldName, selectedIndices)  // 多选对话框
+  static showTypeSelectionPopup(note, contents)  // 显示类型选择弹窗
+  static convertContentsToHtmlMD(note, contents, type)  // 转换内容为 HTML MD
+  
   // === 问答功能 ===
   static createQuestionHtml(question, answer, explanation)  // 创建问答HTML
   static updateQuestionPart(comment, part, newContent)      // 更新问答部分
   static parseQuestionHtml(html)                           // 解析问答HTML
   static isQuestionComment(comment)                        // 判断是否问答评论
+  
+  // === 证明功能 ===
+  static createEquivalenceProof(propositionA, propositionB)  // 创建等价证明
+  static generateProofFromTemplate(template, inputs)  // 从模板生成证明
 }
 
 // 使用示例
@@ -1257,26 +1664,15 @@ let level2 = HtmlMarkdownUtils.createHtmlMarkdownText("第二级", "level2");
 let qHtml = HtmlMarkdownUtils.createQuestionHtml("什么是函数？", "函数是...", "详细解释...");
 ```
 
-### MNLiterature 类
-
-**注意**：该类在 xdyyutils.js 的第 3670 行定义，但目前是空实现，仅作为占位符存在。
-
-```javascript
-class MNLiterature {
-  // 目前无实现
-}
-```
-
-未来可能会用于文献管理相关功能。
 
 ### String.prototype 扩展 
 
-xdyyutils.js 为 String 原型添加了以下方法：
+xdyyutils.js 为 String 原型添加了 95+ 个扩展方法：
 
 ```javascript
 // === 判断类方法 ===
 str.isPositiveInteger()         // 是否正整数
-str.ifKnowledgeNoteTitle()      // 是否知识卡片标题格式【xxx：xxx】
+str.ifKnowledgeNoteTitle()      // 是否知识卡片标题格式【xxx >> xxx】
 str.isKnowledgeNoteTitle()      // 同上
 str.ifReferenceNoteTitle()      // 是否文献笔记标题【文献：xxx】
 str.ifWithBracketPrefix()       // 是否有【】前缀
@@ -1344,13 +1740,15 @@ str.toTitleCasePro()            // 智能标题大小写转换
 
 ### MNNote.prototype 扩展
 
-xdyyutils.js 为 MNNote 原型添加了以下方法：
+xdyyutils.js 为 MNNote 原型添加了 70+ 个扩展方法：
 
 ```javascript
 // === 笔记类型判断 ===
 note.ifReferenceNote()          // 是否文献笔记（标题以【文献或【参考文献开头）
 note.ifOldReferenceNote()       // 是否旧版文献笔记
 note.ifTemplateOldVersion()     // 是否旧模板制作的卡片
+note.ifReferenceNoteToMove()    // 是否需要移动的文献笔记
+note.lastTwoCommentsType()      // 获取最后两个评论的类型
 
 // === 批量操作 ===
 note.pasteChildNotesByIdArr(["id1", "id2", "id3"])  // 批量粘贴子笔记
@@ -1420,6 +1818,33 @@ note.refreshAll(delay)          // 刷新笔记及其父子笔记
 // === 工具方法 ===
 note.renewHtmlCommentFromId(comment, id) // 更新 HTML 评论（从模板 ID）
 note.mergeClonedNoteFromId(id)  // 合并克隆的笔记
+
+// === 新增方法（40+） ===
+// 笔记创建与复制
+note.createDuplicatedNote(title, colorIndex)  // 创建复制的笔记
+note.createDuplicatedNoteAndDelete(title, colorIndex)  // 创建复制并删除原笔记
+note.addClassificationNote(title)      // 添加归类笔记
+note.addClassificationNoteByType(type, title)  // 按类型添加归类笔记
+
+// 证明内容管理
+note.getProofContentIndexArr()         // 获取证明内容索引数组
+note.getProofHtmlCommentIndexByNoteType(type)  // 根据类型获取证明 HTML 索引
+note.getProofNameByType(type)          // 根据类型获取证明名称
+note.getRenewProofHtmlCommentByNoteType(type)  // 更新证明 HTML
+note.renewProofContentPointsToHtmlType(htmlType)  // 更新证明内容点到 HTML 类型
+note.renewContentPointsToHtmlType(htmlType)  // 更新内容点到 HTML 类型
+
+// 评论清理增强
+note.clearAllCommentsButMergedImageComment()  // 清除所有评论但保留合并图片
+note.removeCommentsByContent(content)  // 根据内容删除评论
+note.removeCommentsByTrimContent(content)  // 根据去空格内容删除评论
+note.removeCommentsByIndexArr(indexArr)  // 根据索引数组删除评论
+
+// HTML 块增强操作
+note.getIncludingHtmlCommentIndex(htmlComment)  // 获取包含特定 HTML 的索引
+note.getHtmlBlockTextContentArr(htmltext)  // 获取 HTML 块文本内容数组
+note.getTextCommentsIndexArr(text)     // 获取文本评论索引数组
+note.getLinkCommentsIndexArr(link)     // 获取链接评论索引数组
 ```
 
 **使用示例**:
@@ -1766,10 +2191,13 @@ if (typeof MNMath !== 'undefined') {
 | **MNNotebook** | 笔记本 | `currentNotebook`, `notes`, `open()`, `type` |
 | **MNDocument** | 文档 | `docMd5`, `pageCount`, `open()`, `textContentsForPageNo()` |
 | **MNConnection** | 网络 | `fetch()`, `readWebDAVFile()`, `getOnlineImage()` |
+| **MNLog** | 日志系统 | `log()`, `info()`, `error()`, `showLogViewer()`, `showHUD()` |
 | **Menu** | 菜单 UI | `addMenuItem()`, `show()`, `dismiss()` |
 | **MNButton** | 按钮 UI | `new(config)` |
+| **MNExtensionPanel** | 面板控制 | `show()`, `toggle()`, `addSubview()` |
 | **MNMath** | 知识卡片 | `makeNote()`, `types.*`, `linkParentNote()` |
-| **Pangu** | 中文排版 | `spacing()` |
+| **HtmlMarkdownUtils** | HTML样式 | `createHtmlMarkdownText()`, `icons.*`, `styles.*` |
+| **Pangu** | 中文排版 | `spacing()`, `toFullwidth()` |
 
 ## ⚠️ 重要说明
 

@@ -30,6 +30,33 @@ body {
     font-size: 20px;
     padding: 0px;
 }
+.tags-bar {
+    display: flex;
+    gap: 8px;
+    padding: 8px 8px 0 8px;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+/* 隐藏滚动条，但保留滚动功能（适用于 Chrome、Safari、Edge） */
+.tags-bar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge 等 WebKit 内核浏览器 */
+}
+.tag-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 10px;
+    padding: 4px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    background: #e6eefc;
+    color: #1b3a6f;
+    border: 1px solid #c6dafd;
+}
+.tag-chip.active {
+    background: #208bd2;
+    color: #fff;
+    border-color: #208bd2;
+}
 .sidebar ul li:hover {
     background-color: #c6dafd;
 }
@@ -70,6 +97,33 @@ body {
       font-size: 18px;
       padding: 5px;
       overflow-y: scroll;
+  }
+  .tags-bar {
+      display: flex;
+      gap: 8px;
+      padding: 8px 8px 0 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+  }
+  /* 隐藏滚动条，但保留滚动功能（适用于 Chrome、Safari、Edge） */
+  .tags-bar::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Edge 等 WebKit 内核浏览器 */
+  }
+  .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 10px;
+      padding: 4px 10px;
+      font-size: 14px;
+      cursor: pointer;
+      background: #2a2f3b;
+      color: #cbd5e1;
+      border: 1px solid #3a4151;
+  }
+  .tag-chip.active {
+      background: #208bd2;
+      color: #fff;
+      border-color: #208bd2;
   }
   .sidebar ul li:hover {
       background-color: #252a37;

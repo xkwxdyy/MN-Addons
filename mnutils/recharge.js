@@ -1,6 +1,6 @@
 // 全局状态管理
 const state = {
-    rechargeType: 'new',
+    rechargeType: 'existing',
     apiKey: null,
     selectedCredits: null,
     selectedPrice: null,
@@ -23,7 +23,8 @@ const elements = {
     summaryCredits: document.getElementById('summary-credits'),
     summaryPrice: document.getElementById('summary-price'),
     payButton: document.getElementById('pay-button'),
-    payInBrowserButton: document.getElementById('pay-button-browser')
+    payInBrowserButton: document.getElementById('pay-button-browser'),
+    payButtonMobile: document.getElementById('pay-button-mobile')
 };
 
         /**
@@ -86,6 +87,7 @@ function initEventListeners() {
     // 支付按钮
     elements.payButton.addEventListener('click', handlePayment);
     elements.payInBrowserButton.addEventListener('click', handlePaymentInBrowser);
+    elements.payButtonMobile.addEventListener('click', handlePaymentMobile);
 }
 
 // 处理充值类型选择
@@ -104,9 +106,7 @@ function handleTypeSelection(event) {
     // 根据类型显示相应的下一步
     if (type === 'existing') {
         showApiKeyInput();
-        if (state.apiKey) {
-          handleApiKeyVerification()
-        }
+
     } else {
         hideApiKeyInput();
         showCreditsSection();
@@ -116,14 +116,17 @@ function handleTypeSelection(event) {
 }
 
 // 显示 API Key 输入区域
-function showApiKeyInput() {
+function showApiKeyInput(apiKey) {
     elements.apikeyInput.style.display = 'block';
     elements.creditsSection.style.display = 'none';
     elements.orderSummary.style.display = 'none';
     
     // 重置 API Key 相关状态
     state.isApiKeyVerified = false;
-    if (state.apiKey) {
+    if (apiKey) {
+      state.apiKey = apiKey;
+      elements.apikeyField.value = state.apiKey;
+    }else if (state.apiKey) {
       elements.apikeyField.value = state.apiKey;
     }else{
       // state.apiKey = null;
@@ -131,6 +134,9 @@ function showApiKeyInput() {
     }
     elements.apikeyStatus.style.display = 'none';
     elements.apikeyStatus.className = 'apikey-status';
+    if (state.apiKey) {
+      handleApiKeyVerification()
+    }
 }
 
 // 隐藏 API Key 输入区域
@@ -143,6 +149,12 @@ function hideApiKeyInput() {
 // 显示积分选择区域
 function showCreditsSection() {
     elements.creditsSection.style.display = 'block';
+    // console.log("scrollIntoView");
+    
+    elements.creditsSection.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'nearest' 
+    });
     
     // 如果已经选择了积分，更新订单摘要
     if (state.selectedCredits) {
@@ -343,7 +355,24 @@ async function handlePaymentInBrowser() {
         break;
     }
 }
-
+// 处理支付
+async function handlePaymentMobile() {
+    // 验证订单信息
+    if (!validateOrder()) {
+        return;
+    }
+    switch (state.rechargeType) {
+      case "existing":
+        postMessageToAddon("subscription", "recharge", {credit:state.selectedCredits,openInMobile:true})
+        break;
+      case "new":
+        postMessageToAddon("subscription", "newkey", {credit:state.selectedCredits,openInMobile:true})
+        break;
+    
+      default:
+        break;
+    }
+}
 
 // 验证订单信息
 function validateOrder() {

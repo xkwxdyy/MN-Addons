@@ -329,8 +329,20 @@ class MNUtil {
   static popUpNoteInfo = undefined;
   static popUpSelectionInfo = undefined;
   static mainPath
+  static initialized = false
+  /**
+   * @type {string}
+   */
+  static extensionPath
+  static defaultNoteColors = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9fdc"]
   static init(mainPath){
+    if (this.initialized) {
+      return
+    }
     this.mainPath = mainPath
+    this.extensionPath = mainPath.replace(/\/marginnote\.extension\.\w+/,"")
+    this.checkDataDir()
+    this.initialized = true
     // MNUtil.copy("text")
     // if (!this.mainPath) {
     //   this.mainPath = mainPath
@@ -351,6 +363,18 @@ class MNUtil {
     //   // marked.use({ renderer });
     //   marked.setOptions({ renderer });
     // }
+  }
+  static checkDataDir(){
+    let extensionPath = this.extensionPath
+    if (extensionPath) {
+      let dataPath = extensionPath+"/data"
+      if (this.isfileExists(dataPath)) {
+        this.log("dataPath exists")
+        return
+      }
+      this.createFolderDev(dataPath)
+      // NSFileManager.defaultManager().createDirectoryAtPathAttributes(dataPath, undefined)
+    }
   }
   static focusHistory = []
   /**
@@ -658,6 +682,67 @@ class MNUtil {
   }
   static get currentNotebook() {
     return this.getNoteBookById(this.currentNotebookId)
+  }
+  static rgbaToHex(rgba, includeAlpha = false, toUpperCase = false) {
+      // 确保RGB分量在0-255范围内
+      const r = Math.max(0, Math.min(255, Math.round(rgba.r)));
+      const g = Math.max(0, Math.min(255, Math.round(rgba.g)));
+      const b = Math.max(0, Math.min(255, Math.round(rgba.b)));
+
+      // 确保alpha分量在0-1范围内
+      const a = Math.max(0, Math.min(1, rgba.a));
+
+      // 将每个颜色分量转换为两位的十六进制
+      const rHex = r.toString(16).padStart(2, '0');
+      const gHex = g.toString(16).padStart(2, '0');
+      const bHex = b.toString(16).padStart(2, '0');
+
+      let hex;
+      if (includeAlpha) {
+        // 将alpha分量从0-1转换为0-255，然后转换为两位的十六进制
+        const aHex = Math.round(a * 255).toString(16).padStart(2, '0');
+        // 组合成8位HEX颜色值
+        hex = `#${rHex}${gHex}${bHex}${aHex}`;
+      } else {
+        // 组合成6位HEX颜色值
+        hex = `#${rHex}${gHex}${bHex}`;
+      }
+
+      // 根据参数决定是否转换为大写
+      return toUpperCase ? hex.toUpperCase() : hex;
+  }
+  static rgbaArrayToHexArray(rgbaArray, includeAlpha = false, toUpperCase = false) {
+    return rgbaArray.map(rgba => this.rgbaToHex(rgba,includeAlpha,toUpperCase));
+  }
+  static getNotebookExcerptColorById(notebookId){
+    let notebook = this.getNoteBookById(notebookId)
+    let options = notebook.options
+    if ("excerptColorTemplate" in options && options.useTopicTool2) {
+      let excerptColorTemplate = options.excerptColorTemplate
+      let colors = this.rgbaArrayToHexArray(excerptColorTemplate,true)
+      return colors
+    }
+    return this.defaultNoteColors
+  }
+  static noteColorByNotebookIdAndColorIndex(notebookId,colorIndex){
+    let notebook = this.getNoteBookById(notebookId)
+    let options = notebook.options
+    if ("excerptColorTemplate" in options && options.useTopicTool2) {
+      let excerptColor = options.excerptColorTemplate[colorIndex]
+      let color = this.rgbaToHex(excerptColor,true)
+      return color
+    }
+    return this.defaultNoteColors[colorIndex]
+  }
+  static get currentNotebookExcerptColor(){
+    let options = this.currentNotebook.options
+    if ("excerptColorTemplate" in options && options.useTopicTool2) {
+      let excerptColorTemplate = options.excerptColorTemplate
+      let colors = this.rgbaArrayToHexArray(excerptColorTemplate,true)
+      return colors
+    }else{
+      return this.defaultNoteColors
+    }
   }
   /**
    * @returns {MbBook}
@@ -1656,7 +1741,8 @@ static textMatchPhrase(text, query) {
       if (alert){
         this.log({
           level:'error',
-          message:noteid
+          message:'Note not exist!',
+          detail:noteid
         })
         this.showHUD("Note not exist!")
       }
@@ -2264,7 +2350,7 @@ static getValidJSON(jsonString,debug = false) {
    */
   static parseHexColor(hex) {
     // 检查输入是否是有效的6位16进制颜色字符串
-    if (typeof hex === 'string' && hex.length === 8) {
+    if (typeof hex === 'string' && hex.length === 7) {
           return {
               color: hex,
               opacity: 1
@@ -2335,6 +2421,14 @@ static getValidJSON(jsonString,debug = false) {
     }else{
       return data
     }
+  }
+  /**
+   * 
+   * @param {object} object 
+   * @returns 
+   */
+  static stringify(object){
+    return JSON.stringify(object, undefined, 2)
   }
   /**
    * 
@@ -2533,6 +2627,28 @@ try {
   }
   static getLocalDataByKey(key) {
     return NSUserDefaults.standardUserDefaults().objectForKey(key)
+  }
+  /**
+   * 从本地获取数据，如果本地没有，则从备份文件中获取，如果备份文件也没有，则使用默认值
+   * @param {string} key 
+   * @param {any} defaultValue 
+   * @param {string} backUpFile 
+   * @returns 
+   */
+  static getLocalDataByKeyWithDefaultAndBackup(key,defaultValue,backUpFile) {
+    let value = NSUserDefaults.standardUserDefaults().objectForKey(key)
+    if (value === undefined) {
+      if (backUpFile && this.isfileExists(backUpFile)) {//需要检查备份文件
+        let backupConfig = this.readJSON(backUpFile)
+        if (backupConfig && Object.keys(backupConfig).length > 0) {
+          this.log("readFromBackupFile")
+          return backupConfig
+        }
+      }
+      NSUserDefaults.standardUserDefaults().setObjectForKey(defaultValue,key)
+      return defaultValue
+    }
+    return value
   }
   static setLocalDataByKey(data, key) {
     NSUserDefaults.standardUserDefaults().setObjectForKey(data, key)
@@ -4835,6 +4951,7 @@ class MNNotebook{
   static get currentNotebook() {
     return MNNotebook.new(MNUtil.currentNotebookId)
   }
+
   static allNotebooks(){
     return MNUtil.allNotebooks().map(notebook=>MNNotebook.new(notebook))
   }
@@ -4889,6 +5006,9 @@ class MNNotebook{
   }
   get flags(){
     return this.notebook.flags
+  }
+  get noteColors(){
+    MNUtil.getNotebookExcerptColorById(this.notebookId)
   }
   /**
    * 
@@ -5279,18 +5399,25 @@ class MNNote{
    * @returns {string}
    */
   get getNoteColorHex(){
-    let colorIndex = this.note.colorIndex
-    let theme = MNUtil.app.currentTheme
-    let colorConfig = {
-      Default:["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9edc"],
-      Dark:["#a0a071","#809f7b","#71839e","#986d77","#a0a032","#479e2c","#33759c","#921c12","#96551c","#204f2c","#0c266c","#771e14","#a0a0a0","#898989","#717171","#77638a"],
-      Gary:["#d2d294","#a8d1a1","#94accf","#c88f9d","#d2d244","#5fcf3d","#459acd","#c0281b","#c46f28","#2c683a","#12328e","#9c281c","#d2d2d2","#b4b4b4","#949494","#9c82b5"]
-    }
-    let colorHexes = (theme in colorConfig)?colorConfig[theme]:colorConfig["Default"]
-    if (colorIndex !== undefined && colorIndex >= 0) {
-      return colorHexes[colorIndex]
-    }
-    return "#ffffff"
+    return MNUtil.noteColorByNotebookIdAndColorIndex(this.notebookId,this.colorIndex)
+    // let colorIndex = this.note.colorIndex
+    // let theme = MNUtil.app.currentTheme
+    // let colorConfig = {
+    //   Default:["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9edc"],
+    //   Dark:["#a0a071","#809f7b","#71839e","#986d77","#a0a032","#479e2c","#33759c","#921c12","#96551c","#204f2c","#0c266c","#771e14","#a0a0a0","#898989","#717171","#77638a"],
+    //   Gary:["#d2d294","#a8d1a1","#94accf","#c88f9d","#d2d244","#5fcf3d","#459acd","#c0281b","#c46f28","#2c683a","#12328e","#9c281c","#d2d2d2","#b4b4b4","#949494","#9c82b5"]
+    // }
+    // let colorHexes = (theme in colorConfig)?colorConfig[theme]:colorConfig["Default"]
+    // if (colorIndex !== undefined && colorIndex >= 0) {
+    //   return colorHexes[colorIndex]
+    // }
+    // return "#ffffff"
+  }
+  /**
+   * @returns {string}
+   */
+  get colorHex(){
+    return MNUtil.noteColorByNotebookIdAndColorIndex(this.notebookId,this.colorIndex)
   }
   /**
    * Retrieves the child notes of the current note.
@@ -5798,16 +5925,23 @@ class MNNote{
         const text = k.text.trim()
         if (text) retVal.push(text)
       } else if (k.type == "LinkNote") {
+        // MNUtil.log({message:'LinkNote',detail:k.q_htext})
         const note = MNNote.new(k.noteid)
-        switch (note.type) {
-          case "textNote":
-          case "blankTextNote":
-            retVal.push(note.excerptText)
-            break;
-          case "imageNote":
-            break;
-          default:
-            break;
+        if (note) {
+          switch (note.type) {
+            case "textNote":
+            case "blankTextNote":
+              retVal.push(note.excerptText)
+              break;
+            case "imageNote":
+              break;
+            default:
+              break;
+          }
+        }else{
+          if (k.q_htext) {
+            retVal.push(k.q_htext)
+          }
         }
       }
     })
@@ -5840,6 +5974,12 @@ class MNNote{
       return this.note.docMd5
     }
     return undefined
+  }
+  get startPage(){
+    return this.note.startPage
+  }
+  get endPage(){
+    return this.note.endPage
   }
   get document(){
     return MNDocument.new(this.note.docMd5)

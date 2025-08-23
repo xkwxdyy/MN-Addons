@@ -14,21 +14,22 @@
             <section class="recharge-type-section">
                 <h2>选择充值类型</h2>
                 <div class="type-options">
-                    <div class="type-card" id="new-apikey" data-type="new">
-                        <div class="card-icon">
-                            <i class="fas fa-plus-circle"></i>
-                        </div>
-                        <h3>购买 APIKey</h3>
-                        <div class="type-indicator"></div>
-                    </div>
-                    
-                    <div class="type-card" id="existing-apikey" data-type="existing">
+                   <div class="type-card selected" id="existing-apikey" data-type="existing">
                         <div class="card-icon">
                             <i class="fas fa-key"></i>
                         </div>
                         <h3>为 APIKey 充值</h3>
                         <div class="type-indicator"></div>
                     </div>
+                    <div class="type-card" id="new-apikey" data-type="new">
+                        <div class="card-icon">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                        <h3>购买新的 APIKey</h3>
+                        <div class="type-indicator"></div>
+                    </div>
+                    
+ 
                 </div>
             </section>
 
@@ -96,9 +97,13 @@
                 
                   <button class="pay-button" id="pay-button">
                       <i class="fas fa-credit-card"></i>
-                      打开爱发电支付
+                      打开爱发电支付(桌面端)
                   </button>
-
+                  
+                  <button class="pay-button-mobile" id="pay-button-mobile">
+                      <i class="fas fa-credit-card"></i>
+                      打开爱发电支付(移动端)
+                  </button>
                   <button class="pay-button-browser" id="pay-button-browser">
                       <i class="fas fa-credit-card"></i>
                       在浏览器中打开
@@ -113,8 +118,6 @@
             <div class="help-card">
                 <h4><i class="fas fa-question-circle"></i> 需要帮助？</h4>
                 <ul>
-                    <li>新用户请购买新的 APIKey</li>
-                    <li>已有 APIKey 的用户可直接充值</li>
                     <li>积分永不过期，可随时使用</li>
                     <li>需要打开爱发电进行购买，支持微信、支付宝等多种支付方式</li>
                     <li>更多问题请加MN插件群（QQ）：<a href="https://qm.qq.com/cgi-bin/qm/qr?k=KbIlzoREcs0i6BptRm7mPz-FbSQ0rDdY&jump_from=webapi&authKey=IFb0w7qbBf7tqVvYh1EbMh0KeQ7+Ucl5ZGmjYr5ddX9wCGHyYUWuFnhI65S3Ne+6" target="_blank">539305227</a></li>

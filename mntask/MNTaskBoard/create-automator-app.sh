@@ -176,6 +176,18 @@ chown -R $(whoami):staff "$APP_PATH"
 xattr -d com.apple.quarantine "$APP_PATH" 2>/dev/null
 xattr -d com.apple.FinderInfo "$APP_PATH" 2>/dev/null
 
+# 添加代码签名，确保应用可以移动到 Applications
+echo "📝 正在添加代码签名..."
+codesign --force --sign - "$APP_PATH/Contents/MacOS/url-handler.sh" 2>/dev/null
+codesign --force --sign - "$APP_PATH/Contents/MacOS/MNTaskBoard" 2>/dev/null
+codesign --force --sign - "$APP_PATH" 2>/dev/null
+
+if codesign -dv "$APP_PATH" 2>/dev/null; then
+    echo "✅ 代码签名成功"
+else
+    echo "⚠️  代码签名失败，但应用仍可使用"
+fi
+
 # 触发 Launch Services 重新识别应用
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH"
 

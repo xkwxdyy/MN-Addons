@@ -2028,26 +2028,6 @@ UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
 );
 ```
 
-### 异步操作处理
-
-```javascript
-// 使用 delay 处理异步
-MNUtil.delay(0.5).then(() => {
-  // 0.5秒后执行
-  let note = MNNote.getFocusNote();
-  note.focusInMindMap();
-});
-
-// 链式异步操作
-async function processNotes() {
-  let notes = MNNote.getSelectNotes();
-  for (let note of notes) {
-    MNMath.makeNote(note);
-    await MNUtil.delay(0.2);  // 避免卡顿
-  }
-  MNUtil.showHUD(`处理完成 ${notes.length} 个笔记`);
-}
-```
 
 ### 文件路径处理
 
@@ -2140,7 +2120,7 @@ targetNotes = rootNote.childNotes.map(mnNote => mnNote.note);
 // === 基础操作 ===
 // 获取当前笔记
 let note = MNNote.getFocusNote();
-let notes = MNNote.getSelectNotes();
+let notes = MNNote.getFocusNotes();
 
 // 创建新笔记
 let newNote = MNNote.new({

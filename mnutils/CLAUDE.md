@@ -1,6 +1,6 @@
-# ✅ MNUtils 项目开发指南
+# ✅ MNUtils 插件
 
-> 本文档专门用于 MNUtils 项目本身的开发和维护。如果你想了解如何使用 MNUtils API 开发其他插件，请查看 [MNUTILS_API_GUIDE.md](./MNUTILS_API_GUIDE.md)。
+> 如果你想了解如何使用 MNUtils API 开发其他插件，请查看 [MNUTILS_API_GUIDE.md](./MNUTILS_API_GUIDE.md)。
 
 ## 📌 项目概述
 
@@ -21,6 +21,61 @@ MNUtils 是 MarginNote 生态系统的核心基础设施，具有双重身份：
 3. **笔记本/文档共享**: 社区资源分享平台
 4. **日志系统**: 错误追踪、调试支持
 5. **API 框架**: mnutils.js 和 xdyyutils.js
+
+## 🎯 MNUtils 插件功能详解
+
+### 作为 MarginNote 生态的核心价值
+
+MNUtils 不仅是一个独立插件，更是整个 MarginNote 插件生态的**基础设施层**：
+
+1. **默认加载机制**：MNUtils 框架已默认加载，所有其他插件无需引入即可直接使用其 API
+2. **统一 API 标准**：提供标准化的开发接口，降低插件开发门槛，提高代码质量
+3. **功能复用**：避免每个插件重复实现基础功能，专注于核心业务逻辑
+
+### API 框架规模与能力
+
+#### mnutils.js - 核心框架
+- **规模**：10 个主要类，500+ API 方法
+- **覆盖范围**：笔记操作、文档管理、UI 组件、网络请求、文件系统等全方位功能
+- **核心类**：
+  - `MNUtil` (400+ 方法) - 系统级工具集
+  - `MNNote` (180+ 方法) - 笔记操作核心
+  - `MNLog` - 结构化日志系统
+  - `Menu`/`MNButton` - UI 组件
+
+#### xdyyutils.js - 学术扩展
+- **规模**：15,000+ 行代码，200+ 扩展方法
+- **特色功能**：
+  - **MNMath 知识卡片系统**：13 种学术卡片类型（定义、命题、证明等）
+  - **智能链接管理**：自动维护知识结构关系
+  - **中文排版优化**：Pangu.js 集成，自动优化中英文混排
+  - **原型扩展**：String (95+ 方法)、MNNote (70+ 方法) 扩展
+
+### 适用场景与目标用户
+
+1. **插件开发者**
+   - 快速构建功能强大的 MarginNote 插件
+   - 无需从零开始，专注于业务逻辑实现
+   - 获得经过验证的最佳实践
+
+2. **学术研究者**
+   - 结构化知识管理（特别是数学、计算机科学）
+   - 自动化笔记整理和链接
+   - 标准化的学术笔记模板
+
+3. **普通用户**
+   - 通过插件商店管理其他插件
+   - 统一的订阅和更新管理
+   - 增强的错误追踪和调试能力
+
+### 关键特性总结
+
+- ✅ **即插即用**：已默认加载，无需额外配置
+- ✅ **全面覆盖**：从底层 API 到高级学术功能
+- ✅ **持续更新**：活跃的开发和社区支持
+- ✅ **最佳实践**：经过大量实践验证的设计模式
+
+> 💡 **提示**：详细的 API 使用方法和示例，请查看 [MNUTILS_API_GUIDE.md](./MNUTILS_API_GUIDE.md)
 
 ## 🏗️ 项目结构
 
@@ -604,277 +659,3 @@ function isHandwritingComment(note, index) {
 2. **不要重复调用 `getCommentType`**：MNComments 的元素已经调用过了
 3. **理解类型层次**：基础类型（5种） → 细分类型（15+种）
 4. **调试技巧**：使用 `MNUtil.log(note.MNComments[0])` 查看实际的 type 值
-
-## 🎨 UI/UX 设计规范
-
-### 1. 颜色主题
-```javascript
-const colors = {
-  primary: "#457bd3",      // 主色调（蓝色）
-  success: "#75fb4c",      // 成功（绿色）
-  danger: "#e06c75",       // 危险（红色）
-  inactive: "#677180",     // 未激活（灰色）
-  highlight: "#2c4d81"     // 高亮色
-};
-```
-
-### 2. 按钮样式
-```javascript
-MNButton.new({
-  title: "按钮文字",
-  bold: true,
-  font: 14,
-  radius: 10,
-  color: "#457bd3",
-  opacity: 0.8
-});
-```
-
-### 3. 动画效果
-```javascript
-MNUtil.animate(() => {
-  // 动画内容
-}, 0.25); // 动画时长
-```
-
-## 🔧 代码解压与格式化
-
-### JavaScript 压缩代码解压
-
-当遇到压缩/混淆的 JavaScript 代码时，可以使用以下工具进行格式化：
-
-#### 1. 使用 Prettier（推荐）
-```bash
-# 安装并使用 prettier 格式化代码
-npx prettier@latest filename.js --write --print-width 120 --tab-width 2 --single-quote --trailing-comma es5 --bracket-spacing --arrow-parens always
-```
-
-#### 2. 使用 js-beautify
-```bash
-# 安装 js-beautify
-npm install -g js-beautify
-
-# 格式化代码
-js-beautify filename.js -o formatted_filename.js -s 2 --type js
-```
-
-#### 3. 使用 Node.js 自定义脚本
-创建格式化脚本 `format.js`：
-```javascript
-const fs = require('fs');
-const content = fs.readFileSync('compressed.js', 'utf8');
-
-function formatJavaScript(code) {
-  return code
-    .split(';').join(';\n')
-    .split('{').join('{\n  ')
-    .split('}').join('\n}\n')
-    .split(',').join(', ')
-    .replace(/\n\s*\n\s*\n/g, '\n\n')
-    .replace(/function\(/g, 'function (')
-    .replace(/if\(/g, 'if (')
-    .replace(/for\(/g, 'for (')
-    .replace(/while\(/g, 'while (')
-    .replace(/\)\{/g, ') {');
-}
-
-const formatted = formatJavaScript(content);
-fs.writeFileSync('formatted.js', formatted);
-console.log('格式化完成');
-```
-
-运行脚本：
-```bash
-node format.js
-```
-
-#### 格式化参数说明
-- `--print-width 120`: 行宽度限制
-- `--tab-width 2`: 缩进宽度
-- `--single-quote`: 使用单引号
-- `--trailing-comma es5`: ES5 兼容的尾逗号
-- `--bracket-spacing`: 括号内空格
-- `--arrow-parens always`: 箭头函数始终使用括号
-
-### 注意事项
-1. **压缩代码的限制**：变量名已被混淆（如 t, e, i），无法恢复原始有意义的变量名
-2. **格式化 vs 反混淆**：这些工具只能改善代码格式，不能还原变量名和注释
-3. **备份原文件**：格式化前建议备份原始文件
-4. **大文件处理**：超大文件可能需要分段处理或使用专门的在线工具
-
-## 🐛 调试技巧
-
-### 1. 日志输出
-```javascript
-// 添加日志
-MNUtil.log({
-  level: "info/warn/error",
-  message: "日志内容",
-  detail: {...}
-});
-
-// 查看日志
-// 切换到 Log Viewer 视图
-```
-
-### 2. 错误处理
-```javascript
-try {
-  // 业务逻辑
-} catch (error) {
-  subscriptionUtils.addErrorLog(error, "functionName", {
-    // 上下文信息
-  });
-}
-```
-
-
-
-## 📝 开发规范
-
-### 1. 基本开发原则
-
-#### 1.1 核心原则
-- **深度理解**：每次输出前必须深度理解项目背景、用户意图和技术栈特征
-- **权威参考**：当信息不确定时，先查询权威资料（官方文档、标准或源码）
-- **精确回答**：仅回答与问题直接相关内容，避免冗余和教程式铺陈
-- **任务分解**：面对复杂需求，拆分为可管理的子任务
-
-#### 1.2 ⚠️ 严禁擅自修改用户内容（极其重要）
-
-**绝对禁止擅自生成内容替换用户的原始内容！**
-
-在进行任何代码解耦、重构、迁移或整理工作时：
-
-1. **必须严格复制原始内容**：
-   - 从 git 历史、现有文件或用户提供的内容中逐字复制
-   - 保持所有注释、空行、格式完全一致
-   - 即使是被注释掉的代码也必须保留
-
-2. **禁止自创或简化**：
-   - 不得简化菜单结构或删减菜单项
-   - 不得改变函数参数或默认值
-   - 不得"优化"代码或改进命名
-   - 不得删除看似"无用"的代码
-
-3. **保持完整性**：
-   - 每个菜单项、每个按钮配置、每个参数都必须完整保留
-   - 保持原有的层级结构和顺序
-   - 保持原有的中英文内容、emoji 等
-
-4. **遇到不确定立即询问**：
-   - 如果某个部分不清楚或缺失，必须询问用户
-   - 不得自行推测或填充内容
-   - 不得基于"常见做法"来补充
-
-**违反此原则会导致功能丢失、用户工作被破坏，是绝对不可接受的错误。**
-
-#### 1.3 源码阅读规范
-
-1. **完整阅读原则**：
-   - 必须完整阅读整个文件，避免断章取义
-   - 理解上下文依赖和完整的业务逻辑
-   - 注意文件间的引用关系
-
-2. **大文件处理**：
-   - 超过 500 行的文件应分段阅读
-   - 每段控制在 100-200 行
-   - 记录段间的关联关系
-
-### 2. 代码风格
-- 使用 2 空格缩进
-- 函数名使用 camelCase
-- 常量使用 UPPER_CASE
-- 注释使用中文，便于理解
-
-### 3. 错误处理
-- 所有异步操作必须有错误处理
-- 用户操作失败时显示友好提示
-- 错误日志要包含足够的上下文
-
-### 4. 性能优化
-- 避免频繁的 UI 刷新
-- 大文件操作使用异步
-- 及时释放不用的资源
-
-### 5. 版本管理
-- 遵循语义化版本规范
-- 更新 mnaddon.json 中的版本号
-- 记录更新日志
-
-## 🚀 发布流程
-
-1. **更新版本号**
-   - 修改 mnaddon.json 中的 version
-
-2. **测试**
-   - 在 MN3 和 MN4 中测试
-   - 测试订阅功能
-   - 测试插件安装
-
-3. **打包**
-   ```bash
-   # 使用日期命名
-   zip -r mnutils_0628.mnaddon * -x ".*" -x "__MACOSX"
-   ```
-
-4. **发布**
-   - 上传到 WebDAV 服务器
-   - 更新 mnaddon.json 配置
-   - 通知用户更新
-
-## 🔄 长期开发计划
-
-### 代码迁移与重构
-MNMath 和 HtmlMarkdownUtils 类是新架构的核心，其他代码（特别是 MNNote.prototype 扩展）需要逐步迁移到这两个类中：
-
-1. **迁移原则**：
-   - 优先将常用功能迁移到 MNMath 类
-   - 保持 API 设计的一致性和合理性
-   - 函数名以合适合理为主，不必与原始完全一致
-   - 充分利用已有的工具方法，避免重复实现
-
-2. **待迁移功能清单**：
-   - ✅ clearFailedLinks - 清理失效链接（已迁移为 cleanupBrokenLinks）
-   - ✅ convertLinksToNewVersion - 转换链接到新版本（已迁移）
-   - ✅ fixProblemLinks - 修复合并造成的链接问题（已迁移为 fixMergeProblematicLinks）
-   - ⏳ linkRemoveDuplicatesAfterIndex - 删除重复链接
-   - ⏳ 其他 MNNote.prototype 扩展方法
-
-3. **迁移时注意事项**：
-   - 使用 MNMath 已有的工具方法（如 parseNoteComments）
-   - 保持错误处理的健壮性
-   - 添加必要的 JSDoc 注释
-
-## 🔒 安全考虑
-
-1. **APIKey 安全**
-   - 不在日志中记录完整 APIKey
-   - 使用 iCloud 同步存储
-   - 支持隐藏/显示切换
-
-2. **网络安全**
-   - HTTPS 通信
-   - 请求超时处理
-   - 错误重试机制
-
-3. **数据安全**
-   - 配置文件加密存储
-   - 敏感信息脱敏处理
-
-## 📚 相关文档
-
-- [MNUTILS_API_GUIDE.md](./MNUTILS_API_GUIDE.md) - 使用 MNUtils API 开发插件的完整指南
-- [MarginNote 官方文档](https://www.marginnote.com/)
-- [JSBox 文档](https://docs.xteko.com/) - 了解 JSB 框架
-
-## 🤝 贡献指南
-
-1. Fork 项目
-2. 创建功能分支
-3. 提交代码
-4. 发起 Pull Request
-
-## 📄 许可证
-
-本项目采用 MIT 许可证。

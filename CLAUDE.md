@@ -1,3 +1,181 @@
+# MarginNote 4 插件开发指南
+
+## 1. 什么是 MarginNote 4
+
+MarginNote 4 是一个**基于数据结构的知识管理系统**，不仅仅是 PDF 阅读器或笔记软件。其核心设计理念：
+
+- **知识的原子化**：将知识分解为最小可管理单元（卡片）
+- **知识的结构化**：通过关系网络构建知识体系
+- **知识的流动性**：同一数据在不同视图间自由流转（文档/脑图/复习）
+- **知识的可计算性**：支持检索、链接、自动化处理
+
+### 三层数据架构
+1. **卡片（Card）**：知识的原子单位，包含标题、摘录、评论
+2. **文档（Document）**：知识的载体，支持 PDF/EPUB 等格式
+3. **学习集（Study Set）**：知识的工作空间，整合文档、脑图、复习
+
+## 2. MarginNote 插件系统
+
+### 技术基础
+- **JSBridge 框架**：Objective-C 与 JavaScript 的桥接技术
+- **运行环境**：基于 Safari 的 JavaScript 引擎
+- **限制**：无 Node.js API，Browser API 支持有限
+
+### 插件结构（.mnaddon）
+```
+plugin.mnaddon/
+├── mnaddon.json    # 插件配置清单
+├── main.js         # 插件主代码
+└── logo.png        # 插件图标
+```
+
+### 插件生命周期
+```javascript
+JSB.newAddon = () => {
+  return JSB.defineClass("PluginName: JSExtension", {
+    // 窗口生命周期
+    sceneWillConnect() {},       // 新建窗口
+    sceneDidDisconnect() {},     // 关闭窗口
+    
+    // 笔记本生命周期
+    notebookWillOpen(topicid) {}, // 打开笔记本
+    notebookWillClose(topicid) {}, // 关闭笔记本
+    
+    // 文档生命周期
+    documentDidOpen(docmd5) {},    // 打开文档
+    documentWillClose(docmd5) {}   // 关闭文档
+  })
+}
+```
+
+## 3. MNUtils 框架 - 插件开发的基础设施 ⭐⭐⭐⭐⭐
+
+### 为什么 MNUtils 是必需的
+
+MNUtils 是 MarginNote 插件生态的**核心基础设施层**：
+
+1. **默认加载**：框架已自动加载，所有插件可直接使用
+2. **完整封装**：提供 500+ 个 API 方法，覆盖所有功能需求
+3. **最佳实践**：经过大量实践验证的设计模式
+4. **降低门槛**：无需理解底层 Objective-C API
+
+### 核心组成
+
+**mnutils.js - 基础框架（8,439行）**
+- 10 个核心类，500+ API 方法
+- 主要类：
+  - `MNUtil`：系统工具类（400+ 方法）
+  - `MNNote`：笔记操作类（180+ 方法）
+  - `MNComment`：评论管理
+  - `MNDocument`：文档操作
+  - `MNNotebook`：笔记本管理
+
+**xdyyutils.js - 学术扩展（15,560行）**
+- 针对学术场景优化
+- `MNMath`：13种知识卡片类型
+- 智能链接管理
+- 中文排版优化（Pangu.js）
+
+### 使用 MNUtils 的第一步
+
+```javascript
+// 必须在插件启动时初始化
+MNUtil.init(self.path);
+
+// 之后即可使用所有 API
+let note = MNNote.getFocusNote();
+MNUtil.showHUD("Hello MarginNote!");
+```
+
+## 4. 如何学习和使用 API
+
+### 📚 文档查阅顺序
+
+1. **查看 API 指南**：`mnutils/MNUtils_API_Guide.md`
+   - 完整的 API 参考文档
+   - 包含所有类和方法说明
+   - 提供丰富的使用示例
+
+2. **确认方法存在**：在 `mnutils.js` 或 `xdyyutils.js` 中搜索
+   - 文档可能有遗漏，以源码为准
+   - 使用 Cmd+F 快速定位方法
+
+3. **了解实现细节**：参考 `mnutils/CLAUDE.md`
+   - 深入了解内部实现
+   - 查看注意事项和已知问题
+
+### 最常用的 10 个 API
+
+```javascript
+// 1. 获取笔记
+let note = MNNote.getFocusNote();              // 当前焦点笔记
+let notes = MNNote.getFocusNotes();              // 当前焦点笔记
+
+// 2. 显示提示
+MNUtil.showHUD("操作成功", 2);                 // 2秒后消失
+
+// 3. 笔记操作
+note.title = "新标题";                         // 修改标题
+note.colorIndex = 5;                           // 设置颜色
+note.appendTextComment("评论内容");            // 添加评论
+
+// 4. 复制到剪贴板
+MNUtil.copy(note.noteId);                      // 复制笔记ID
+
+// 5. 延迟执行
+await MNUtil.delay(0.5);                       // 延迟0.5秒
+
+// 6. 撤销分组
+MNUtil.undoGrouping(() => {
+  // 多个操作作为一个撤销单元
+});
+
+// 7. 版本检测
+if (MNUtil.isMN4()) {
+  // MarginNote 4 特有功能
+}
+
+// 8. 错误处理
+MNUtil.addErrorLog(error, "functionName", {noteId: noteId});
+
+// 9. 用户确认
+let result = await MNUtil.confirm("确认", "是否继续？", ["取消", "确定"]);
+
+// 10. 获取笔记本
+let notebook = MNNotebook.currentNotebook;
+```
+
+## 5. 重要提醒
+
+1. **API 版本差异**
+   - `xdyyutils.js` 修改了部分默认值（如 `getNoteById` 的 alert 参数）
+   - 使用前请确认是否符合需求
+
+2. **多窗口处理**
+   - MarginNote 支持多窗口，不同窗口的插件实例独立
+   - 数据必须挂载到 `self` 上以区分窗口
+
+3. **性能优化**
+   - 大批量操作使用 `undoGrouping`
+   - 适当使用 `delay` 避免界面卡顿
+   - 注意内存管理，及时释放大对象
+
+4. **调试技巧**
+   - 使用 `MNUtil.log()` 记录日志
+   - 使用 `MNUtil.copyJSON()` 复制对象到剪贴板
+   - 错误会自动记录并复制
+
+## 6. 获取更多帮助
+
+- **详细 API 文档**：查看 `mnutils/MNUtils_API_Guide.md`
+- **实现细节**：查看 `mnutils/CLAUDE.md`
+- **数据结构理解**：参考 `MNGuide_DataStructure.md`
+- **插件系统文档**：参考 `MarginNote插件系统文档.md`
+
+> 💡 **记住**：MNUtils 不仅是一个工具库，更是整个 MarginNote 插件生态的基础设施。掌握它等于掌握了 MarginNote 插件开发的核心。
+
+---
+
 # MN-Addon 开发经验与常见问题
 
 ## note.MNComments 与 note.comments 的关键区别（2025-01-12）
@@ -78,6 +256,50 @@ function isHandwritingCommentAlt(note, index) {
 - xdyyutils.js 中的 MNMath 类方法
 - 所有涉及评论类型判断的功能
 - 特别是手写、图片、合并内容的识别
+
+## 时间轴任务状态更新不刷新问题（2025-01-17）
+
+### 问题描述
+用户反复反馈时间轴任务状态更新后不刷新的严重问题：
+- 点击暂停/完成按钮后显示成功通知
+- 但时间轴中的任务状态和按钮没有变化
+- 必须手动 cmd+R 刷新页面才能看到更新
+
+### 根本原因
+`filteredTasks` 数组包含过时的任务对象副本：
+```javascript
+// filteredTasks 是通过 filter 创建的副本
+filteredTasks = tasks.filter(task => { ... });
+
+// 状态更新只影响 tasks 数组中的原始对象
+task.status = newStatus;  // task 是 tasks 数组中的对象
+
+// renderTodayTimeline 使用 filteredTasks 渲染
+const baseTasks = filteredTasks;  // 使用了包含旧状态的副本
+```
+
+### 解决方案
+让 `renderTodayTimeline` 始终使用最新的 `tasks` 数组：
+```javascript
+// 修改前
+const baseTasks = (filteredTasks && filteredTasks.length >= 0) ? filteredTasks : tasks;
+
+// 修改后
+const baseTasks = tasks;  // 始终使用原始数组，确保数据最新
+```
+
+### 关键要点
+1. **避免使用缓存的数组副本**：在需要实时更新的场景中，应直接使用原始数据源
+2. **理解 JavaScript 对象引用**：`filter()` 创建新数组但包含原对象的引用，修改对象属性会影响所有引用，但如果使用了旧的数组副本，仍会渲染旧数据
+3. **调试技巧**：添加对象引用比较（`isSameObject: task === originalTask`）可以快速定位是否使用了过时的对象副本
+
+### 相关修复
+- Commit: b1a9d28
+- Issue: #9
+
+---
+
+# 开发工作流规范
 
 ## GitHub Issue 工作流规范（2025-01-17）
 
@@ -288,42 +510,3 @@ git remote -v
 - 在创建 GitHub Issue 之前，确保代码已经推送到远程仓库
 - 使用 `git push github [分支名]` 而不是 `git push origin [分支名]`
 - 如果忘记 push，Issue 中引用的代码链接将无法访问
-
-
-### 问题描述
-用户反复反馈时间轴任务状态更新后不刷新的严重问题：
-- 点击暂停/完成按钮后显示成功通知
-- 但时间轴中的任务状态和按钮没有变化
-- 必须手动 cmd+R 刷新页面才能看到更新
-
-### 根本原因
-`filteredTasks` 数组包含过时的任务对象副本：
-```javascript
-// filteredTasks 是通过 filter 创建的副本
-filteredTasks = tasks.filter(task => { ... });
-
-// 状态更新只影响 tasks 数组中的原始对象
-task.status = newStatus;  // task 是 tasks 数组中的对象
-
-// renderTodayTimeline 使用 filteredTasks 渲染
-const baseTasks = filteredTasks;  // 使用了包含旧状态的副本
-```
-
-### 解决方案
-让 `renderTodayTimeline` 始终使用最新的 `tasks` 数组：
-```javascript
-// 修改前
-const baseTasks = (filteredTasks && filteredTasks.length >= 0) ? filteredTasks : tasks;
-
-// 修改后
-const baseTasks = tasks;  // 始终使用原始数组，确保数据最新
-```
-
-### 关键要点
-1. **避免使用缓存的数组副本**：在需要实时更新的场景中，应直接使用原始数据源
-2. **理解 JavaScript 对象引用**：`filter()` 创建新数组但包含原对象的引用，修改对象属性会影响所有引用，但如果使用了旧的数组副本，仍会渲染旧数据
-3. **调试技巧**：添加对象引用比较（`isSameObject: task === originalTask`）可以快速定位是否使用了过时的对象副本
-
-### 相关修复
-- Commit: b1a9d28
-- Issue: #9

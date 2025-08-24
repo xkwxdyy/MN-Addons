@@ -1,4 +1,7 @@
 
+if (typeof MNOnAlert === 'undefined') {
+  var MNOnAlert = false
+}
 JSB.newAddon = function (mainPath) {
   JSB.require('utils');
   if (!browserUtils.checkMNUtilsFolder(mainPath)) {return undefined}
@@ -37,6 +40,9 @@ JSB.newAddon = function (mainPath) {
         self.addObserver( 'onPopupMenuOnNote:', 'PopupMenuOnNote');
         self.addObserver( 'receivedSearchInBrowser:', 'searchInBrowser');
         self.addObserver( 'receivedOpenInBrowser:', 'openInBrowser');
+        self.addObserver( 'receivedVideoFrameAction:', 'browserVideoFrameAction');
+        self.addObserver( 'receivedVideoControl:', 'browserVideoControl');
+
         self.addObserver( 'onNewWindow:', 'newWindow');
         self.addObserver( 'onSetVideo:', 'browserVideo');
         self.addObserver( 'onAddonBroadcast:', 'AddonBroadcast');
@@ -49,7 +55,17 @@ JSB.newAddon = function (mainPath) {
         let self = getMNBrowserClass()
         self.addonController.homePage()
         let names = [
-          'PopupMenuOnSelection','PopupMenuOnNote','close', 'searchInBrowser','openInBrowser','newWindow','browserVideo','AddonBroadcast','NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI'
+          'PopupMenuOnSelection',
+          'PopupMenuOnNote',
+          'close', 
+          'searchInBrowser',
+          'openInBrowser',
+          'newWindow',
+          'browserVideo',
+          'AddonBroadcast',
+          'NSUbiquitousKeyValueStoreDidChangeExternallyNotificationUI',
+          'browserVideoFrameAction',
+          'browserVideoControl'
         ]
         self.removeObservers(names)
       },
@@ -362,6 +378,9 @@ JSB.newAddon = function (mainPath) {
           let allText = focusNote.allText
           let result = browserUtils.extractBilibiliLinks(allText)
           if (result && result.length) {
+            if (!browserUtils.checkSubscribe(true)) {
+              return undefined
+            }
             // MNUtil.copy(result)
             if (self.addonController.view.hidden) {
               self.addonController.show()
@@ -552,7 +571,7 @@ JSB.newAddon = function (mainPath) {
         try {
           
         let message = sender.userInfo.message
-        if (/BilibiliExcerpt\?/.test(message)) {
+        if (/BilibiliExcerpt\?/.test(message) && (typeof biliUtils === 'undefined')) {
           let arguments = message.match(/(?<=BilibiliExcerpt\?).*/)[0].split("&")
           let id = arguments[0].match(/(?<=videoId\=)\w+/)[0]
           let time = arguments[1].match(/(?<=t\=).*/)[0]
@@ -678,13 +697,6 @@ JSB.newAddon = function (mainPath) {
           self.addonController.addonBar = self.addonBar
         }
         if (self.checkWatchMode()) { return }
-        if (self.addonController.currentNoteId) {
-          let note = MNNote.new(self.addonController.currentNoteId)
-          if (note) {
-            let config = await browserUtils.parseNoteInfo(note)
-            MNUtil.copy(config)
-          }
-        }
 
         if (self.addonController.view.hidden) {
           if (self.isFirst) {
@@ -736,6 +748,30 @@ JSB.newAddon = function (mainPath) {
         if (!self.addonController.view.window) return;
         if (self.viewTimer) self.viewTimer.invalidate();
 
+
+        if (self.addonController.currentNoteId) {//自动提取哔哩哔哩链接
+          let text = self.getTextForSearch(self.addonController.currentNoteId)
+          // MNUtil.copy(text)
+          let result = browserUtils.extractBilibiliLinks(text)
+          if (result && result.length) {
+            // MNUtil.copy(result)
+            if (self.addonController.view.hidden) {
+              self.addonController.show()
+            }
+            // if (arguments.length > 2) {
+            //   let p = arguments[2].match(/(?<=p\=).*/)[0]
+            //   self.addonController.openOrJump(id,time,parseInt(p))
+            // }else{
+            //   self.addonController.openOrJump(id,time,0)
+            // }
+            if ("p" in result[0]) {
+              self.addonController.openOrJump(result[0].videoId,result[0].t,result[0].p)
+            }else{
+              self.addonController.openOrJump(result[0].videoId,result[0].t,0)
+            }
+            return
+          }
+        }
         // Application.sharedInstance().showHUD("process:1",self.window,2)
         var text = self.textSelected;
         //五秒内点击了logo
@@ -932,6 +968,9 @@ JSB.newAddon = function (mainPath) {
     return noteList.concat(note.comments.filter(comment=>comment.type==="TextNote").map(comment=>comment.text))
   };
   MNBrowserClass.prototype.getTextForSearch = function (note) {
+    if (typeof note === "string") {
+      note = MNNote.new(note)
+    }
     let order = browserConfig.searchOrder
     if (!order) {
       order = [2,1,3]

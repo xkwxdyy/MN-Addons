@@ -21,6 +21,11 @@ try {
     self.lastFrame = self.view.frame;
     // self.currentFrame = self.view.frame
     self.history = []
+    self.hasRenderSearchResults = false
+    self.selection = {
+      text:"",
+      time:0
+    }
     self.tem = []
     self.title = "main"
     self.preResponse = ""
@@ -152,6 +157,12 @@ try {
     if (self.connection) {
       self.connection.cancel()
       delete self.connection
+      if (self.func && self.func.length) {
+        self.func.map(func=>{
+          let funcName = func.function.name
+          chatAITool.getToolByName(funcName).clearPreContent()
+        })
+      }
     }
     await self.hide()
     self.onChat = false
@@ -208,7 +219,7 @@ try {
       note = MNNote.new(self.noteid) ?? chatAIUtils.getFocusNote()
     }
     if (!note) {
-      MNUtil.showHUD("Unavailable")
+      self.showHUD("Note unavailable")
       return
     }
     let config = {excerptText:text,excerptTextMarkdown:true}
@@ -281,9 +292,9 @@ try {
       self.response = ""
       self.preFuncResponse = ''
       if (self.currentPrompt === "Dynamic" || self.currentPrompt === "Vision") {
-        self.reAskByDynamic(0.99)
+        self.reAskByDynamic(1.0)
       }else{
-        self.reAsk(0.99)
+        self.reAsk(1.0)
       }
       } catch (error) {
         chatAIUtils.addErrorLog(error, "reAsk")
@@ -303,7 +314,7 @@ try {
       note = MNNote.fromSelection()
     }
     if (!note) {
-      MNUtil.showHUD("Unavailable")
+      self.showHUD("Note unavailable")
       return
     }
     let text = await self.getTextForAction()
@@ -337,7 +348,7 @@ try {
       note = MNNote.fromSelection()
     }
     if (!note) {
-      MNUtil.showHUD("Unavailable")
+      self.showHUD("Note unavailable")
       return
     }
     MNUtil.undoGrouping(()=>{
@@ -381,7 +392,7 @@ try {
       focusNote = MNNote.fromSelection()
     }
     if (!focusNote) {
-      MNUtil.showHUD("Unavailable")
+      self.showHUD("Note unavailable")
       return
     }
     MNUtil.undoGrouping(()=>{
@@ -394,7 +405,7 @@ try {
   },
   showAILink: async function () {
     if (!self.noteid) {
-      MNUtil.showHUD("Unavailable")
+      self.showHUD("Note unavailable")
     }
     let text = await self.getTextForAction()
     // let text = await self.getWebviewContent()
@@ -443,9 +454,9 @@ try {
       self.response = ""
       self.preFuncResponse = ''
       if (self.currentPrompt === "Dynamic" || self.currentPrompt === "Vision") {
-        self.reAskByDynamic(0.99)
+        self.reAskByDynamic(1.0)
       }else{
-        self.reAsk(0.99)
+        self.reAsk(1.0)
       }
       } catch (error) {
         chatAIUtils.addErrorLog(error, "reAsk")
@@ -599,12 +610,12 @@ try {
         case "choice":
           if ("content" in config.params) {
             let content = config.params.content
-            self.showHUD("💬 Reply: "+content)
+            self.waitHUD("💬 Reply: "+content)
             self.continueAsk(content)
           }else if ("linkText" in config.params) {
             let linkText = config.params.linkText
             // let content = config.params.content
-            self.showHUD("💬 Reply: "+linkText)
+            self.waitHUD("💬 Reply: "+linkText)
             self.continueAsk(linkText)
           }else{
             MNUtil.copy(config)
@@ -613,17 +624,15 @@ try {
         case "addnote":
           if ("content" in config.params) {
             let content = config.params.content
-            self.showHUD("➕ Add note: "+content)
-            let note = MNNote.new(self.noteid)??chatAIUtils.getFocusNote()
-            let childNote = note.createChildNote({excerptText:content,excerptTextMarkdown:true})
-            childNote.focusInMindMap(0.5)
+            self.userSelectAddNote(content,config.params.format)
+            return false
           }else {
             MNUtil.copy(config)
           }
           break;
         case "addcomment":
           if ("content" in config.params) {
-            let content = config.params.content
+            let content = config.params.content.replace(/\\n/g,"\n")
             self.showHUD("➕ Add comment: "+content)
             let note = MNNote.new(self.noteid)??chatAIUtils.getFocusNote()
             MNUtil.undoGrouping(()=>{
@@ -632,6 +641,10 @@ try {
           }else {
             MNUtil.copy(config)
           }
+          break;
+        case "changeURL":
+          self.changeURL()
+          return false
         default:
           break;
       }
@@ -673,6 +686,15 @@ try {
       self.onResponse = false
       // MNUtil.waitHUD("message"+height)  
       // MNUtil.showHUD("height: "+height)
+      return false
+    }
+    if (/^chataction\:\/\/selectText/.test(requestURL)) {
+      self.getWebviewSelection().then((res)=>{
+        self.selection = {
+          text:res,
+          time:Date.now()
+        }
+      })
       return false
     }
     if (/^chataction\:\/\/copyimage/.test(requestURL)) {
@@ -753,9 +775,12 @@ try {
     // chatAIUtils.copyJSON(self.token)
     self.statusCode = response.statusCode()
     self.currentData = NSMutableData.new()
+    self.hasRenderSearchResults = false
     if (self.statusCode >= 400) {
       MNUtil.stopHUD()
       MNUtil.showHUD("❗"+MNUtil.getStatusCodeDescription(""+self.statusCode))
+      MNUtil.log("❗"+MNUtil.getStatusCodeDescription(""+self.statusCode))
+
       self.errorMessage = {
         message:"❗"+MNUtil.getStatusCodeDescription(""+self.statusCode),
         statusCode: self.statusCode,
@@ -764,7 +789,8 @@ try {
       // MNUtil.stopHUD()
       await MNUtil.delay(0.1)
       MNUtil.copy(self.errorMessage)
-      self.setWebviewContentDev({response:`\`\`\`json\n${JSON.stringify(self.errorMessage,null,2)}\n\`\`\``})
+      self.showErrorMessage(self.errorMessage)
+      // self.setWebviewContentDev({response:`\`\`\`json\n${JSON.stringify(self.errorMessage,null,2)}\n\`\`\``})
       self.response = JSON.stringify(self.errorMessage,undefined,2)
       self.setButtonOpacity(1.0)
       await MNUtil.delay(0.1)
@@ -777,6 +803,7 @@ try {
         })
         self.errorLogged = true
       }
+
       delete self.connection
       // return
     }
@@ -809,7 +836,7 @@ try {
       }
       MNUtil.showHUD(contentToShow)
       await MNUtil.delay(0.1)
-      self.setWebviewContentDev({response:`\`\`\` json\n${JSON.stringify(self.errorMessage,undefined,2)}\n\`\`\``})
+      self.showErrorMessage(self.errorMessage)
       self.response = JSON.stringify(self.errorMessage,undefined,2)
       self.errorLogged = true
       MNUtil.log({
@@ -829,7 +856,8 @@ try {
           MNUtil.copy(res)
           self.errorMessage = res
           await MNUtil.delay(0.1)
-          self.setWebviewContentDev({response:`\`\`\` json\n${JSON.stringify(self.errorMessage,undefined,2)}\n\`\`\``})
+          self.showErrorMessage(self.errorMessage)
+          // self.setWebviewContentDev({response:`\`\`\` json\n${JSON.stringify(self.errorMessage,undefined,2)}\n\`\`\``})
           // self.runJavaScript(`openEdit();`)
           connection.cancel()
           delete self.connection
@@ -889,17 +917,33 @@ try {
     }
     MNUtil.stopHUD()
   },
-  connectionDidFailWithError: function (connection,error) {
+  connectionDidFailWithError: async function (connection,error) {
+  try {
+
+    let self = getNotificationController()
+    let message = "Network error"
     if (error.localizedDescription) {
-      MNUtil.showHUD(error.localizedDescription)
-    }else{
-      MNUtil.showHUD("Network error")
+      message = error.localizedDescription
     }
+    MNUtil.showHUD(message)
+
     MNUtil.stopHUD()
     self.setButtonOpacity(1.0)
     delete self.connection
+    self.errorMessage = {
+      message:message,
+      info: self.config
+    }
+    // MNUtil.stopHUD()
+    await MNUtil.delay(0.5)
+    self.showErrorMessage(self.errorMessage)
+    
+  } catch (error) {
+    chatAIUtils.addErrorLog(error, "connectionDidFailWithError")
+  }
   }
 });
+
 
 /**
  * @this {notificationController}
@@ -962,13 +1006,16 @@ try {
     case "SiliconFlow":
     case "PPIO":
     case "Github":
+    case "Metaso":
     case "Qwen":
     case "ChatGPT":
     case "Subscription":
-    case "Gemini":
     case "Custom":
     case "Volcengine":
       request =chatAINetwork.initRequestForChatGPT(this.history,config.key,config.url,config.model,this.temperature,this.funcIndices)
+      break;
+    case "Gemini":
+      request =chatAINetwork.initRequestForGemini(this.history,config.key,config.url,config.model,this.temperature,this.funcIndices)
       break;
     case "Claude":
       request = chatAINetwork.initRequestForClaude(this.history,config.key,config.url,config.model, this.temperature)
@@ -1275,6 +1322,7 @@ try {
  */
 notificationController.prototype.continueAsk = async function(question) {
 try {
+  this.setNewResponse()
   let config = chatAIConfig.config
   if (this.notShow && !this.called) {
     // MNUtil.showHUD("not show")
@@ -1449,6 +1497,7 @@ try {
     })
     this.response = ""
     this.preResponse = ""
+    this.preFuncResponse = ""
     if (this.actions.length && !this.onChat) {
       await this.executeFinishAction(this.actions,this.lastResponse)
     }
@@ -1461,6 +1510,8 @@ try {
     if (chatAIUtils.dynamicController) {
       MNUtil.studyView.bringSubviewToFront(chatAIUtils.dynamicController.view)
     }
+    this.clearCache()
+    // chatAIUtils.cache = {}
     // MNUtil.showHUD("message"+MNUtil.isDescendantOfStudyView(this.view))
   }
   this.sizeHeight = await this.getWebviewHeight(true)+heightOffset
@@ -1899,6 +1950,9 @@ notificationController.prototype.getResponseForChatGPT = function (checkToolCall
     this.reasoningResponse = test.reasoningResponse ?? ""
     this.func = test.funcList ?? []
     this.funcResponse = test.funcResponse ?? ""
+    if (this.config.source === "Metaso" && test.citations) {
+      this.renderSearchResults(test.citations,true)
+    }
     return
   } catch (error) {
     chatAIUtils.addErrorLog(error, "getResponseForChatGPT",this.resList)
@@ -2116,9 +2170,10 @@ notificationController.prototype.runJavaScript = async function(script,webview) 
 };
 /** @this {notificationController} */
 notificationController.prototype.getFileContent = async function (fileObject) {
-  let fileContent = await this.runJavaScript(`getPdfContent()`)
+  let res = await this.runJavaScript(`getPdfContent()`)
+  let pageContents = JSON.parse(res)
   // let fileContent = await this.runJavaScript(`getProcessPercent()`)
-  return fileContent
+  return pageContents
 }
 
 /** @this {notificationController} */
@@ -2135,21 +2190,52 @@ notificationController.prototype.getFileParsingProcess = async function (fileObj
   return res
 }
 
+
 /** @this {notificationController} */
 notificationController.prototype.getWebviewHeight = async function (finish = false) {
   if (finish) {
+    // MNUtil.copy(this.response)
+    // MNUtil.log("getWebviewHeight",chatAIConfig.getConfig("allowEdit"))
     await this.runJavaScript(`openEdit(${chatAIConfig.getConfig("allowEdit")});`)
   }
   let sizeHeight = parseInt(await this.runJavaScript(`document.body.scrollHeight`))
   return sizeHeight
 }
+
+/** @this {notificationController} */
+notificationController.prototype.getWebviewSelection = async function (webview){
+  try {
+  let  selection = await this.runJavaScript(`editor.getSelection()`,webview)
+  // let selection = await this.runJavaScript(`getCurrentSelect()`,webview)
+  // MNUtil.delay(0.1).then(async ()=>{
+  //   await this.runJavaScript(`editor.blur();`,webview)
+  //   if (webview) {
+  //     this[webview].endEditing(true)
+  //   }else{
+  //     this.webviewResponse.endEditing(true)
+  //   }
+  // })
+  // MNUtil.copy(selection)
+  if (!selection || !selection.trim()) {
+    return undefined
+  }else{
+    return selection
+  }
+  
+  } catch (error) {
+    chatAIUtils.addErrorLog(error, "getWebviewSelection")
+    return undefined
+  }
+
+}
+
 /** @this {notificationController} */
 notificationController.prototype.getWebviewContent = async function (webview){
   try {
   let  selection = await this.runJavaScript(`editor.getSelection()`,webview)
   // let selection = await this.runJavaScript(`getCurrentSelect()`,webview)
-  MNUtil.delay(0.1).then(()=>{
-    this.runJavaScript(`editor.blur();`,webview)
+  MNUtil.delay(0.1).then(async ()=>{
+    await this.runJavaScript(`editor.blur();`,webview)
     if (webview) {
       this[webview].endEditing(true)
     }else{
@@ -2250,12 +2336,16 @@ notificationController.prototype.setResponseText = async function (funcResponse 
     // MNUtil.copy(this.tem)
     this.onResponse = true
     this.onreceive = false
-    let response = chatAIUtils.fixMarkdownLinks(this.response.trim())
-    // MNUtil.copy(this.reasoningResponse)
+    // MNUtil.copy(this.response.trim())
+    // let beginTime = Date.now()
+    // let response = chatAIUtils.fixMarkdownLinks(this.response.trim())
+    // response = chatAIUtils.replaceButtonCodeBlocks(response)
+    // let endTime = Date.now()
+    // MNUtil.log("setResponseText:"+(endTime-beginTime)+"ms")
     let option = {
       scrollToBottom: this.scrollToBottom,
       funcResponse: funcHtml,
-      response: response,
+      response: this.response,
       reasoningResponse: this.reasoningResponse,
     }
     if (!this.onFinish) {
@@ -2299,7 +2389,7 @@ try {
         switch (tool_use.recipient_name) {
           case "functions.setTitle":
             if (!noteid) {
-              MNUtil.showHUD("Unavailable")
+              this.showHUD("Note unavailable")
               break
               // this.addToolMessage("Execution failed! There is no card selected",func.id)
               // return "Error in setTitle(): There is no card selected\n"
@@ -2322,7 +2412,7 @@ try {
             break;
           case "functions.addComment":
             if (!noteid) {
-              MNUtil.showHUD("Unavailable")
+              this.showHUD("Note unavailable")
               break
               // this.addToolMessage("Execution failed! There is no card selected",func.id)
               // return "Error in addComment(): There is no card selected\n"
@@ -2361,7 +2451,8 @@ try {
       let res = await chatAITool.executeTool(funcName, func, noteid)
       this.tool.push(res.toolMessages)
       if ("renderSearchResults" in res) {
-        this.runJavaScript(`renderSearchResults(\`${encodeURIComponent(res.renderSearchResults)}\`);`)
+        this.renderSearchResults(res.renderSearchResults)
+        // this.runJavaScript(`renderSearchResults(\`${encodeURIComponent(res.renderSearchResults)}\`);`)
       }
       return res.description
   }
@@ -2632,7 +2723,7 @@ notificationController.prototype.executeActionOnNote = async function (note,acti
 try {
     // let note = note ?? await this.currentNote(true)
     if (!note) {
-      this.showHUD("Unavailable")
+      this.showHUD("Note unavailable")
       return
     }
     switch (action) {
@@ -2752,6 +2843,8 @@ try {
         this.setButtonOpacity(1.0)
         return;
       case "reply":
+        // this.runJavaScript(`editor.disabled()`)
+        // return
         let userInputRes = await MNUtil.userInput("MN ChatAI", "Reply to the last message\n\n请输入回复内容", ["Cancel","Yes/是","No/不是","Continue/继续","Exit/退出","Confirm"])
         switch (userInputRes.button) {
           case 0:
@@ -2825,9 +2918,9 @@ try {
         this.response = ""
         this.preFuncResponse = ''
         if (this.currentPrompt === "Dynamic" || this.currentPrompt === "Vision") {
-          this.reAskByDynamic(0.99)
+          this.reAskByDynamic(1.0)
         }else{
-          this.reAsk(0.99)
+          this.reAsk(1.0)
         }
         return;
       case "openChat":
@@ -3082,11 +3175,12 @@ function generateUrlScheme(scheme, host, path, query, fragment) {
 
     if (undoGrouping) {
       MNUtil.undoGrouping(()=>{
-        if (!note) {
+        if (!note && MNUtil.currentSelection.onSelection) {
           note = MNNote.fromSelection()
+          note = note.realGroupNoteForTopicId()
         }
         if (!note) {
-          this.showHUD("Unavailable")
+          this.showHUD("Note unavailable")
           return
         }
         this.executeActionOnNote(note,action,text)
@@ -3097,7 +3191,7 @@ function generateUrlScheme(scheme, host, path, query, fragment) {
         note = note.realGroupNoteForTopicId()
       }
       if (!note) {
-        this.showHUD("Unavailable")
+        this.showHUD("Note unavailable")
         return
       }
       this.executeActionOnNote(note,action,text)
@@ -3162,8 +3256,8 @@ try {
       menu.addMenuItem("设置标题",selector,"setTitle")
       menu.addMenuItem("追加标题",selector,"addTitle")
       menu.addMenuItem("复制内容",selector,"copy")
-      menu.addMenuItem("设置摘要",selector,"setExcerpt")
-      menu.addMenuItem("追加摘要",selector,"appendExcerpt")
+      menu.addMenuItem("设置为摘录",selector,"setExcerpt")
+      menu.addMenuItem("追加到摘录",selector,"appendExcerpt")
       menu.addMenuItem("Markdown转脑图",selector,"markdown2Mindmap")
       menu.addMenuItem("调用 MN Editor",selector,"openInEditor")
       menu.addMenuItem("调用 MN Bigbang",selector,"bigbang")
@@ -3219,9 +3313,9 @@ try {
 //         this.response = ""
 //         this.preFuncResponse = ''
 //         if (this.currentPrompt === "Dynamic" || this.currentPrompt === "Vision") {
-//           this.reAskByDynamic(0.99)
+//           this.reAskByDynamic(1.0)
 //         }else{
-//           this.reAsk(0.99)
+//           this.reAsk(1.0)
 //         }
 //         return;
 //       case "reAskWithMenu":
@@ -3438,15 +3532,23 @@ notificationController.prototype.refreshCustomButton = function (){
   this.chatButton.setImageForState(actionImages[7],0)
 }
 
-/** @this {notificationController} */
+/**
+ * 
+ * @param {string} path 
+ * @returns {Promise<string[]>}
+ * @this {notificationController}
+ */
 notificationController.prototype.getLocalFileContent = async function (path) {
     if (this.view.hidden) {
       // this.beginNotification("PDF")
       this.setNewResponse()
       await MNUtil.delay(0.1)
     }
-    MNUtil.waitHUD("Progress: 0%")
     let pdfData = MNUtil.getFile(path)
+    if (!pdfData) {
+      return []
+    }
+    MNUtil.waitHUD("Progress: 0%")
     let loaded = await this.runJavaScript(`getProgress()`)
     // MNUtil.log({source:"MN ChatAI",message:"getLocalFileContent",detail:loaded})
     while (true){
@@ -3478,13 +3580,108 @@ notificationController.prototype.getLocalFileContent = async function (path) {
       }
     }
     MNUtil.stopHUD()
-    let tem = await this.getFileContent()
-    return tem
+    let pageContents = await this.getFileContent()
+    return pageContents
 }
+/** @this {notificationController} */
 notificationController.prototype.currentNote = async function (allowSelection = false) {
     let note = MNNote.new(this.noteid) ?? chatAIUtils.getFocusNote(allowSelection)
     note = note?.realGroupNoteForTopicId()
     return note
+}
+/** @this {notificationController} */
+notificationController.prototype.userSelectAddNote = async function (content,format) {
+    content = content.replace(/\\n/g,"\n")
+    let selectingText = await this.getWebviewSelection()
+    if (!selectingText && (Date.now()-this.selection.time < 5000)) {
+      selectingText = this.selection.text
+    }
+    // let selectingText = await this.getWebviewContent()
+    this.showHUD("➕ Add note: "+content)
+    let note = MNNote.new(this.noteid)??chatAIUtils.getFocusNote()
+    if (selectingText) {
+      content = content+"\n\n"+selectingText
+    }
+    if (format === "markdown" && /^#/.test(content.trim())) {
+        let contents = content.split("\n")
+        let newTitle = contents[0].replace(/^#\s?/g,"")
+        let contentRemain = contents.slice(1).join("\n").trim()
+        let childNote = note.createChildNote({title:newTitle,excerptText:contentRemain,excerptTextMarkdown:true})
+        childNote.focusInMindMap(0.5)
+        return
+    }
+    let childNote = note.createChildNote({excerptText:content,excerptTextMarkdown:true})
+    childNote.focusInMindMap(0.5)
+}
+notificationController.prototype.showErrorMessage = function (errorMessage) {
+    if (errorMessage.info.source === "Subscription") {
+      this.setWebviewContentDev({response:`<div><a href="userselect://changeURL" style="
+    display: block;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background:rgb(252, 227, 227);
+    color:rgb(150, 7, 7);
+    border-radius: 8px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-color:rgb(249, 144, 144);
+    font-size: 16px;
+    cursor: pointer;
+    box-sizing: border-box;
+"
+>
+切换URL / Switch URL
+</a></div>
+
+\`\`\`json\n${JSON.stringify(errorMessage,null,2)}\n\`\`\``})
+    }else{
+      this.setWebviewContentDev({response:`\`\`\`json\n${JSON.stringify(errorMessage,null,2)}\n\`\`\``})
+    }
+}
+notificationController.prototype.changeURL = async function () {
+try {
+
+  let currentURL = subscriptionConfig.URL
+  let choices = subscriptionUtils.URLs.map((url,index)=>{
+    if (url === currentURL) {
+      return ("👉 URL"+(index+1)+" (Current)")
+    }
+    return "URL"+(index+1)
+  })
+  let res = await MNUtil.userSelect("MN ChatAI", "Select a URL\n\n请选择一个URL", choices)
+  if (res !== 0) {
+    subscriptionConfig.config.url = subscriptionUtils.URLs[res-1]
+    subscriptionConfig.save()
+    MNUtil.showHUD("✅ Change URL to: URL"+(res))
+  }
+  
+} catch (error) {
+  chatAIUtils.addErrorLog(error, "notificationController.changeURL")
+}
+}
+notificationController.prototype.renderSearchResults = function (results,metaso = false) {
+  if (this.hasRenderSearchResults) {
+    return
+  }
+  this.hasRenderSearchResults = true
+  if (metaso) {
+    MNUtil.log({message:"renderSearchResultsForMetaso",detail:results})
+    if (typeof results === "string") {
+      this.runJavaScript(`renderSearchResultsForMetaso(\`${encodeURIComponent(results)}\`);`)
+    }else{
+      this.runJavaScript(`renderSearchResultsForMetaso(\`${encodeURIComponent(JSON.stringify(results))}\`);`)
+    }
+    return
+  }
+  if (typeof results === "string") {
+    this.runJavaScript(`renderSearchResults(\`${encodeURIComponent(results)}\`);`)
+  }else{
+    this.runJavaScript(`renderSearchResults(\`${encodeURIComponent(JSON.stringify(results))}\`);`)
+  }
+
+}
+notificationController.prototype.clearCache = function () {
+  this.runJavaScript(`clearCache()`)
 }
 /**
  * @type {UIView}

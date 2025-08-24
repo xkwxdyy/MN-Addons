@@ -13,11 +13,15 @@
   <script src="pdf.js"></script>
   <script src="pdf.worker.js"></script>
   <script src="html2canvas.js" defer></script>
+    <link rel="stylesheet" href="notyf.min.css">
+    <script src="notyf.min.js" defer></script>
   <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script> -->
   <link rel="stylesheet" href="veditor.css" />
+  <script src="marked.js"></script>
   <!-- <script src="https://unpkg.com/vditor/dist/index.min.js"></script> -->
-  <!-- <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"> -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" defer></script> -->
+  <script src="katex.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" defer/>
   <style>
     body{
       margin: 0px;
@@ -107,6 +111,7 @@ const logElement = document.getElementById('funcResponse')
 let tem = document.getElementById('vditor')
 document.addEventListener('DOMContentLoaded', function () {
     Vditor.preview(tem,preContent,option)
+    notyf = new Notyf({position: {x: 'center', y: 'top'}, duration: 1000,ripple:false});
 })
 
     function openEdit(allowEdit) {
@@ -128,6 +133,11 @@ document.addEventListener('DOMContentLoaded', function () {
           },
           inlineDigit: true
         }
+      },
+      select:(text)=>{
+        // 显示一条消息
+        // notyf.success("Select text: "+text.slice(0,10)+"...")
+        window.location.href = "chataction://selectText"
       },
       image:{
         isPreview:false,
@@ -222,8 +232,9 @@ document.addEventListener('DOMContentLoaded', function () {
         'uploading': '上传中...',
         'wysiwyg': '所见即所得',
       },
+      value: preContent,
       after:()=>{
-        editor.setValue(preContent,true)
+        // editor.setValue(preContent,true)
         if (!allowEdit) {
           editor.disabled()
         }
@@ -280,7 +291,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // element.appendChild(copyBtn);
         element.insertBefore(copyBtn, element2Draw);
     });
-
+        if (!allowEdit) {
+          editor.disabled()
+        }
           notifyRefreshHeight()
         }, 1000);
       }

@@ -1,35 +1,41 @@
 
-复制图片后自动调用snipaste预览
-更新mermaid版本并本地化
-修复自动创建摘录的bug
-新增源：PPIO
-改进打开各源的开发平台逻辑
-更新浮动窗口修改tools逻辑
 
-为特定行为添加日志
-自定义按钮增加stopOutput
-自定义按钮支持触发Toolbar的动作
-新增工具creatMermaidChart
+适配Gemini的思考参数，支持显示思考内容
+修复第一个响应块不解析的问题
+改进mermaid流程图渲染
+改进模型刷新逻辑
 
-恢复源KimiChat
-修复部分场景提示On Sync的问题
-优化自带OCR的体验
-自定义按钮增加"回复"功能,用于在通知模式下快速给AI回复一条信息,提供多个预设
-Action新增ToolbarActions,允许为prompt设置一个MN Toolbar的动作(需要订阅)
 
-支持从url导入prompt
-支持autoVision和autoOCR
-OCR优化
+增加配置备份功能，防止意外闪退导致的备份丢失，全自动，用户无需任何操作
 
-优化深色模式下的链接颜色
-修复不能取消toolbar动作的问题
-新增通过markdown链接回答问题的支持
+修复函数调用的一些问题
+文本内容提取增加本地缓存
+支持通过doc的content变量获取文档全文内容，暂不支持按页获取内容
 
-改进markdown链接回答问题的逻辑
-大胡子模板变量增加currentDoc
-自定义按钮增加一个进入编辑模式的功能
-AI回答内容默认关闭编辑模式
-增加了addnote和addcomment链接
+优化变量检测逻辑，减少资源消耗
+
+编辑器改进，支持简单的markdown渲染
+支持键盘弹出时自动上抬窗口
+支持快捷键：
+
+Cmd + Enter 发送
+Cmd + B - Bold
+Cmd + I - Italic
+Cmd + K - Insert link
+Cmd + Shift + 7 - Numbered list
+Cmd + Shift + 8 - Bullet list
+
+新编辑器不允许放大
+新编辑器修改背景颜色
+改进函数调用的显示
+
+优化按钮渲染逻辑，引进渲染缓存以减少多余的渲染
+支持复制/粘贴 用户/系统指令
+尝试实现按钮的公式渲染
+
+修复文档内容提取的问题
+当PDF.js无法提取文本时，会尝试使用Moonshot方案
+修复updatChat的报错
 
 killall "MarginNote 4" && sleep 1 && open "/Applications/MarginNote 4.app"
 

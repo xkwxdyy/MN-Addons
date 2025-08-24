@@ -1,7 +1,25 @@
+let option = {
+      theme:"dark",
+      math:{
+        engine:"MathJax",
+        mathJaxOptions:{
+          tex: {
+              inlineMath: [ ['$','$'], ["\\(","\\)"] ]
+          }
+        },
+        inlineDigit: true
+        
+        
+      },
+      cdn:"https://unpkg.com/vditor@3.11.0"
+    }
+let buttonCodeBlockCache = {}
+function clearCache() {
+  buttonCodeBlockCache = {}
+}
 function escapeHTML(e) { 
   return e.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") 
 }
-
 const API_URL = "v1/chat/completions";
 let loading = false;
 let presetRoleData = {
@@ -93,9 +111,9 @@ function postNotificataion(title, body, encode = true) {
   let notification = "chataction://"+title
   if (body) {
     if (encode) {
-      notification = notification +"="+ encodeURIComponent(body)
+      notification = notification +"?content="+ encodeURIComponent(body)
     }else{
-      notification = notification +"="+ body
+      notification = notification +"?content="+ body
     }
   }
   if (mnMode) {
@@ -175,10 +193,245 @@ function getImageContents(message) {
   }
   return imageURLs
 }
+/**
+ * 
+ * @param {string} md 
+ * @returns 
+ */
+function md2html(md){
+  md = renderKaTeXFormulas(md)
+  let res = marked.parse(md.replace(/_{/g,'\\_\{').replace(/_\\/g,'\\_\\'))
+  return res
+}
 
-const setResContent = (currentResEle,content,render = true)=>{
+
+function codeBlockReplacer(lang,format,code){
+    let encodedContent = encodeURIComponent(code);
+    if (lang === "userSelect") {
+      let url = `userselect://choice?content=${encodedContent}`
+      code = renderKaTeXFormulas(code)
+      // code = md2html(code)
+      return `<div><a href="${url}" style="
+    display: block;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background: #e3eefc;
+    color: #1565c0;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-color: #90caf9;
+    font-size: 15px;
+    cursor: pointer;
+    box-sizing: border-box;
+"
+>
+${code.trim()}
+</a></div>`
+    }
+    if (lang === "addNote") {
+      // console.log("addNote");
+      let url = `userselect://addnote?content=${encodedContent}`
+      if (format === "markdown") {
+        // console.log("markdown");
+        
+        url = `userselect://addnote?content=${encodedContent}&format=markdown`
+        code = md2html(code)
+      }
+      return `<div><a href="${url}" style="
+    display: block;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background:rgb(230, 255, 239);
+    color:#237427;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-color:#01b76e;
+    font-size: 15px;
+    cursor: pointer;
+    box-sizing: border-box;
+"
+>
+<div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击创建笔记：</div>
+${code.trim()}
+</a></div>`
+  }
+    if (lang === "addComment") {
+      let url = `userselect://addcomment?content=${encodedContent}`
+      if (format === "markdown") {
+        url = `userselect://addnote?content=${encodedContent}&format=markdown`
+        code = md2html(code)
+      }
+      return `<div><a href="${url}" style="
+    display: block;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background:rgb(230, 255, 239);
+    color:#237427;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-color:#01b76e;
+    font-size: 15px;
+    cursor: pointer;
+    box-sizing: border-box;
+"
+>
+<div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击添加卡片评论：</div>
+${code.trim()}
+</a></div>`
+  }
+  return ""
+}
+/**
+ * 从markdown中提取 userSelect 或 addNote 代码块，并替换成指定内容
+ * @param {string} markdown - 原始markdown
+ * @returns {string} 
+ */
+function replaceSpecialBlocks(markdown) {
+  // const blocks = [];
+  // 正则：匹配```userSelect 或 ```addNote 开头，直到下一个```
+const pattern = /```(userSelect|addNote|addComment)\s*(plaintext|markdown|json)?\n([\s\S]*?)```/g;
+const newMarkdown = markdown.replace(pattern, (match, lang, format, code) => {
+    // blocks.push(code);
+    if (match in buttonCodeBlockCache) {
+      // notyf.success("Using cache")
+      return buttonCodeBlockCache[match]
+    }
+    let res = codeBlockReplacer(lang,format,code)
+    buttonCodeBlockCache[match] = res
+    return res
+    // return typeof replacer === 'function'
+    //   ? replacer(lang,format,code)
+    //   : String(replacer);
+  });
+  return newMarkdown;
+}
+/**
+ * 将字符串中美元符号包裹的 LaTeX 公式替换为 KaTeX 渲染后的 HTML
+ * @param {string} inputStr - 包含可能公式的原始字符串（如 "E=mc^2$，块级公式：$$\int_a^b f(x)dx$$"）
+ * @param {Object} [katexOptions] - KaTeX 渲染配置项（可选，默认：{ throwOnError: false }）
+ * @returns {string} 替换公式后的 HTML 字符串
+ */
+function renderKaTeXFormulas(inputStr, katexOptions = {}) {
+  // 合并默认配置和用户配置（throwOnError 默认关闭，避免生产环境报错）
+  const defaultOptions = { throwOnError: false, errorColor: "#cc0000" };
+  const options = { ...defaultOptions, ...katexOptions };
+
+  // 正则表达式：匹配 $$...$$（块级公式）和 $...$（行内公式）
+  // 注意：使用非贪婪匹配（*?）避免跨多个公式匹配，同时排除转义的 \$（即 \$ 不视为公式分隔符）
+  const formulaRegex = /(?<!\\)\$\$(.*?)(?<!\\)\$\$|(?<!\\)\$(.*?)(?<!\\)\$/gs;
+
+  // 替换匹配到的公式
+  return inputStr.replace(formulaRegex, (match, blockFormula, inlineFormula) => {
+    // 判断是块级公式（$$...$$）还是行内公式（$...$）
+    const isBlock = blockFormula !== undefined;
+    const formulaContent = isBlock ? blockFormula.trim() : inlineFormula.trim();
+
+    try {
+      // 使用 KaTeX 渲染公式为 HTML 字符串
+      return katex.renderToString(formulaContent, {
+        ...options,
+        displayMode: isBlock, // 块级公式设置 displayMode: true
+      });
+    } catch (error) {
+      // 渲染失败时，返回错误提示（保留原始公式内容以便调试）
+      console.error("KaTeX 渲染错误:", error, "公式内容:", formulaContent);
+      return `<span style="color: ${options.errorColor}; background: #ffebee; padding: 2px 4px; border-radius: 2px;">
+        [公式错误: ${formulaContent}]
+      </span>`;
+    }
+  });
+}
+function replaceButtonCodeBlocks(markdown) {
+//   let replacer = (lang,format,code) => {
+//     let encodedContent = encodeURIComponent(code);
+//     if (lang === "userSelect") {
+//       let url = `userselect://choice?content=${encodedContent}`
+//       return `<div><a href="${url}" style="
+//     display: block;
+//     padding: 10px 12px;
+//     margin-top: 10px;
+//     background: #e3eefc;
+//     color: #1565c0;
+//     border-radius: 8px;
+//     text-decoration: none;
+//     border: 2px solid transparent;
+//     border-color: #90caf9;
+//     font-size: 15px;
+//     cursor: pointer;
+//     box-sizing: border-box;
+// "
+// >
+// ${code.trim()}
+// </a></div>`
+//     }
+//     if (lang === "addNote") {
+//       // console.log("addNote");
+//       let url = `userselect://addnote?content=${encodedContent}`
+//       if (format === "markdown") {
+//         // console.log("markdown");
+        
+//         url = `userselect://addnote?content=${encodedContent}&format=markdown`
+//         code = md2html(code)
+//       }
+//       return `<div><a href="${url}" style="
+//     display: block;
+//     padding: 10px 12px;
+//     margin-top: 10px;
+//     background:rgb(230, 255, 239);
+//     color:#237427;
+//     border-radius: 8px;
+//     text-decoration: none;
+//     border: 2px solid transparent;
+//     border-color:#01b76e;
+//     font-size: 15px;
+//     cursor: pointer;
+//     box-sizing: border-box;
+// "
+// >
+// <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击创建笔记：</div>
+// ${code.trim()}
+// </a></div>`
+//   }
+//     if (lang === "addComment") {
+//       let url = `userselect://addcomment?content=${encodedContent}`
+//       if (format === "markdown") {
+//         url = `userselect://addnote?content=${encodedContent}&format=markdown`
+//         code = md2html(code)
+//       }
+//       return `<div><a href="${url}" style="
+//     display: block;
+//     padding: 10px 12px;
+//     margin-top: 10px;
+//     background:rgb(230, 255, 239);
+//     color:#237427;
+//     border-radius: 8px;
+//     text-decoration: none;
+//     border: 2px solid transparent;
+//     border-color:#01b76e;
+//     font-size: 15px;
+//     cursor: pointer;
+//     box-sizing: border-box;
+// "
+// >
+// <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击添加卡片评论：</div>
+// ${code.trim()}
+// </a></div>`
+//   }
+//   return ""
+// }
+  return replaceSpecialBlocks(markdown)
+}
+
+
+
+const setResContent = (currentResEle,content,render = true)=>{//渲染响应内容
   if (render) {
-    currentResEle.getElementsByClassName("markdown-body")[0].innerHTML = md.render(content) || "<br />";
+    content = replaceButtonCodeBlocks(content)
+    let tem = currentResEle.getElementsByClassName("markdown-body")[0]
+    Vditor.preview(tem,content,option)
   }else{
     currentResEle.getElementsByClassName("markdown-body")[0].innerHTML = content
   }
@@ -195,11 +448,8 @@ const setImageContent = (currentReqEle,imageBase64)=>{
   // }
 }
 const setReqContent = (currentReqEle,content,render = true)=>{
-  if (render) {
-    currentReqEle.getElementsByClassName("markdown-body")[0].innerHTML = md.render(content) || "<br />";
-  }else{
-    currentReqEle.getElementsByClassName("markdown-body")[0].innerHTML = content
-  }
+  let tem = currentReqEle.getElementsByClassName("markdown-body")[0]
+  Vditor.preview(tem,content,option)
 }
 const setFuncContent = (currentResEle,content)=>{
   const container = currentResEle.getElementsByClassName('funcResponse')[0];
@@ -322,106 +572,6 @@ const checkStorage = () => {
   availableStorage.textContent = Math.floor(remain / 1048576 * 100) / 100 + "MB";
 };
 const UNESCAPE_RE = /\\([ \\!"#$%&'()*+,.\/:;<=>?@[\]^_`{|}~-])/g;
-const superscript = (state, silent) => {
-  let found,
-    content,
-    token,
-    max = state.posMax,
-    start = state.pos;
-  if (state.src.charCodeAt(start) !== 0x5E/* ^ */) { return false; }
-  if (silent) { return false; } // don't run any pairs in validation mode
-  if (start + 2 >= max) { return false; }
-  state.pos = start + 1;
-  while (state.pos < max) {
-    if (state.src.charCodeAt(state.pos) === 0x5E/* ^ */) {
-      found = true;
-      break;
-    }
-    state.md.inline.skipToken(state);
-  }
-  if (!found || start + 1 === state.pos) {
-    state.pos = start;
-    return false;
-  }
-  content = state.src.slice(start + 1, state.pos);
-  // don't allow unescaped spaces/newlines inside
-  if (content.match(/(^|[^\\])(\\\\)*\s/)) {
-    state.pos = start;
-    return false;
-  }
-  // found!
-  state.posMax = state.pos;
-  state.pos = start + 1;
-  // Earlier we checked !silent, but this implementation does not need it
-  token = state.push('sup_open', 'sup', 1);
-  token.markup = '^';
-  token = state.push('text', '', 0);
-  token.content = content.replace(UNESCAPE_RE, '$1');
-  token = state.push('sup_close', 'sup', -1);
-  token.markup = '^';
-  state.pos = state.posMax + 1;
-  state.posMax = max;
-  return true;
-}
-const subscript = (state, silent) => {
-  let found,
-    content,
-    token,
-    max = state.posMax,
-    start = state.pos;
-  if (state.src.charCodeAt(start) !== 0x7E/* ~ */) { return false; }
-  if (silent) { return false; } // don't run any pairs in validation mode
-  if (start + 2 >= max) { return false; }
-  state.pos = start + 1;
-  while (state.pos < max) {
-    if (state.src.charCodeAt(state.pos) === 0x7E/* ~ */) {
-      found = true;
-      break;
-    }
-    state.md.inline.skipToken(state);
-  }
-  if (!found || start + 1 === state.pos) {
-    state.pos = start;
-    return false;
-  }
-  content = state.src.slice(start + 1, state.pos);
-  // don't allow unescaped spaces/newlines inside
-  if (content.match(/(^|[^\\])(\\\\)*\s/)) {
-    state.pos = start;
-    return false;
-  }
-  // found!
-  state.posMax = state.pos;
-  state.pos = start + 1;
-  // Earlier we checked !silent, but this implementation does not need it
-  token = state.push('sub_open', 'sub', 1);
-  token.markup = '~';
-  token = state.push('text', '', 0);
-  token.content = content.replace(UNESCAPE_RE, '$1');
-  token = state.push('sub_close', 'sub', -1);
-  token.markup = '~';
-  state.pos = state.posMax + 1;
-  state.posMax = max;
-  return true;
-}
-const md = markdownit({
-  linkify: true, // 识别链接
-  highlight: function (str, lang) { // markdown高亮
-    try {
-      return hljs.highlightAuto(str).value;
-    } catch (e) { }
-    return ""; // use external default escaping
-  }
-});
-// md.inline.ruler.after("emphasis", "sup", superscript);
-// md.inline.ruler.after("emphasis", "sub", subscript);
-md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
-  let aIndex = tokens[idx].attrIndex("target");
-  if (tokens[idx + 1] && tokens[idx + 1].type === "image") tokens[idx].attrPush(["download", ""]);
-  else if (aIndex < 0) tokens[idx].attrPush(["target", "_blank"]);
-  else tokens[idx].attrs[aIndex][1] = "_blank";
-  return self.renderToken(tokens, idx, options);
-};
 const codeUtils = {
   getCodeLang(str = "") {
     const res = str.match(/ class="language-(.*?)"/);
@@ -456,10 +606,10 @@ const copyClickCode = (ele) => {
 };
 const copyClickMd = (idx) => {
   const input = document.createElement("textarea");
-  console.log(idx);
+  // console.log(idx);
   
-  console.log(data[idx]);
-  console.log("systemRole"+systemRole);
+  // console.log(data[idx]);
+  // console.log("systemRole"+systemRole);
   
   input.value = data[idx].content;
   document.body.appendChild(input);
@@ -488,17 +638,6 @@ const enhanceCode = (render, options = {}) => (...args) => {
   ];
   return originResult.replace("</pre>", `${tpls.join("")}</pre>`);
 };
-md.renderer.rules.code_block = enhanceCode(md.renderer.rules.code_block);
-md.renderer.rules.fence = enhanceCode(md.renderer.rules.fence);
-md.renderer.rules.image = function (tokens, idx, options, env, self) {
-  let token = tokens[idx];
-  token.attrs[token.attrIndex("alt")][1] = self.renderInlineAsText(token.children, options, env);
-  token.attrSet("onload", "scrollToBottomLoad(this);this.removeAttribute('onload');this.removeAttribute('onerror')");
-  token.attrSet("onerror", "scrollToBottomLoad(this);this.removeAttribute('onload');this.removeAttribute('onerror')");
-  token.attrPush(["decoding", "async"]);
-  token.attrPush(["loading", "lazy"]);
-  return self.renderToken(tokens, idx, options)
-}
 let currentVoiceIdx;
 let editingIdx;
 let originText;
@@ -600,7 +739,6 @@ const mdOptionEvent = function (ev) {
         // data.splice(indexInFullHistory-offset, 1+offset);
         // chatsData[activeChatIdx].data = data
         if (firstIdx === idx) updateChatPre();
-        // updateChats();
         refreshIdx = indexInFullHistory-offset;
         // console.log(refreshIdx);
         let config = {history:data.slice(0,refreshIdx),afterHistory:data.slice(indexInFullHistory+1)}
@@ -679,9 +817,9 @@ function extractTitleAndTime(text) {
  * @deprecated
  * @param {*} resultsEncoded 
  */
-function renderSearchResults(resultsEncoded) {
+function renderSearchResults(resultsEncoded,round = 0) {
   let results = JSON.parse(decodeURIComponent(resultsEncoded))
-  const container = document.getElementsByClassName('searchResults')[0];
+  const container = document.getElementsByClassName('searchResults')[round];
   container.innerHTML = ''; // 清空现有内容
   results.forEach(result => {
       const resultDiv = document.createElement('div');
@@ -704,6 +842,34 @@ function renderSearchResults(resultsEncoded) {
       container.appendChild(resultDiv);
   });
 }
+
+    /**
+     * 
+     * @param {string} resultsEncoded 
+     */
+    function renderSearchResultsForMetaso(resultsEncoded,round = 0) {
+      let results = JSON.parse(decodeURIComponent(resultsEncoded))
+      const container = document.getElementsByClassName('searchResults')[round];
+      container.innerHTML = ''; // 清空现有内容
+        results.forEach((result,index) => {
+            //result应该具有以下属性：title,link,content,icon,media
+            // 必需属性：title, link, content
+            // 可选属性：icon, media
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'searchResult';
+            const title = document.createElement('h2');
+            title.innerHTML = `<a href="${result.link}" target="_blank">[${index+1}] ${result.title}</a>`;
+            resultDiv.appendChild(title);
+            const media = document.createElement('p');
+            if ("authors" in result) {
+              media.innerHTML = `${result.authors.join(",")} | ${result.date}`;
+            }else{
+              media.innerHTML = `${result.date}`;
+            }
+            resultDiv.appendChild(media);
+            container.appendChild(resultDiv);
+        });
+    }
 /**
  * 
  * @param {object} funcObject 
@@ -712,7 +878,7 @@ function renderSearchResults(resultsEncoded) {
 function renderFuncResponse(funcObject){
   let funcName = funcObject.function.name
   let args = JSON.parse(funcObject.function.arguments.trim())
-  console.log(args);
+  // console.log(args);
   
   let funcText = funcName+"()\n"
   if (args) {
@@ -1172,7 +1338,9 @@ const addNewChat = () => {
   document.getElementById("placeHolder").style.display = "block";
   updateChats();
 };
-const delChat = (idx, ele, folderIdx, inFolderIdx) => {
+async function delChat(idx, ele, folderIdx, inFolderIdx) {
+//删除聊天记录，在网页中删除然后调用updateChats把新的数据同步给插件
+  notyf.success("Deleting Chat...")
   if (confirmAction(translations[locale]["delChatTip"])) {
     if (idx === activeChatIdx) endAll();
     if (folderIdx !== void 0) {
@@ -1227,7 +1395,7 @@ const delChat = (idx, ele, folderIdx, inFolderIdx) => {
       activeChatIdx = 0;
       chatEleAdd(activeChatIdx);
     }
-    updateChats(true);
+    updateChats(true,500);
   }
 };
 const endEditEvent = (ev) => {
@@ -1277,9 +1445,13 @@ const toEditName = (idx, ele, type) => {
   document.body.addEventListener("mousedown", endEditEvent, true);
   return inputEle;
 };
-const chatEleEvent = function (ev) {
+const chatEleEvent = async function (ev) {
   ev.preventDefault();
   ev.stopPropagation();
+  let openChat = ev.target.classList.contains("chatLi")
+  if (openChat) {
+    notyf.success("Loading Chat...")
+  }
   let idx, folderIdx, inFolderIdx;
   if (chatListEle.contains(this)) {
     idx = Array.prototype.indexOf.call(chatListEle.children, this);
@@ -1289,7 +1461,7 @@ const chatEleEvent = function (ev) {
     inFolderIdx = Array.prototype.indexOf.call(this.parentElement.children, this);
     idx = folderData[folderIdx].idxs[inFolderIdx];
   }
-  if (ev.target.classList.contains("chatLi")) {
+  if (openChat) {
     if (window.innerWidth <= 800) {
       document.body.classList.remove("show-nav");
     }
@@ -1301,10 +1473,10 @@ const chatEleEvent = function (ev) {
   } else if (ev.target.dataset.type === "chatEdit") {
     toEditName(idx, this, 1);
   } else if (ev.target.dataset.type === "chatDel") {
-    delChat(idx, this, folderIdx, inFolderIdx);
+    delChat(idx, this, folderIdx, inFolderIdx);//删除聊天记录
   }
 };
-const updateChats = (refresh = false) => {
+const updateChats = async (refresh = false,delayMs = 0) => {
   try {
     if (activeChatIdx > chatsData.length-1) {
       activeChatIdx = chatsData.length-1
@@ -1319,6 +1491,9 @@ const updateChats = (refresh = false) => {
       }else{
         document.getElementById("placeHolder").style.display = "none";
       }
+    }
+    if (delayMs) {
+      await delay(delayMs)
     }
     let allDataEncoded = getAllData();
     postNotificataion("updateChat", allDataEncoded,false);
@@ -1361,7 +1536,9 @@ const getChatEle = (idx) => {
  * 刷新当前历史记录
  * @param {object[]} history 
  */
-const refreshChat = (history) => {
+const refreshChat = async (history) => {
+  console.log("refreshChat");
+  
   data = history;
   // console.log(history);
   if (history.length && history[0].role === "system") {
@@ -1407,7 +1584,6 @@ const refreshChat = (history) => {
     let lastResEle
     for (let i = firstIdx; i < data.length; i++) {
       // console.log(data[i]);
-      
       switch (data[i].role) {
         case "user":
           let currentReqEle = createConvEle("request");
@@ -1421,19 +1597,20 @@ const refreshChat = (history) => {
               setImageContent(currentReqEle,image)
             })
           }
+          await delay(50)
           break;
         case "assistant":
-          console.log(data[i]);
+          // console.log(data[i]);
           let currentResEle
           let isEmpty = true
           if (data[i].content) {
             isEmpty = false
             if (lastResEle) {
-              console.log("has lastResEle");
+              // console.log("has lastResEle");
               setResContent(lastResEle, data[i].content);
               lastResEle = undefined
             }else{
-              console.log("has not lastResEle");
+              // console.log("has not lastResEle");
               currentResEle = createConvEle("response", true, data[i].model);
               setResContent(currentResEle, data[i].content);
             }
@@ -1443,18 +1620,18 @@ const refreshChat = (history) => {
             if (!currentResEle) {
               currentResEle = createConvEle("response", true, data[i].model);
             }
-            console.log(data[i].tool_calls[0]);
+            // console.log(data[i].tool_calls[0]);
             let tool_call = data[i].tool_calls.map(func=>{
               return renderFuncResponse(func)
             }).join("\n");
             // setFuncContent(currentResEle,`<pre>${tool_call.function.name+"()"}</pre>`)
             setFuncContent(currentResEle,`<pre>${tool_call}</pre>`)
             lastResEle = currentResEle
-            console.log("sign lastResEle");
+            // console.log("sign lastResEle");
           }
           if (data[i].reasoningContent) {
             isEmpty = false
-            console.log("has reasoningContent");
+            // console.log("has reasoningContent");
             if (!currentResEle) {
               currentResEle = createConvEle("response", true, data[i].model);
             }
@@ -1463,6 +1640,7 @@ const refreshChat = (history) => {
           if (isEmpty) {
             data.splice(i,1)
           }
+          await delay(50)
         break;
         case "tool":
           let preData = data[i-1]
@@ -1501,12 +1679,13 @@ const refreshChat = (history) => {
     
   }
 };
-const activeChat = (ele) => {
+const activeChat = async (ele) => {
   if (activeChatIdx > chatsData.length-1) {
     activeChatIdx = chatsData.length-1
   }
   refreshChat(chatsData[activeChatIdx]["data"])
   try {
+    await delay(500)
     postNotificataion("activeChat", JSON.stringify(chatsData[activeChatIdx]))
   } catch (error) {
     
@@ -1600,7 +1779,6 @@ try {
   
 initChats();
 initExpanded();
-// activeChat();
 } catch (error) {
   showError(error.toString())
 }
@@ -2097,7 +2275,7 @@ const initSetting = () => {
     justDarkTheme(is);
   }
   const handleAutoMode = (ele) => {
-    console.log("handleAutoMode");
+    // console.log("handleAutoMode");
     
     if (ele.checked) {
       autoThemeMode = parseInt(ele.value);
@@ -2245,8 +2423,13 @@ settingEle.onmousedown = () => {
   }
 }
 let delayId;
-const delay = () => {
-  return new Promise((resolve) => delayId = setTimeout(resolve, textSpeed)); //打字机时间间隔
+/**
+ * 
+ * @param {number} ms 
+ * @returns {Promise<void>}
+ */
+async function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 const uuidv4 = () => {
   let uuid = ([1e7] + 1e3 + 4e3 + 8e3 + 1e11).replace(/[018]/g, c =>
@@ -2698,150 +2881,6 @@ let voiceContentQuene = [];
 let voiceEndFlagQuene = [];
 let voiceBlobURLQuene = [];
 let autoOnlineVoiceFlag = false;
-const autoAddQuene = () => {
-  if (voiceContentQuene.length) {
-    let content = getUnescape(md.render(voiceContentQuene.shift()));
-    let currDate = getTime();
-    let uuid = uuidv4();
-    let voice = voiceRole[1].Name;
-    if (existVoice === 3) {
-      autoVoiceSocket.send(getWSPre(currDate, uuid));
-      voice = voiceRole[1].ShortName;
-    }
-    autoVoiceSocket.send(getWSAudio(currDate, uuid));
-    autoVoiceSocket.send(getWSText(currDate, uuid, voiceRole[1].lang, voice, voiceVolume[1], voiceRate[1], voicePitch[1], azureStyle[1], azureRole[1], content));
-    autoVoiceSocket["pending"] = true;
-    autoOnlineVoiceFlag = true;
-  }
-}
-const autoSpeechEvent = (content, ele, force = false, end = false) => {
-  if (ele.lastChild.lastChild.classList.contains("readyVoice")) {
-    ele.classList.add("showVoiceCls");
-    ele.lastChild.lastChild.className = "voiceCls pauseVoice";
-  }
-  if (existVoice >= 2) {
-    voiceContentQuene.push(content);
-    voiceEndFlagQuene.push(end);
-    if (!voiceIns || voiceIns instanceof Audio === false) {
-      voiceIns = new Audio();
-      voiceIns.onpause = pauseEv;
-      voiceIns.onplay = resumeEv;
-    }
-    if (!autoVoiceSocket || autoVoiceSocket.readyState > 1) {
-      autoVoiceSocket = new WebSocket(existVoice === 3 ? getAzureWSURL() : edgeTTSURL);
-      autoVoiceSocket.binaryType = "arraybuffer";
-      autoVoiceSocket.onopen = () => {
-        autoAddQuene();
-      };
-      autoVoiceSocket.onerror = () => {
-        autoOnlineVoiceFlag = false;
-      };
-    };
-    let bufArray = [];
-    autoVoiceSocket.onmessage = (e) => {
-      if (e.data instanceof ArrayBuffer) {
-        (supportMSE ? speechQuene : bufArray).push(e.data.slice(voicePreLen));
-      } else {
-        if (e.data.indexOf("Path:turn.end") !== -1) {
-          autoVoiceSocket["pending"] = false;
-          autoOnlineVoiceFlag = false;
-          if (!supportMSE) {
-            let blob = new Blob(bufArray, { type: voiceMIME });
-            bufArray = [];
-            if (blob.size) {
-              let blobURL = URL.createObjectURL(blob);
-              if (!voiceIns.src) {
-                voiceIns.src = blobURL;
-                voiceIns.play();
-              } else {
-                voiceBlobURLQuene.push(blobURL);
-              }
-            } else {
-              notyf.open({ type: "warning", message: translations[locale]["cantSpeechTip"] });
-            }
-            autoAddQuene();
-          }
-          if (voiceEndFlagQuene.shift()) {
-            if (supportMSE) {
-              if (!speechQuene.length && !speechPushing) {
-                autoMediaSource.endOfStream();
-              } else {
-                let buf = new ArrayBuffer();
-                buf["end"] = true;
-                speechQuene.push(buf);
-              }
-            } else {
-              if (!voiceBlobURLQuene.length && !voiceIns.src) {
-                endSpeak();
-              } else {
-                voiceBlobURLQuene.push("end");
-              }
-            }
-          };
-          if (supportMSE) {
-            autoAddQuene();
-          }
-        }
-      }
-    };
-    if (!autoOnlineVoiceFlag && autoVoiceSocket.readyState) {
-      autoAddQuene();
-    }
-    if (supportMSE) {
-      if (!autoMediaSource) {
-        autoMediaSource = new MediaSource();
-        autoMediaSource.onsourceopen = () => {
-          if (!sourceBuffer) {
-            sourceBuffer = autoMediaSource.addSourceBuffer(voiceMIME);
-            sourceBuffer.onupdateend = () => {
-              speechPushing = false;
-              if (speechQuene.length) {
-                let buf = speechQuene.shift();
-                if (buf["end"]) {
-                  if (!sourceBuffer.buffered.length) notyf.open({ type: "warning", message: translations[locale]["cantSpeechTip"] });
-                  autoMediaSource.endOfStream();
-                } else {
-                  speechPushing = true;
-                  sourceBuffer.appendBuffer(buf);
-                }
-              }
-            };
-          }
-        }
-      }
-      if (!voiceIns.src) {
-        voiceIns.src = URL.createObjectURL(autoMediaSource);
-        voiceIns.play();
-        voiceIns.onended = voiceIns.onerror = () => {
-          endSpeak();
-        }
-      }
-    } else {
-      voiceIns.onended = voiceIns.onerror = () => {
-        if (voiceBlobURLQuene.length) {
-          let src = voiceBlobURLQuene.shift();
-          if (src === "end") {
-            endSpeak();
-          } else {
-            voiceIns.src = src;
-            voiceIns.currentTime = 0;
-            voiceIns.play();
-          }
-        } else {
-          voiceIns.currentTime = 0;
-          voiceIns.removeAttribute("src");
-        }
-      }
-    }
-  } else {
-    voiceIns = new SpeechSynthesisUtterance(content);
-    voiceIns.volume = voiceVolume[1];
-    voiceIns.rate = voiceRate[1];
-    voiceIns.pitch = voicePitch[1];
-    voiceIns.voice = voiceRole[1];
-    speakEvent(voiceIns, force, end);
-  }
-};
 const confirmAction = (prompt) => {
   return true
 };
@@ -2904,8 +2943,6 @@ try {
   if (reasoningContent) {
     setReasoningContent(currentResEle,reasoningContent)
   }
-  // currentResEle.getElementsByClassName("markdown-body")[0].innerHTML = md.render(content);
-  // currentResEle.children[1].innerHTML = md.render(content);
   scrollToBottom();
 } catch (error) {
   notyf.error("Error in setCurrentResDev: "+error.toString())
@@ -2955,8 +2992,6 @@ const setCurrentRes = (encodedText,encodedFuncHtml,round = -1) => {
   if (funcHtml) {
     setFuncContent(currentResEle,funcHtml)
   }
-  // currentResEle.getElementsByClassName("markdown-body")[0].innerHTML = md.render(content);
-  // currentResEle.children[1].innerHTML = md.render(content);
   scrollToBottom();
 }
 const prePareResponse = () => {
@@ -3062,7 +3097,6 @@ const streamGen = async (long) => {
       }
       notyf.error(errorText);
       setResContent(currentResEle,errorText)
-      // currentResEle.getElementsByClassName("markdown-body")[0].innerHTML = md.render(errorText);
       stopLoading();
       return;
     }
@@ -3098,7 +3132,6 @@ const streamGen = async (long) => {
                   if (progressData) await delay();
                   progressData += content;
                   setResContent(currentResEle,progressData)
-                  // currentResEle.getElementsByClassName("markdown-body")[0].innerHTML = md.render(progressData);
                   scrollToBottom();
                 }
               }
@@ -3154,13 +3187,8 @@ const stopLoading = (abort = true) => {
     if (refreshIdx !== void 0) { data[refreshIdx].content = progressData }
     else if (data[data.length - 1].role === "assistant") { data[data.length - 1].content = progressData }
     else { data.push({ role: "assistant", content: progressData, model: modelVersion }) }
-    if (existVoice && enableAutoVoice && currentVoiceIdx === autoVoiceDataIdx && progressData.length) {
-      let voiceText = progressData.slice(autoVoiceIdx);
-      autoSpeechEvent(voiceText, currentResEle, false, true);
-    }
   }
   if (activeChatEle.children[1].children[1].textContent === "") updateChatPre();
-  // updateChats();
   controllerId = delayId = refreshIdx = autoVoiceDataIdx = void 0;
   autoVoiceIdx = 0;
   currentResEle.dataset.loading = false;
@@ -3181,10 +3209,6 @@ const finish = (abort = true) => {
     if (refreshIdx !== void 0) { data[refreshIdx].content = progressData }
     else if (data[data.length - 1].role === "assistant") { data[data.length - 1].content = progressData }
     else { data.push({ role: "assistant", content: progressData, model: modelVersion }) }
-    // if (existVoice && enableAutoVoice && currentVoiceIdx === autoVoiceDataIdx && progressData.length) {
-    //   let voiceText = progressData.slice(autoVoiceIdx);
-    //   autoSpeechEvent(voiceText, currentResEle, false, true);
-    // }
   }
   if (activeChatEle.children[1].children[1].textContent === "") updateChatPre();
   controllerId = delayId = refreshIdx = autoVoiceDataIdx = void 0;
@@ -3252,7 +3276,6 @@ const generateText = (message,imageBase64) => {
     chatsData[activeChatIdx].name = content;
     activeChatEle.children[1].children[0].textContent = content;
   }
-  // updateChats();
   if (isBottom) messagesEle.scrollTo(0, messagesEle.scrollHeight);
   prePareResponse()
 };
@@ -3300,6 +3323,8 @@ const getAllData = (encode = true) => {
 }
 const importAllData = (data) => {
   let allData = JSON.parse(decodeURIComponent(data))
+  // console.log(allData);
+  
   folderData = allData.folder
   chatsData = allData.chats
   chatIdxs = allData.chatIdxs
@@ -3406,3 +3431,17 @@ sendBtnEle.onclick = genFunc;
 stopEle.onclick = stopLoading;
 //清空当前历史记录
 clearEle.onclick = clearHistory;
+
+document.addEventListener('dragstart', function (e) {
+  // 如果拖动的是 <a> 标签本身，或者它的父元素是 <a>
+
+  
+  if (e.target.tagName.toLowerCase() === 'a' || e.target.closest('a')) {
+    e.preventDefault(); // 阻止默认拖动行为
+  }
+  //禁止拖动头像
+  let parentElement = e.target.parentElement
+  if (parentElement.classList.contains('chatAvatar')) {
+    e.preventDefault(); // 阻止默认拖动行为
+  }
+});

@@ -300,7 +300,7 @@
             flex: 1;
             overflow-x: hidden;
             overflow-y: auto;
-            font-size: 16px;
+            font-size: 15px;
             color: var(--chat-text-color);
             text-align: center;
         }
@@ -364,7 +364,7 @@
         .chatAvatar {
             position: fixed;
             top: 5px;
-            margin: 14px 14px 13px 13px;
+            margin: 10px 10px 10px 8px;
             width: 30px;
             height: 30px;
             border-radius: 100px;
@@ -446,7 +446,7 @@
         }
         .response .markdown-body {
             position:relative;
-            left: 55px;
+            left: 46px;
             margin-top: 8px;
             margin-bottom: 50px;
             margin-right: 0px;
@@ -457,11 +457,13 @@
         }
         .request .markdown-body {
             position:relative;
-            left: 55px;
+            left: 46px;
             margin-top: 18px;
             margin-bottom: 50px;
             margin-right: 0px;
             margin-left: 0px;
+            max-height: 300px;
+            overflow-y: scroll;
             flex: 1;
             background: transparent !important;
             -webkit-user-select: text;

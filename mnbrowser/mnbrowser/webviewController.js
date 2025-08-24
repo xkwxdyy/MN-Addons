@@ -206,6 +206,11 @@ viewWillLayoutSubviews: function() {
     if (config.scheme === "about") {
       return
     }
+    // self.runJavaScript(`
+    //   document.addEventListener('copy',()=>{
+    //     window.location.href = "https://www.baidu.com"
+    //   })
+    // `)
     if (currentURL.startsWith("https://doc2x.noedgeai.com") && self.uploadOnDoc2X && self.uploadOnDoc2X.enabled) {
       let canDrop = await self.runJavaScript(`'ondrop' in document.createElement('div');`)
       if (!canDrop) {
@@ -347,6 +352,7 @@ viewWillLayoutSubviews: function() {
     //   message:"webViewShouldStartLoadWithRequestNavigationType",
     //   detail:config
     // })
+    // MNUtil.log(config)
     switch (config.scheme) {
       case "zhihu":
         return false;
@@ -964,18 +970,18 @@ viewWillLayoutSubviews: function() {
     browserConfig.save("MNBrowser_config")
   },
   toggleAutoOpenVideoExcerpt: function (params) {
-    if (!browserUtils.checkSubscribe(true)) {
-      return undefined
-    }
+    // if (!browserUtils.checkSubscribe(true)) {
+    //   return undefined
+    // }
     let autoOpenVideoExcerpt = !browserConfig.getConfig("autoOpenVideoExcerpt")
     browserConfig.config.autoOpenVideoExcerpt = autoOpenVideoExcerpt
     self.autoOpenVideoExcerpt.setTitleForState("Auto Open Video Excerpt: "+(autoOpenVideoExcerpt?"✅":"❌"),0)
     browserConfig.save("MNBrowser_config")
   },
   toggleAutoExitWatchMode: function (params) {
-    if (!browserUtils.checkSubscribe(true)) {
-      return undefined
-    }
+    // if (!browserUtils.checkSubscribe(true)) {
+    //   return undefined
+    // }
     let autoExitWatchMode = !browserConfig.getConfig("autoExitWatchMode")
     browserConfig.config.autoExitWatchMode = autoExitWatchMode
     self.autoExitWatchMode.setTitleForState("Auto Exit Watch Mode: "+(autoExitWatchMode?"✅":"❌"),0)
@@ -1027,6 +1033,7 @@ try {
   toggleDesktop:function (param) {
     let self = getBrowserController()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
+    Menu.dismissCurrentMenu()
     if (self.desktop) {
       self.setWebMode(false)
     }else{
@@ -1491,10 +1498,10 @@ exportToPDF()
     self.videoFrameAction("comment")
   },
   homeButtonTapped: function() {
-    if (self.inHomePage) {
-      MNUtil.showHUD("Already in homepage")
-      return
-    }
+    // if (self.inHomePage) {
+    //   MNUtil.showHUD("Already in homepage")
+    //   return
+    // }
     self.homePage()
   },
   loadCKEditor:function (params) {
@@ -1624,35 +1631,224 @@ exportToPDF()
         MNConnection.loadRequest(self.webview, MNUtil.clipboardText)
         break;
       case "pauseOrPlay":
-        self.runJavaScript(`function togglePlayPause() {
-    // 假设我们的video元素的id是'myVideo'
+        self.runJavaScript(`
+function togglePlayPause() {
+  // 假设我们的video元素的id是'myVideo'
   const video = document.getElementsByTagName('video')[0];
-    if (video.paused) {
-        // 如果视频是暂停的，开始播放
-        video.play();
-    } else {
-        // 如果视频正在播放，暂停它
-        video.pause();
-    }
+  if (video.ended) {
+    video.currentTime = 0
+    video.play()
+  }else if (video.paused) {
+    video.play()
+  }else{
+    video.pause()
+  }
 };
 togglePlayPause()
 `)
         break;
+      case "toggleMute":
+        self.runJavaScript(`
+function toggleMute() {
+  const video = document.getElementsByTagName('video')[0];
+  video.muted = !video.muted;
+}
+toggleMute()`)
+        break;
+      case "volumeUp":
+        self.runJavaScript(`
+function volumeUp() {
+  const video = document.getElementsByTagName('video')[0];
+  video.volume += 0.1;
+}
+volumeUp()`)
+        break;
+      case "volumeDown":
+        self.runJavaScript(`
+function volumeDown() {
+  const video = document.getElementsByTagName('video')[0];
+  video.volume -= 0.1;
+}
+volumeDown()`)
+        break;
+      case "play0.5x":
+        self.runJavaScript(`
+function changePlaybackRate(rate) {
+  const video = document.getElementsByTagName('video')[0];
+  if (video.playbackRate === rate) {
+    video.playbackRate = 1;
+  }else{
+    video.playbackRate = rate;
+  }
+}
+changePlaybackRate(0.5)`)
+        break;
+      case "play1.25x":
+        self.runJavaScript(`
+function changePlaybackRate(rate) {
+  const video = document.getElementsByTagName('video')[0];
+  if (video.playbackRate === rate) {
+    video.playbackRate = 1;
+  }else{
+    video.playbackRate = rate;
+  }
+}
+changePlaybackRate(1.25)`)
+        break;
+      case "play1.5x":
+        self.runJavaScript(`
+function changePlaybackRate(rate) {
+  const video = document.getElementsByTagName('video')[0];
+  if (video.playbackRate === rate) {
+    video.playbackRate = 1;
+  }else{
+    video.playbackRate = rate;
+  }
+}
+changePlaybackRate(1.5)`)
+        break;
+      case "play1.75x":
+        self.runJavaScript(`
+function changePlaybackRate(rate) {
+  const video = document.getElementsByTagName('video')[0];
+  if (video.playbackRate === rate) {
+    video.playbackRate = 1;
+  }else{
+    video.playbackRate = rate;
+  }
+}
+changePlaybackRate(1.75)`)
+        break;
+      case "play2x":
+        self.runJavaScript(`
+function changePlaybackRate(rate) {
+  const video = document.getElementsByTagName('video')[0];
+  if (video.playbackRate === rate) {
+    video.playbackRate = 1;
+  }else{
+    video.playbackRate = rate;
+  }
+}
+changePlaybackRate(2)`)
+        break;
+      case "play2.5x":
+        self.runJavaScript(`
+function changePlaybackRate(rate) {
+  const video = document.getElementsByTagName('video')[0];
+  if (video.playbackRate === rate) {
+    video.playbackRate = 1;
+  }else{
+    video.playbackRate = rate;
+  }
+}
+changePlaybackRate(2.5)`)
+        break;
+      case "play3x":
+        self.runJavaScript(`
+function changePlaybackRate(rate) {
+  const video = document.getElementsByTagName('video')[0];
+  if (video.playbackRate === rate) {
+    video.playbackRate = 1;
+  }else{
+    video.playbackRate = rate;
+  }
+}
+changePlaybackRate(3)`)
+        break;
+      case "play3.5x":
+        self.runJavaScript(`
+function changePlaybackRate(rate) {
+  const video = document.getElementsByTagName('video')[0];
+  if (video.playbackRate === rate) {
+    video.playbackRate = 1;
+  }else{
+    video.playbackRate = rate;
+  }
+}
+changePlaybackRate(3.5)`)
+        break;
+      case "play4x":
+        self.runJavaScript(`
+function changePlaybackRate(rate) {
+  const video = document.getElementsByTagName('video')[0];
+  if (video.playbackRate === rate) {
+    video.playbackRate = 1;
+  }else{
+    video.playbackRate = rate;
+  }
+}
+changePlaybackRate(4)`)
+        break;
       case "forward10s":
-        self.runJavaScript(` function forward10Seconds() {
-const video = document.getElementsByTagName('video')[0];
-video.currentTime += 10;
+        self.runJavaScript(`
+function forwardSeconds(seconds) {
+  const video = document.getElementsByTagName('video')[0];
+  video.currentTime += seconds;
+  video.play()
 };
-forward10Seconds()`);
+forwardSeconds(10)`);
+        break;
+      case "forward15s":
+        self.runJavaScript(`
+function forwardSeconds(seconds) {
+  const video = document.getElementsByTagName('video')[0];
+  video.currentTime += seconds;
+  video.play()
+};
+forwardSeconds(15)`);
+        break;
+      case "forward30s":
+        self.runJavaScript(`
+function forwardSeconds(seconds) {
+  const video = document.getElementsByTagName('video')[0];
+  video.currentTime += seconds;
+  video.play()
+};
+forwardSeconds(30)`);
         break;
       case "backward10s":
-        self.runJavaScript(` function backward10Seconds() {
-const video = document.getElementsByTagName('video')[0];
-video.currentTime -= 10;
+        self.runJavaScript(`
+function backwardSeconds(seconds) {
+  const video = document.getElementsByTagName('video')[0];
+  let currentTime = video.currentTime;
+  if (currentTime - seconds < 0) {
+    video.currentTime = 0;
+  }else{
+    video.currentTime -= seconds;
+  }
+  video.play()
 };
-backward10Seconds();`);
+backwardSeconds(10)`);
         break;
-      default:
+      case "backward15s":
+        self.runJavaScript(`
+function backwardSeconds(seconds) {
+  const video = document.getElementsByTagName('video')[0];
+  let currentTime = video.currentTime;
+  if (currentTime - seconds < 0) {
+    video.currentTime = 0;
+  }else{
+    video.currentTime -= seconds;
+  }
+  video.play()
+};
+backwardSeconds(15)`);
+        break;
+      case "backward30s":
+        self.runJavaScript(`
+function backwardSeconds(seconds) {
+  const video = document.getElementsByTagName('video')[0];
+  let currentTime = video.currentTime;
+  if (currentTime - seconds < 0) {
+    video.currentTime = 0;
+  }else{
+    video.currentTime -= seconds;
+  }
+  video.play()
+};
+backwardSeconds(30)`);
+        break;
+        default:
         break;
     }
     } catch (error) {
@@ -2719,6 +2915,25 @@ browserController.prototype.createWebview = function () {
     this.view.addSubview(this.webview);
 }
 
+/**
+ * @this {browserController}
+ * @param {string} superview
+ * @param {string} color
+ * @param {number} alpha
+ * @returns {UIScrollView}
+ */
+browserController.prototype.createScrollview = function (superview="view",color="#c0bfbf",alpha=0.8) {
+  let scrollview = UIScrollView.new()
+  scrollview.hidden = false
+  scrollview.delegate = this
+  scrollview.bounces = true
+  // scrollview.alwaysBounceVertical = true
+  scrollview.layer.cornerRadius = 8
+  scrollview.backgroundColor = MNUtil.hexColorAlpha(color,alpha)
+  this[superview].addSubview(scrollview)
+  return scrollview
+}
+
 /** @this {browserController} */
 browserController.prototype.init = function(){
     this.desktop = false
@@ -3670,6 +3885,7 @@ browserController.prototype.settingViewLayout = function (){
     MNFrame.set(this.advanceView, 0, 40, width, height-10)
     MNFrame.set(this.syncView, 0, 40, width, height-10)
 
+
     this.setCustomButton1.frame = MNUtil.genFrame(5,0,width-10,35)
     this.setCustomButton2.frame = MNUtil.genFrame(5,40,width-10,35)
     this.setCustomButton3.frame = MNUtil.genFrame(5,80,width-10,35)
@@ -3717,6 +3933,12 @@ browserController.prototype.settingViewLayout = function (){
     settingFrame.x = 5
     settingFrame.y = 5
     settingFrame.height = 30
+    settingFrame.width = settingFrame.width-45
+    this.tabView.frame = settingFrame
+
+    settingFrame.x = 0
+    settingFrame.y = 0
+    settingFrame.height = 30
     settingFrame.width = this.configSearchButton.width
     this.configSearchButton.frame = settingFrame
     settingFrame.x = settingFrame.x + this.configSearchButton.width + 4.5
@@ -3732,6 +3954,7 @@ browserController.prototype.settingViewLayout = function (){
     settingFrame.width = this.advancedButton.width
     this.advancedButton.frame = settingFrame
     MNFrame.set(this.closeConfig, width - 35, 5, 30, 30)
+    this.tabView.contentSize = {width:settingFrame.x+settingFrame.width,height:30}
 
   } catch (error) {
     browserUtils.addErrorLog(error, "settingViewLayout")
@@ -3750,6 +3973,10 @@ try {
   this.settingView.layer.cornerRadius = 13
   this.settingView.hidden = true
   this.view.addSubview(this.settingView)
+
+  this.tabView = this.createScrollview("settingView","#aaaaaa",0.0)
+  this.tabView.alwaysBounceHorizontal = true
+  this.tabView.showsHorizontalScrollIndicator = false
 
   this.configSearchView = UIView.new()
   this.configSearchView.backgroundColor = MNUtil.hexColorAlpha("#9bb2d6",0.0)
@@ -3781,6 +4008,7 @@ try {
 
   // this.creatView("syncView",targetView,"#9bb2d6",0.0)
   // this.syncView.hidden = true
+  targetView = "tabView"
 
   this.createButton("configSearchButton","configSearchTapped:",targetView)
   // this.configSearchButton.backgroundColor = MNUtil.hexColorAlpha("#457bd3",0.8)
@@ -3812,16 +4040,19 @@ try {
   size = this.advancedButton.sizeThatFits({width:100,height:100})
   this.advancedButton.width = size.width+15
 
-  this.createButton("closeConfig","closeConfigTapped:",targetView)
-  this.closeConfig.setImageForState(browserUtils.stopImage,0)
-  this.closeConfig.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
-
   this.createButton("syncConfig","syncConfigTapped:",targetView)
   MNButton.setConfig(this.syncConfig, 
     {color:"#9bb2d6",alpha:0.8,opacity:1.0,title:"Sync",font:17,bold:true}
   )
   size = this.syncConfig.sizeThatFits({width:100,height:100})
   this.syncConfig.width = size.width+15
+
+  targetView = "settingView"
+
+  this.createButton("closeConfig","closeConfigTapped:",targetView)
+  this.closeConfig.setImageForState(browserUtils.stopImage,0)
+  this.closeConfig.backgroundColor = MNUtil.hexColorAlpha("#e06c75",0.8)
+
   
 
   targetView = "configSearchView"
@@ -4324,6 +4555,8 @@ browserController.prototype.show = function (beginFrame,endFrame) {
   if (endFrame) {
     preFrame = endFrame
   }
+  // MNUtil.log({message:"show",preFrame})
+
   preFrame.height = MNUtil.constrain(preFrame.height, 100, studyFrame.height)
   preFrame.width = MNUtil.constrain(preFrame.width, 215, studyFrame.width)
   preFrame.x = MNUtil.constrain(preFrame.x, 0, studyFrame.width-preFrame.width)
@@ -4363,7 +4596,9 @@ browserController.prototype.show = function (beginFrame,endFrame) {
 }
 /** @this {browserController} */
 browserController.prototype.hide = function (frame) {
-  let preFrame = this.view.frame
+  let preFrame = this.currentFrame
+  this.view.frame = preFrame
+  // MNUtil.log({message:"hide",preFrame})
   let preOpacity = this.view.layer.opacity
   let preCustom = this.custom
   // let preFrame = this.view.frame
@@ -4376,6 +4611,7 @@ browserController.prototype.hide = function (frame) {
   if (frame) {
     this.webview.layer.borderWidth = 3
   }
+  this.onAnimate = true
   MNUtil.animate(()=>{
     this.view.layer.opacity = 0.2
     if (frame) {
@@ -4389,6 +4625,7 @@ browserController.prototype.hide = function (frame) {
     // MNUtil.copyJSON(this.view.currentFrame)
     this.webview.layer.borderWidth = 0
     this.custom = preCustom
+    this.onAnimate = false
   })
 }
 /** @this {browserController} */
@@ -4505,8 +4742,6 @@ browserController.prototype.getCurrentURL = async function(url) {
 /** @this {browserController} */
 browserController.prototype.openOrJump = async function(bvid,time = 0,p) {
 try {
-  
-
   if (this.view.hidden) {
     MNUtil.showHUD(`window is hidden`)
     return
@@ -4524,7 +4759,7 @@ try {
   // }
   let formatedVideoTime = browserUtils.formatSeconds(parseFloat(time))
   if (this.currentBvid && this.currentBvid === bvid && (this.currentP === p)) {
-    MNUtil.showHUD(`Jump to ${formatedVideoTime}`)
+    this.showHUD(`Jump to ${formatedVideoTime}`)
     this.runJavaScript(`document.getElementsByTagName("video")[0].currentTime = ${time}`)
   }else{
     //  Application.sharedInstance().showHUD("should open", this.view.window, 2);
@@ -4533,7 +4768,7 @@ try {
     if (p) {
       url = url+"&p="+p
     }
-    MNUtil.showHUD(url)
+    this.showHUD(url)
     this.setWebMode(true)
     // MNConnection.loadRequest(this.webview, url)
     this.runJavaScript(`window.location.href="${url}"`)

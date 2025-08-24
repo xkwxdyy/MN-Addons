@@ -1,3 +1,4 @@
+
        .language-mermaid {
             position: relative;
             display: inline-block;
@@ -56,6 +57,7 @@
             margin: 5px 0;
             font-size: 13px;
             color: #ffffff;
+            
         }
         .search-result a {
             text-decoration: none;
@@ -1492,10 +1494,16 @@
 .vditor-wysiwyg__block pre:last-child {
   margin-bottom: 1em;
 }
+.vditor-wysiwyg__block[data-type="html-block"] .vditor-wysiwyg__preview{
+  margin-bottom: 1em;
+  font-family: "PingFang SC","Helvetica Neue", "Luxi Sans", "DejaVu Sans", "Hiragino Sans GB", "Microsoft Yahei",  sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", "EmojiSymbols" !important;
+}
 .vditor-wysiwyg__preview {
   cursor: pointer;
   white-space: initial;
   min-height: 27px;
+  margin-top: 0px !important;
+  margin-bottom: 0px !important;
 }
 .vditor-wysiwyg > .vditor-reset > h1:before,
 .vditor-wysiwyg > .vditor-reset > h2:before,
@@ -1549,8 +1557,8 @@
   content: "ToC";
 }
 .vditor-wysiwyg hr {
-  display: inline-block;
-  margin: 12px 0;
+  display: block;
+  margin: 24px 0;
   width: 100%;
 }
 .vditor-wysiwyg details {

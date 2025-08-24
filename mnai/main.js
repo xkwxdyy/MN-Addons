@@ -196,9 +196,8 @@ JSB.newAddon = function (mainPath) {
 
         if (!chatAIUtils.checkSender(sender, self.window)) return; // Don't process message from other window
         chatAIUtils.currentSelection = sender.userInfo.documentController.selectionText;
-        if (chatAIUtils.isMN4() && chatAIUtils.sideOutputController && chatAIUtils.sideOutputController.userInput) {
-          chatAIUtils.sideOutputController.userInput.endEditing(true)
-        }
+        chatAIUtils.blur()
+
         // if (chatAIUtils.dynamicController) {
         //   // chatAIUtils.dynamicController.promptInput.endEditing(true)
         //   chatAIUtils.dynamicController.promptInput.resignFirstResponder()
@@ -325,9 +324,7 @@ JSB.newAddon = function (mainPath) {
         let note = MNNote.new(sender.userInfo.note.noteId)
         let currentNoteId = note.noteId
         chatAIUtils.onPopupMenuOnNoteTime = Date.now()
-        if (chatAIUtils.isMN4() && chatAIUtils.sideOutputController && chatAIUtils.sideOutputController.userInput) {
-          chatAIUtils.sideOutputController.userInput.endEditing(true)
-        }
+        chatAIUtils.blur()
         // if (chatAIUtils.dynamicController) {
         //   chatAIUtils.dynamicController.view.becomeFirstResponder()
         //   // chatAIUtils.dynamicController.promptInput.endEditing(true)
@@ -389,15 +386,16 @@ JSB.newAddon = function (mainPath) {
         }
         self.currentTime = Date.now()
         chatAIUtils.notifyController.noteid = sender.userInfo.note.noteId
-        let question = await chatAIUtils.chatController.getQuestion()
+        let question = await chatAIUtils.chatController.getQuestionWithOutRender()
         let sameQuestion = false
         if (self.lastQuestion) {
-          sameQuestion = (JSON.stringify(question) === JSON.stringify(self.lastQuestion))
+          sameQuestion = (question === self.lastQuestion)
         }
         if (!chatAIUtils.notifyController.view.hidden && sameQuestion) {
           return
         }
-        self.lastQuestion = await chatAIUtils.chatController.askWithDelay()
+        self.lastQuestion = question
+        await chatAIUtils.chatController.askWithDelay()
       } catch (error) {
         MNUtil.showHUD("Error in onPopupMenuOnNote: "+error)
       }

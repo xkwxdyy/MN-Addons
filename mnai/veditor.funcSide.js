@@ -11,242 +11,6 @@ let processPercent = 0
 let parsedPdf
 let pageContents = [];
 let pageStructure = []
-let buttonCodeBlockCache = {}
-/**
- * 
- * @param {string} md 
- * @returns 
- */
-function md2html(md){
-  md = renderKaTeXFormulas(md)
-  let res = marked.parse(md.replace(/_{/g,'\\_\{').replace(/_\\/g,'\\_\\'))
-  return res
-}
-/**
- * 将字符串中美元符号包裹的 LaTeX 公式替换为 KaTeX 渲染后的 HTML
- * @param {string} inputStr - 包含可能公式的原始字符串（如 "E=mc^2$，块级公式：$$\int_a^b f(x)dx$$"）
- * @param {Object} [katexOptions] - KaTeX 渲染配置项（可选，默认：{ throwOnError: false }）
- * @returns {string} 替换公式后的 HTML 字符串
- */
-function renderKaTeXFormulas(inputStr, katexOptions = {}) {
-  // 合并默认配置和用户配置（throwOnError 默认关闭，避免生产环境报错）
-  const defaultOptions = { throwOnError: false, errorColor: "#cc0000" };
-  const options = { ...defaultOptions, ...katexOptions };
-
-  // 正则表达式：匹配 $$...$$（块级公式）和 $...$（行内公式）
-  // 注意：使用非贪婪匹配（*?）避免跨多个公式匹配，同时排除转义的 \$（即 \$ 不视为公式分隔符）
-  const formulaRegex = /(?<!\\)\$\$(.*?)(?<!\\)\$\$|(?<!\\)\$(.*?)(?<!\\)\$/gs;
-
-  // 替换匹配到的公式
-  return inputStr.replace(formulaRegex, (match, blockFormula, inlineFormula) => {
-    // 判断是块级公式（$$...$$）还是行内公式（$...$）
-    const isBlock = blockFormula !== undefined;
-    const formulaContent = isBlock ? blockFormula.trim() : inlineFormula.trim();
-
-    try {
-      // 使用 KaTeX 渲染公式为 HTML 字符串
-      return katex.renderToString(formulaContent, {
-        ...options,
-        displayMode: isBlock, // 块级公式设置 displayMode: true
-      });
-    } catch (error) {
-      // 渲染失败时，返回错误提示（保留原始公式内容以便调试）
-      console.error("KaTeX 渲染错误:", error, "公式内容:", formulaContent);
-      return `<span style="color: ${options.errorColor}; background: #ffebee; padding: 2px 4px; border-radius: 2px;">
-        [公式错误: ${formulaContent}]
-      </span>`;
-    }
-  });
-}
-
-function clearCache() {
-  buttonCodeBlockCache = {}
-}
-function codeBlockReplacer(lang,format,code){
-    let encodedContent = encodeURIComponent(code);
-    if (lang === "userSelect") {
-      let url = `userselect://choice?content=${encodedContent}`
-      code = renderKaTeXFormulas(code)
-      // code = md2html(code)
-      return `<div><a href="${url}" style="
-    display: block;
-    padding: 10px 12px;
-    margin-top: 10px;
-    background: #e3eefc;
-    color: #1565c0;
-    border-radius: 8px;
-    text-decoration: none;
-    border: 2px solid transparent;
-    border-color: #90caf9;
-    font-size: 15px;
-    cursor: pointer;
-    box-sizing: border-box;
-"
->
-${code.trim()}
-</a></div>`
-    }
-    if (lang === "addNote") {
-      // console.log("addNote");
-      let url = `userselect://addnote?content=${encodedContent}`
-      if (format === "markdown") {
-        // console.log("markdown");
-        
-        url = `userselect://addnote?content=${encodedContent}&format=markdown`
-        code = md2html(code)
-      }
-      return `<div><a href="${url}" style="
-    display: block;
-    padding: 10px 12px;
-    margin-top: 10px;
-    background:rgb(230, 255, 239);
-    color:#237427;
-    border-radius: 8px;
-    text-decoration: none;
-    border: 2px solid transparent;
-    border-color:#01b76e;
-    font-size: 15px;
-    cursor: pointer;
-    box-sizing: border-box;
-"
->
-<div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击创建笔记：</div>
-${code.trim()}
-</a></div>`
-  }
-    if (lang === "addComment") {
-      let url = `userselect://addcomment?content=${encodedContent}`
-      if (format === "markdown") {
-        url = `userselect://addnote?content=${encodedContent}&format=markdown`
-        code = md2html(code)
-      }
-      return `<div><a href="${url}" style="
-    display: block;
-    padding: 10px 12px;
-    margin-top: 10px;
-    background:rgb(230, 255, 239);
-    color:#237427;
-    border-radius: 8px;
-    text-decoration: none;
-    border: 2px solid transparent;
-    border-color:#01b76e;
-    font-size: 15px;
-    cursor: pointer;
-    box-sizing: border-box;
-"
->
-<div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击添加卡片评论：</div>
-${code.trim()}
-</a></div>`
-  }
-  return ""
-}
-/**
- * 从markdown中提取 userSelect 或 addNote 代码块，并替换成指定内容
- * @param {string} markdown - 原始markdown
- * @returns {string} 
- */
-function replaceSpecialBlocks(markdown) {
-  // const blocks = [];
-  // 正则：匹配```userSelect 或 ```addNote 开头，直到下一个```
-const pattern = /```(userSelect|addNote|addComment)\s*(plaintext|markdown|json)?\n([\s\S]*?)```/g;
-const newMarkdown = markdown.replace(pattern, (match, lang, format, code) => {
-    // blocks.push(code);
-    if (match in buttonCodeBlockCache) {
-      // notyf.success("Using cache")
-      return buttonCodeBlockCache[match]
-    }
-    let res = codeBlockReplacer(lang,format,code)
-    buttonCodeBlockCache[match] = res
-    return res
-    // return typeof replacer === 'function'
-    //   ? replacer(lang,format,code)
-    //   : String(replacer);
-  });
-  return newMarkdown;
-}
-function replaceButtonCodeBlocks(markdown) {
-//   let replacer = (lang,format,code) => {
-//     let encodedContent = encodeURIComponent(code);
-//     if (lang === "userSelect") {
-//       let url = `userselect://choice?content=${encodedContent}`
-//       return `<div><a href="${url}" style="
-//     display: block;
-//     padding: 10px 12px;
-//     margin-top: 10px;
-//     background: #e3eefc;
-//     color: #1565c0;
-//     border-radius: 8px;
-//     text-decoration: none;
-//     border: 2px solid transparent;
-//     border-color: #90caf9;
-//     font-size: 15px;
-//     cursor: pointer;
-//     box-sizing: border-box;
-// "
-// >
-// ${code.trim()}
-// </a></div>`
-//     }
-//     if (lang === "addNote") {
-//       // console.log("addNote");
-//       let url = `userselect://addnote?content=${encodedContent}`
-//       if (format === "markdown") {
-//         // console.log("markdown");
-        
-//         url = `userselect://addnote?content=${encodedContent}&format=markdown`
-//         code = md2html(code)
-//       }
-//       return `<div><a href="${url}" style="
-//     display: block;
-//     padding: 10px 12px;
-//     margin-top: 10px;
-//     background:rgb(230, 255, 239);
-//     color:#237427;
-//     border-radius: 8px;
-//     text-decoration: none;
-//     border: 2px solid transparent;
-//     border-color:#01b76e;
-//     font-size: 15px;
-//     cursor: pointer;
-//     box-sizing: border-box;
-// "
-// >
-// <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击创建笔记：</div>
-// ${code.trim()}
-// </a></div>`
-//   }
-//     if (lang === "addComment") {
-//       let url = `userselect://addcomment?content=${encodedContent}`
-//       if (format === "markdown") {
-//         url = `userselect://addnote?content=${encodedContent}&format=markdown`
-//         code = md2html(code)
-//       }
-//       return `<div><a href="${url}" style="
-//     display: block;
-//     padding: 10px 12px;
-//     margin-top: 10px;
-//     background:rgb(230, 255, 239);
-//     color:#237427;
-//     border-radius: 8px;
-//     text-decoration: none;
-//     border: 2px solid transparent;
-//     border-color:#01b76e;
-//     font-size: 15px;
-//     cursor: pointer;
-//     box-sizing: border-box;
-// "
-// >
-// <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击添加卡片评论：</div>
-// ${code.trim()}
-// </a></div>`
-//   }
-//   return ""
-// }
-  return replaceSpecialBlocks(markdown)
-}
-
-
 /**
  * 解析单页的 textContent 对象，并根据文本项的布局返回带有正确换行和空格的字符串。
  * @param {object} textContent - 从 page.getTextContent() 获取的对象。
@@ -340,7 +104,7 @@ pageText = pageText
 }
 function getPdfContent() {
   parsedPdf = undefined
-  return JSON.stringify(pageContents,null,2)
+  return pageContents.join('\n\n')
 }
 function getProgress() {
   let process = {
@@ -376,62 +140,6 @@ const renderPage = async (pageNum) => {
     // await page.render(renderContext).promise;
     await renderPage(pageNum + 1);
 };
-/**
- * 
- * @param {number} ms 
- * @returns {Promise<void>}
- */
-async function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-async function getDocumentContent(base64) {
-  let otherEle = document.getElementById("other")
-  if (!otherEle) {
-    await delay(1000)
-    otherEle = document.getElementById("other")
-  }
-  if (!otherEle) {
-    await delay(1000)
-    otherEle = document.getElementById("other")
-  }
-  let progressEle = document.getElementById("progress-container")   
-  if (!progressEle) {
-    progressEle = document.createElement("div")
-    progressEle.setAttribute("id","progress-container")
-    otherEle.append(progressEle)
-  }
-  // console.log(otherEle);
-  // otherEle.innerHTML = `<div class="progress-container">`
-  onProcess = true
-  if (typeof pdfjsLib === 'undefined') {
-    await delay(1000)
-  }
-  if (typeof pdfjsLib === 'undefined') {
-    await delay(1000)
-  }
-const rawData = atob(base64); // 解码Base64
-const buffer = new Uint8Array(rawData.length);
-for (let i = 0; i < rawData.length; i++) {
-  buffer[i] = rawData.charCodeAt(i);
-}
-pageContents = []
-  return new Promise(async (resolve, reject) => {
-pdfjsLib.getDocument(buffer).promise
-            .then(async(pdf)=>{
-                // window.location.href = "nativecopy://content="+encodeURIComponent("Parsing pdf...")
-                parsedPdf = pdf
-                await renderPage(1);
-                onProcess = false
-                let res = pageContents.join('\n\n')
-                // console.log(res);
-                resolve(res)
-                // console.log(pageContents.join('\n\n'));
-                // console.log(pageStructure);
-                
-            });
-  })
-  
-}
 function getTop() {
   var element = document.getElementsByClassName("vditor")[0]
   var position = element.getBoundingClientRect();
@@ -447,112 +155,7 @@ function getTop() {
   };
   return docPosition.top
 }
-function scrollToBottom() {
-  const scrollHeight = document.body.scrollHeight; // 页面的总高度
-  const clientHeight = document.documentElement.clientHeight; // 可视区域的高度
-  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop; // 当前滚动的位置
 
-  // 判断是否已经滚动到底部
-  if (scrollHeight - (scrollTop + clientHeight) > 1) {
-    window.scrollTo(0, scrollHeight); // 滚动到底部
-  }
-}
-
-
-
-async function setResponse(resEncoded) {
-  let res = JSON.parse(decodeURIComponent(resEncoded))
-  let funcResponse = res.funcResponse ?? ""
-  funcResponse = funcResponse.trim()
-  let reasoningResponse = res.reasoningResponse ?? ""
-  reasoningResponse = reasoningResponse.trim()
-  let scrollToBottom = res.scrollToBottom ?? false
-  let response = res.response ?? ""
-  // response = response.trim()
-  response = replaceButtonCodeBlocks(response)
-  let otherEle = document.getElementById("other")
-  if (reasoningResponse && preReasoning !== reasoningResponse.trim()) {
-    let reasoningEle = document.getElementById("reasoningResponse")   
-    let collapsibleEle = document.getElementsByClassName("collapsible-content")[0]
-    //判断reasoningEle是否存在
-    if (!reasoningEle) {
-      reasoningBegin = Date.now()
-      reasoningEle = document.createElement("div")
-      reasoningEle.setAttribute("id","reasoningResponse")
-      otherEle.append(reasoningEle)
-      reasoningEle.innerHTML = `<div class="collapsible-header" onclick="toggleCollapse(this)">
-        <span class="thinkingTitle">🤔 Thinking...</span>
-        <span class="toggle-icon" onclick="copyReasoningContent(this)">Copy</span></div><div class="collapsible-content"></div>`
-      collapsibleEle = document.getElementsByClassName("collapsible-content")[0]
-      collapsibleEle.style.maxHeight = '270px';
-      collapsibleEle.style.padding = '10px';
-        // document.querySelectorAll('.collapsible-content').forEach(item => {
-        //     item.style.maxHeight = '170px';
-        //     item.style.padding = '10px';
-        // });
-    }else if (!reasoningBegin) {
-      reasoningBegin = Date.now()
-    }
-
-    collapsibleEle.innerHTML=reasoningResponse
-    reasoningEle.querySelector('.thinkingTitle').textContent = `🤔 Thinking... (${((Date.now() - reasoningBegin)/1000).toFixed(1)}s)`
-    // reasoningEle.innerHTML=reasoningResponse
-    preReasoning = reasoningResponse.trim()
-    //滚动到底部
-    collapsibleEle.scrollTo(0,collapsibleEle.scrollHeight)
-    // reasoningEle.scrollTo(0,reasoningEle.scrollHeight)
-    if (reasoningResponse.trim().endsWith("...")) {
-      expand()
-      notifyRefreshHeight()
-    }
-  }
-  if (funcResponse && preFunc !== funcResponse) {
-    collapse()
-    let funcResponseEle = document.getElementById("funcResponse")
-    if (!funcResponseEle) {
-      funcResponseEle = document.createElement("div")
-      funcResponseEle.setAttribute("id","funcResponse")
-      otherEle.append(funcResponseEle)
-    }
-    funcResponseEle.innerHTML=funcResponse
-    funcResponseEle.scrollTo(0,funcResponseEle.scrollHeight)
-
-    preFunc = funcResponse
-    notifyRefreshHeight()
-  }
-  if (!response) {
-    if (preContent) {
-      // tem.innerHTML = ""
-      preContent = ""
-      // notifyRefreshHeight()
-      // Vditor.md2html(tem,"",option).then((html)=>{
-      //   tem.innerHTML = html
-      // })
-      Vditor.preview(tem,"",option)
-    }
-  }else if (preContent !== response) {
-    collapse()
-    // let html = await Vditor.md2html(response,option)
-    // tem.innerHTML = html
-    // preContent = response
-    // if (scrollToBottom) {
-    //   scrollToBottom()
-    // }
-    // notifyRefreshHeight()
-    console.log(response);
-    
-    Vditor.preview(tem,response,option)
-    preContent = response
-    // if (scrollToBottom) {
-    //   scrollToBottom()
-    // }
-  }else{
-    notifyRefreshHeight()
-  }
-  notifyRefreshHeight()
-
-  // return document.body.scrollHeight
-}
 
 function setRealResponse(resEncoded) {
   let response = decodeURIComponent(resEncoded).trim()
@@ -638,8 +241,9 @@ function copyReasoningContent(header) {
   // console.log(collapsibleEle.textContent);
 }
 function notifyRefreshHeight() {
+  console.log("notifyRefreshHeight");
   scrollToBottom()
-  window.location.href = "editorheight://content="+document.body.scrollHeight;
+  // window.location.href = "editorheight://content="+document.body.scrollHeight;
 }
 function speech(encodedText,voice="male-qn-qingse",key,group = '1782363907101311578',speed=1.0,auto=false) {
     function hexToBlob(hex) {
@@ -721,10 +325,6 @@ function extractTitleAndTime(text) {
         return [text.trim()];
     }
 }
-/**
- * @deprecated
- * @param {*} resultsEncoded 
- */
     function renderSearchResults(resultsEncoded) {
       let results = JSON.parse(decodeURIComponent(resultsEncoded))
       let otherEle = document.getElementById("other")
@@ -737,9 +337,6 @@ function extractTitleAndTime(text) {
         container.innerHTML = ''; // 清空现有内容
       }
         results.forEach(result => {
-            //result应该具有以下属性：title,link,content,icon,media
-            // 必需属性：title, link, content
-            // 可选属性：icon, media
             const resultDiv = document.createElement('div');
             resultDiv.className = 'search-result';
             const title = document.createElement('h2');
@@ -757,40 +354,6 @@ function extractTitleAndTime(text) {
             }
             resultDiv.appendChild(media);
             resultDiv.appendChild(content);
-            container.appendChild(resultDiv);
-        });
-    }
-    /**
-     * 
-     * @param {string} resultsEncoded 
-     */
-    function renderSearchResultsForMetaso(resultsEncoded) {
-      let results = JSON.parse(decodeURIComponent(resultsEncoded))
-      let otherEle = document.getElementById("other")
-      let container = document.getElementById("search-results")
-      if (!container) {
-        container = document.createElement("div")
-        container.setAttribute("id","search-results")
-        otherEle.append(container)
-      }else{
-        container.innerHTML = ''; // 清空现有内容
-      }
-        results.forEach((result,index) => {
-            //result应该具有以下属性：title,link,content,icon,media
-            // 必需属性：title, link, content
-            // 可选属性：icon, media
-            const resultDiv = document.createElement('div');
-            resultDiv.className = 'search-result';
-            const title = document.createElement('h2');
-            title.innerHTML = `<a href="${result.link}" target="_blank">[${index+1}] ${result.title}</a>`;
-            resultDiv.appendChild(title);
-            const media = document.createElement('p');
-            if ("authors" in result) {
-              media.innerHTML = `${result.authors.join(",")} | ${result.date}`;
-            }else{
-              media.innerHTML = `${result.date}`;
-            }
-            resultDiv.appendChild(media);
             container.appendChild(resultDiv);
         });
     }

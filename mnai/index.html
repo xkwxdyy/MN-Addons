@@ -17,8 +17,11 @@
     <title>ChatGPT</title>
     <link rel="stylesheet" href="app.css"/>
     <script src="notyf.min.js"></script>
-    <script src="markdown-it.min.js"></script>
     <script src="highlight.min.js"></script>
+    <script src="veditor.min.js" defer></script>
+    <script src="subfunc.js"></script>
+    <script src="veditor.funcSide.js"></script>
+    <script src="marked.js"></script>
     <!-- <script src="pdf.js"></script>
     <script src="pdf.worker.js"></script> -->
     <!-- <script src="katex.min.js"></script> -->
@@ -32,12 +35,13 @@
         fontCache: 'global'
       }
     };
+
     </script>
     <style>
         .request .requestBody,
         .request .markdown-body,
         .response .markdown-body {
-            max-width: calc(100% - 60px);
+            max-width: calc(100% - 50px);
         }
         .bottom_wrapper {
             max-width: 100%;
@@ -64,10 +68,10 @@
         .funcResponse {
           position:relative;
           background-color: #343541;
-          left: 48px;
+          left: 43px;
           color: white;
           border-radius: 8px;
-          max-width: calc(100% - 68px);
+          max-width: calc(100% - 63px);
           overflow-x: scroll;
           margin-top: 0px;
           margin-bottom: 0px;
@@ -87,9 +91,9 @@
           margin-bottom: 5px;
         }
         .reasoningResponse {
-            max-width: calc(100% - 60px);
+            max-width: calc(100% - 55px);
             position:relative;
-            left: 48px;
+            left: 43px;
     color: white;
     border-radius: 8px;
     padding-left: 0px;
@@ -109,12 +113,13 @@
             border-radius: 8px;
             overflow-y: scroll;
             white-space: pre-wrap;
+            font-size: 13px;
             max-height: 200px;
         }
        .searchResults {
-            max-width: calc(100% - 60px);
+            max-width: calc(100% - 55px);
             position:relative;
-            left: 48px;
+            left: 43px;
     color: white;
     border-radius: 8px;
     padding-left: 0px;
@@ -159,12 +164,6 @@
         }
 
     </style>
-    <!-- <script src="./es5/tex-svg-full.js"></script> -->
-    <!-- <script src="./es5/tex-chtml.js"></script> -->
-    <!-- <script src="https://cdn.staticfile.org/notyf/3.10.0/notyf.min.js"></script> -->
-    <!-- <script crossorigin="anonymous" src="https://cdn.staticfile.org/markdown-it/13.0.2/markdown-it.min.js"></script> -->
-    <!-- <script crossorigin="anonymous" src="https://cdn.staticfile.org/highlight.js/11.9.0/highlight.min.js"></script> -->
-    <!-- <script crossorigin="anonymous" src="https://cdn.staticfile.org/KaTeX/0.16.9/katex.min.js"></script> -->
     <script>
         let themeMode; // 2: 自动， 1: 浅色，0: 深色
         let autoThemeMode; // 1: 跟随系统，0:自定义时间
@@ -1058,6 +1057,8 @@
     <script src="./es5/tex-svg-full.js"></script>
     <script src="app.js"></script>
     <script src="api.js"></script>
+    <script src="katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" defer/>
     <!-- <link rel="stylesheet" href="katex.min.css"/> -->
     <!-- <link crossorigin="anonymous" href="https://cdn.staticfile.org/KaTeX/0.16.9/katex.min.css" rel="stylesheet"> -->
 </body>

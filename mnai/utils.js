@@ -123,6 +123,11 @@ class chatAITool{
     }
     return res
   }
+  clearPreContent(){
+    this.preHtml = ""
+    this.preCSS = ""
+    this.preContent = ""
+  }
   /**
    * 
    * @param {object} func 
@@ -158,6 +163,9 @@ class chatAITool{
   let tags = []
   let funcName = this.name
   let args = chatAIUtils.getValidJSON(func.function.arguments)
+      // MNUtil.log({message:"createMindmap",detail:func.function.arguments})
+      // MNUtil.log({message:"createMindmap",detail:args})
+
   // MNUtil.copy(func.function.arguments)
   let noteid = noteId ?? chatAIUtils.getFocusNoteId(this.needNote)
   // MNUtil.log(noteid)
@@ -172,34 +180,34 @@ class chatAITool{
   switch (funcName) {
     case "createMindmap":
       response = this.createMindmap(func,args,note)
-      return response
+      break;
     case "userSelect":
       response = await this.userSelect(func,args)
-      return response
+      break;
     case "userConfirm":
       response = await this.userConfirm(func,args)
-      return response
+      break;
     case "userInput":
       response = await this.userInput(func,args)
-      return response
+      break;
     case "generateImage":
       response = await this.generateImage(func,args)
-      return response
+      break;
     case "organizeNotes":
       response = await this.organizeNotes(func,args)
-      return response
+      break;
     case "editNote":
       response = await this.editNote(func,args,note)
-      return response
+      break;
     case "searchNotes":
       response = await this.searchNotes(func,args)
-      return response
+      break;
     case "createHTML":
       response = await this.createHTML(func,args)
-      return response
+      break;
     case "createMermaidChart":
       response = await this.createMermaidChart(func,args)
-      return response
+      break;
     default:
       break;
   }
@@ -288,7 +296,7 @@ class chatAITool{
         try {
           let PDFExtractMode = chatAIConfig.getConfig("PDFExtractMode")
           let currentDocInfo = await chatAIConfig.getFileContent(currentFile,PDFExtractMode === "local")
-          response.toolMessages = chatAITool.genToolMessage(currentDocInfo,func.id)
+          response.toolMessages = chatAITool.genToolMessage(JSON.stringify(currentDocInfo,undefined,2),func.id)
         } catch (error) {
           response.toolMessages = chatAITool.genToolMessage("Reading document failed",func.id)
           throw error;
@@ -467,7 +475,7 @@ class chatAITool{
       if (color) {
         config.color = color
       }
-      if ("parentNoteId" in args) {
+      if ("parentNoteId" in args && args.parentNoteId) {
         note = MNNote.new(args.parentNoteId)
       }else{
         note = MNNote.new(noteid)
@@ -557,11 +565,14 @@ class chatAITool{
         default:
           break;
       }
+      // MNUtil.log({message:"createMindmap",detail:args})
       // MNUtil.copy(args)
-      if ("parentNoteId" in args) {
+      if ("parentNoteId" in args && args.parentNoteId) {
+        // MNUtil.log("parentNoteId")
         note = MNNote.new(args.parentNoteId)
       }
       if (!note) {
+        // MNUtil.log("currentChildMap")
         note = MNUtil.currentChildMap
       }
       message.response = "Mindmap is created: "+response.result
@@ -656,7 +667,7 @@ class chatAITool{
     let fixedArgs = this.fixHtmlArgs(args)
     let fullHtml = this.getFullHTML(fixedArgs)
     if (fullHtml) {
-      MNUtil.postNotification("snipasteHtml", {html:fullHtml})
+      MNUtil.postNotification("snipasteHtml", {html:fullHtml,force:true})
       response.result = MNUtil.mergeWhitespace(fullHtml)
       response.success = true
       message.response = "HTML file is created, with a preview window"
@@ -672,7 +683,8 @@ class chatAITool{
     let content = args.content ?? ""
     if (content) {
       content = chatAIUtils.replaceLtInLatexBlocks(content)
-      MNUtil.log(content)
+      content = content.replace(/\\n/g,"\n")
+      // MNUtil.log({message:"createMermaidChart",detail:content})
       MNUtil.postNotification("snipasteMermaid", {content:content,force:true})
       response.result = content
       response.success = true
@@ -1150,7 +1162,7 @@ try {
       childNote = MNNote.new(config)
     }
   }else{
-    childNote = note.createChildNote(config)
+    childNote = note.createChildNote(config,false)
   }
   if (ast.children && ast.children.length) {
     ast.children.forEach((child, index)=>{
@@ -1410,7 +1422,7 @@ try {
       if (fullHtml) {
         MNUtil.postNotification("snipasteHtml", {html:fullHtml,force:force})
       }else{
-        MNUtil.postNotification("snipasteHtml", {html:this.getLoadingHTML()})
+        MNUtil.postNotification("snipasteHtml", {html:chatAITool.getLoadingHTML()})
       }
       // MNUtil.copy(args)
       return `${funcName}(${JSON.stringify(htmlConfig)})\n`
@@ -1447,7 +1459,12 @@ try {
       return `${funcName}()\n`
     case "setExcerpt":
       if (args.excerpt) {
-        return `${funcName}("${MNUtil.mergeWhitespace(args.excerpt)}")\n`
+        this.preContent = args.excerpt.trim()
+        return `${funcName}("${this.preContent}")\n`
+      }
+      if (this.preContent) {
+        // MNUtil.log("Using precontent")
+        return `${funcName}("${this.preContent}")\n`
       }
       return `${funcName}()\n`
     case "readDocument":
@@ -1491,6 +1508,7 @@ try {
     case "createMindmap":
       if (args.ast) {
         // MNUtil.showHUD(typeof args.ast)
+        // MNUtil.log({message:"codifyToolCall.createMindmap",detail:this.preContent})
         let ast
         switch (typeof args.ast) {
           case "object":
@@ -1529,7 +1547,11 @@ try {
       MNUtil.showHUD("Unknown function: "+funcName)
       return `${funcName}()\n`
     default:
-      return `${funcName}(${JSON.stringify(args,undefined,2)})\n`
+      if (args && Object.keys(args).length > 0) {
+        this.preContent = JSON.stringify(args,undefined,2)
+        return `${funcName}(${this.preContent})\n`
+      }
+      return `${funcName}(${this.preContent})\n`
   }
   
 } catch (error) {
@@ -1911,26 +1933,105 @@ ${args.html}
         args:{
           content:{
             type:"string",
-            description:`content of the chart. 
+            description:`A string containing the full, valid Mermaid.js syntax for the diagram. The AI model is responsible for generating this code based on the user's requirements. The code must begin with a diagram type declaration (e.g., "graph TD", "sequenceDiagram", "pie").
 ### Constraints ###
-1. All node labels must be wrapped in double quotes. 
+1. For flow charts, all node labels must be wrapped in triple double quotes. 
 2. Latex formulas must be wrapped in double dollar signs. 
 3. Mermaid chart can not render two latex blocks in one node. Never use two or more latex blocks in one node.
-###################
+4. Do not use html tags in node labels.
+5. Do not use markdown list in node labels.
+6. Do not use brackets in node labels.
 
-### Example #######
+### Example 1 Latex###
+ graph LR
+      A["""$$x^2$$"""] -->|"""$$\\sqrt{x+3}$$"""| B("""$$\\frac{1}{2}$$""")
+      A -->|"""$$\\overbrace{a+b+c}^{\\text{note}}$$"""| C("""$$\\pi r^2$$""")
+      B --> D("""$$x = \\begin{cases} a &\\text{if } b \\\\ c &\\text{if } d \\end{cases}$$""")
+      C --> E("""$$x(t)=c_1\\begin{bmatrix}-\\cos{t}+\\sin{t}\\\\ 2\\cos{t} \\end{bmatrix}e^{2t}$$""")
+
+### Example 2 Flow Chart ###
 graph TD
-    A["Start"] --> B["Calculate $$x^2 + y^2$$"]
-    B --> C["If $$x^2 + y^2 > 1$$?"]
-    C -- Yes --> D["Outside the circle"]
-    C -- No --> E["Inside the circle"]
-    D --> F["End"]
-    E --> F["End"]
-###################`
+    A["""<b>太平洋增温模式的 onset 特征变化 (分界点：1970年代末)</b>"""]
+
+    subgraph "1970年代末之前 (如 1957, 1965, 1972)"
+        direction LR
+        B["""<b>触发机制</b><br>澳大利亚东部的<br>异常气旋东移"""] --> C{"导致"}
+        C --> D["""赤道西太平洋<br>出现异常西风"""]
+        C --> E["""东南太平洋<br>信风减弱"""]
+        E --> F["""<b>结果</b><br>南美沿岸增温<br><u>领先</u><br>中太平洋增温"""]
+    end
+
+    subgraph "1970年代末之后 (如 1982, 1986-87, 1991)"
+        direction LR
+        G["""<b>触发机制</b><br>菲律宾海的<br>异常气旋增强"""] --> H{"导致"}
+        H --> I["""赤道西太平洋<br>建立异常西风"""]
+        H --> J["""东南太平洋<br>信风增强"""]
+        J --> K["""<b>结果</b><br>南美沿岸增温<br><u>落后</u><br>中太平洋增温"""]
+    end
+
+    subgraph "根本原因"
+        L["""<b>背景海温场 (SSTs) 的年代际变化</b><br>1. 热带太平洋增温<br>2. 温带南北太平洋变冷<br>3. 阿留申低压加深"""]
+    end
+
+    L --> A
+    A --> B
+    A --> G
+
+    style A fill:#0077B6,stroke-width:0px,color:white
+    style L fill:#48BFE3,stroke-width:0px,color:black
+
+    style B fill:#F7B801,stroke-width:0px,color:black
+    style D fill:#F18701,stroke-width:0px,color:white
+    style E fill:#F18701,stroke-width:0px,color:white
+    style F fill:#A44200,stroke-width:0px,color:white
+    
+    style G fill:#7FB800,stroke-width:0px,color:black
+    style I fill:#55A630,stroke-width:0px,color:white
+    style J fill:#55A630,stroke-width:0px,color:white
+    style K fill:#008000,stroke-width:0px,color:white
+
+
+### Example 3 Mindmap ###
+mindmap
+  root((太平洋增温模式的 onset 特征变化))
+    ::icon(fa fa-water)
+    分界点：1970年代末
+    根本原因 (背景海温场SSTs的年代际变化)
+      热带太平洋增温
+      温带南北太平洋变冷
+      阿留申低压加深
+    1970年代末之前 (1957, 1965, 1972)
+      ::icon(fa fa-cloud-sun-rain)
+      触发机制
+        澳大利亚东部的异常气旋东移
+      影响
+        赤道西太平洋出现异常西风
+        东南太平洋信风减弱
+      结果
+        南美沿岸增温领先中太平洋增温
+    1970年代末之后 (1982, 1986-87, 1991)
+      ::icon(fa fa-cloud-showers-heavy)
+      触发机制
+        菲律宾海的异常气旋增强
+      影响
+        赤道西太平洋建立异常西风
+        东南太平洋信风增强
+      结果
+        南美沿岸增温落后中太平洋增温
+### Example 4 sequenceDiagram ###
+sequenceDiagram
+    autonumber
+    participant 1 as $$\\alpha$$
+    participant 2 as $$\\beta$$
+    1->>2: Solve: $$\\sqrt{2+2}$$
+    2-->>1: Answer: $$2$$
+    Note right of 2: $$\\sqrt{2+2}=\\sqrt{4}=2$$
+
+`
           }
         },
         required:[],
-        description:"this tool is used to create a mermaid chart"
+        description:"Generates and renders a diagram image from a Mermaid syntax string. Use this tool whenever a user asks to create a visual diagram, such as a flowchart, sequence diagram, Gantt chart, pie chart, etc."
       },
       "createHTML":{
         needNote:false,
@@ -2398,6 +2499,8 @@ class chatAIUtils {
     this.name = name;
   }
   static errorLog = []
+  static cache = {}
+  static cacheInfo = {number:0,times:0,enabled:true}
   /**
    * @type {{version:String,type:String}}
    * @static
@@ -2531,6 +2634,18 @@ class chatAIUtils {
     let ver = this.appVersion()
     return ver.version+'app://note/'+noteid
   } 
+  static blur() {
+    if (this.isMN4() && this.sideOutputController && this.sideOutputController.userInput) {
+      MNUtil.delay(0.1).then(()=>{
+        this.sideOutputController.userInput.endEditing(true)
+      })
+    }
+    if (this.dynamicController && !this.dynamicController.view.hidden) {
+      MNUtil.delay(0.1).then(()=>{
+        this.dynamicController.blur()
+      })
+    }
+  }
   static allStudySets(option = {}){
   try {
     let allNotebooks = MNUtil.allNotebooks()
@@ -3321,16 +3436,31 @@ try {
   }
   /**
    * 
-   * @param {MbBook} doc 
+   * @param {MbBook|string} doc 
    * @returns 
    */
-  static getDocObject(doc) {
+  static async getDocObject(doc,opt = {withContent:false}) {
+    if (typeof doc === "string") {
+      doc = MNUtil.getDocById(doc)
+    }
     if (!doc) {
       return undefined
     }
     let docConfig = {}
     docConfig.id = doc.docMd5
     docConfig.name = doc.docTitle
+    let tem = {
+      name:doc.docTitle,
+      path:doc.fullPathFileName,
+      md5:doc.docMd5,
+    }
+    let PDFExtractMode = chatAIConfig.getConfig("PDFExtractMode")
+    if (opt.withContent) {
+      MNUtil.log({message:"getDocObject withContent",detail:tem})
+      let fileInfo = await chatAIConfig.getFileContent(tem,PDFExtractMode === "local")
+      // MNUtil.log(typeof fileInfo)
+      docConfig.content = fileInfo.content
+    }
     let notebookId = doc.currentTopicId
     if (notebookId) {
       docConfig.notebook = {
@@ -3342,14 +3472,16 @@ try {
     return docConfig
   }
   /**
-   * 
+   * @param {{first:boolean,parentLevel:number,parent:boolean,child:boolean}} opt 
    * @param {MNNote} note 
    */
-  static getNoteObject(note,opt={first:true}) {
+  static async getNoteObject(note,opt={first:true,noteInfo:{}}) {
     try {
     if (!note) {
       return undefined
     }
+    // MNUtil.log("Parentlevel: "+opt.parentLevel)
+    let noteInfo = opt.noteInfo
       
     let noteConfig = {}
     noteConfig.id = note.noteId
@@ -3363,7 +3495,12 @@ try {
     noteConfig.url = note.noteURL
     noteConfig.excerptText = note.excerptText
     noteConfig.isMarkdownExcerpt = note.excerptTextMarkdown
-    noteConfig.isImageExcerpt = !!note.excerptPic
+    let isBlankNote = this.isBlankNote(note)
+    if (note.excerptPic && !isBlankNote) {
+      noteConfig.isImageExcerpt = true
+    }else{
+      noteConfig.isImageExcerpt = false
+    }
     noteConfig.date = {
       create:note.createDate.toLocaleString(),
       modify:note.modifiedDate.toLocaleString(),
@@ -3398,26 +3535,38 @@ try {
       noteConfig.color.purple = note.colorIndex === 15
     }
     if (note.docMd5 && MNUtil.getDocById(note.docMd5)) {
-      noteConfig.doc = this.getDocObject(MNUtil.getDocById(note.docMd5)) 
+      let startPage = note.note.startPage
+      let endPage = note.note.endPage
+      let pageRange = undefined
+      if (startPage !== undefined && endPage !== undefined) {
+        pageRange = {startPage,endPage}
+      }
+      noteConfig.doc = await this.getDocObject(MNUtil.getDocById(note.docMd5),{withContent:noteInfo.hasNoteDoc,pageRange:pageRange}) 
       noteConfig.hasDoc = true
     }else{
       noteConfig.hasDoc = false
     }
     if (note.childMindMap) {
-      noteConfig.childMindMap = this.getNoteObject(note.childMindMap,{first:false})
+      // noteInfo.hasChildMindMap = false
+      noteConfig.childMindMap = await this.getNoteObject(note.childMindMap,{first:false})
     }
     noteConfig.inMainMindMap = !noteConfig.childMindMap
     noteConfig.inChildMindMap = !!noteConfig.childMindMap
-    if ("parent" in opt && opt.parent && note.parentNote) {
-      if (opt.parentLevel && opt.parentLevel > 0) {
-        noteConfig.parent = this.getNoteObject(note.parentNote,{parentLevel:opt.parentLevel-1,parent:true,first:false})
+    if (opt.parent && note.parentNote) {
+      if ("parentLevel" in noteInfo) {
+        if (opt.parentLevel > 0) {
+      // MNUtil.log("Get parent: "+opt.parentLevel)
+          noteConfig.parent = await this.getNoteObject(note.parentNote,{parentLevel:opt.parentLevel-1,parent:true,first:false})
+        }
       }else{
-        noteConfig.parent = this.getNoteObject(note.parentNote,{first:false})
+      // MNUtil.log("Get parent: "+opt.parentLevel)
+        noteConfig.parent = await this.getNoteObject(note.parentNote,{first:false})
       }
     }
-    noteConfig.hasParent = "parent" in noteConfig
-    if ("child" in opt && opt.child && note.childNotes) {
-      noteConfig.child = note.childNotes.map(note=>this.getNoteObject(note,{first:false}))
+    // noteConfig.hasParent = "parent" in noteConfig
+    if (opt.child && note.childNotes) {
+      // MNUtil.log("Get child")
+      noteConfig.child = await Promise.all(note.childNotes.map(note=>this.getNoteObject(note,{first:false})))
     }
     return noteConfig
     } catch (error) {
@@ -3900,7 +4049,10 @@ try {
   }
 
   static getCurrentFile() {
-    let docFile = this.currentDocController().document
+    let docController = this.currentDocController()
+    let docFile = docController.document
+    let currentPageNo = docController.currPageNo
+    let pageCount = docFile.pageCount
     // copy(docFile.pathFile)
     let fullPath
     if (docFile.fullPathFileName) {
@@ -3924,7 +4076,9 @@ try {
     return{
       name:fileName,
       path:fullPath,
-      md5:docFile.docMd5
+      md5:docFile.docMd5,
+      currentPageNo:currentPageNo,
+      pageCount:pageCount
     }
   }
   static getNoteFileName(noteId) {
@@ -3990,6 +4144,10 @@ try {
       return true
     }
     //考虑到可能存在图片摘要，因此要么图片摘要不存在，要么图片摘要已被转为文本
+    let isBlankNote = this.isBlankNote(note)//指有图片摘录但图片分辨率为1x1的空白图片
+    if (isBlankNote) {
+      return note.excerptText && note.excerptText !== ""
+    }
     return note.excerptText && note.excerptText !== "" && (!note.excerptPic || note.textFirst)
   }
   static strCode(str) {  //获取字符串的字节数
@@ -4444,12 +4602,14 @@ try {
     return events;
   }
 static parseDataChunks(str) {
+
   const regex = /data:\s*({[\s\S]*?})(?=\s*data:|$)/g;
-  const results = [];
+  const results = [];//role,citation
   let match;
   let usage = {};
   
   while ((match = regex.exec(str)) !== null) {
+    // MNUtil.log({message:"match",detail:match})
     try {
       const jsonStr = match[1];
       const data = JSON.parse(jsonStr);
@@ -4465,7 +4625,23 @@ static parseDataChunks(str) {
       this.addErrorLog(e, "parseDataChunks")
     }
   }
-  
+  // MNUtil.log({message:"parseDataChunks",detail:results})
+  if (results.length === 0 && /data:\s/.test(str)) {
+    let jsonStr = str.split("data:")[1]
+    try {
+      let data = this.getValidJSON(jsonStr)
+      results.push(data.choices[0]?.delta)
+      const delta = data.choices[0]?.delta;
+      if (delta) {
+        results.push(delta);
+      }
+      if ("usage" in data) {
+        usage = data.usage;
+      }
+    } catch (error) {
+      this.addErrorLog(error, "parseFirstDataChunk",jsonStr)
+    }
+  }
   return {results:results,usage:usage};
 }
   static parseData(originalText) {
@@ -4670,6 +4846,7 @@ static preResults = []
       return ""
     }).join("").trim()
     response.response = response.response.trim()
+      .replace(/\$\$/g, '\n$$$\n')
       .replace(/(\\\[)|(\\\])/g, '$$$') // Replace display math mode delimiters
       .replace(/(\\\(\s?)|(\s?\\\))/g, '$') // Replace inline math mode opening delimiter
     response.reasoningResponse = results.map(res=>{
@@ -4678,7 +4855,7 @@ static preResults = []
       }
       return ""
     }).join("").trim()
-    
+
     if (!response.reasoningResponse && response.response) {
       if (/^<think>/.test(response.response)) {
         let tem = response.response.split("</think>")
@@ -4706,6 +4883,25 @@ static preResults = []
       //   }
       //   response.reasoningResponse = tem[0].replace("###Thinking","").trim()
       // }
+    }
+    //适配秘塔搜索
+    response.citations = undefined
+    results.map(res=>{
+      if (res && res.citations) {
+        response.citations = res.citations
+        // response.citations.push(res.citations)
+      }
+    })
+      // MNUtil.log({message:"res",detail:results})
+    if (response.citations) {
+      //将响应内容中的[[num]]替换为对应的citation，num为数字，从1开始
+      response.response = response.response.replace(/\[\[([0-9]+)\]\]/g,(match,p1)=>{
+        let num = parseInt(p1)
+        let citation = response.citations[num-1]
+        //根据引用的title和link构建markdown链接
+        return `[{${num}}](${citation.link})`
+      })
+      // MNUtil.log({message:"citations",detail:response.citations})
     }
     // MNUtil.copy(response)
     // let endTime = Date.now()
@@ -5227,7 +5423,11 @@ code.hljs {
     cardStructure.title = note.noteTitle
   }
   if (note.excerptPic && !note.textFirst) {
-    hasImage = true
+    if (this.isBlankNote(note)) {
+      hasImage = false
+    }else{
+      hasImage = true
+    }
   }
   if (OCR_enabled && note.excerptPic && !note.textFirst) {
     cardStructure.content = await chatAINetwork.getTextOCR(MNUtil.getMediaByHash(note.excerptPic.paint))
@@ -5521,7 +5721,97 @@ code.hljs {
     chatAIUtils.addErrorLog(error, "chatAIUtils.insertBlank")
   }
   }
+  static hasNoteDoc(vars){
+    if (vars.includes("note.doc.content")) {
+      return true
+    }
+    if (vars.includes("note.parent.doc.content")) {
+      return true
+    }
+    if (vars.includes("note.parent.parent.doc.content")) {
+      return true
+    }
+    if (vars.includes("note.parent.parent.parent.doc.content")) {
+      return true
+    }
+  }
+  static getParentLevel(vars){
+    if (vars.some(v=>v.includes("note.parent.parent.parent."))) {
+      return 3
+    }
+    if (vars.some(v=>v.includes("note.parent.parent."))) {
+      return 2
+    }
+    if (vars.some(v=>v.includes("note.parent."))) {
+      return 1
+    }
+    return 0
+  }
+  static hasChild(vars){
+    if (vars.some(v=>v.includes("note.child"))) {
+      return true
+    }
+    return false
+  }
+  static hasNote(vars){
+    if (vars.some(v=>v.includes("note."))) {
+      return true
+    }
+    return false
+  }
+  /**
+   * 
+   * @param {string[]} vars 
+   * @returns 
+   */
+  static getNoteInfo(vars){
+    //parentLevel为最高的一个
+    let noteInfo = {hasNote:false,hasChildMindMap:false,hasParent:false,hasChild:false,parentLevel:0,hasNoteDoc:false}
+    vars.map(v=>{
+      if (v.startsWith("note.")) {
+        noteInfo.hasNote = true//只要有一个变量带note就行
+        if (v.startsWith("note.doc.content")) {
+          noteInfo.hasNoteDoc = true
+        }
+        if (v.startsWith("note.childMindMap.")) {
+          noteInfo.hasChildMindMap = true
+          if (v.startsWith("note.childMindMap.doc.content")) {
+            noteInfo.hasNoteDoc = true
+          }
+        }
+        if (v.startsWith("note.parent.")) {
+          noteInfo.hasParent = true
+          if (v.startsWith("note.parent.parent.parent.")) {
+            noteInfo.parentLevel = 3
+            if (v.startsWith("note.parent.parent.parent.doc.content")) {
+              noteInfo.hasNoteDoc = true
+            }
+          }else if (v.startsWith("note.parent.parent.")) {
+            if (noteInfo.parentLevel !== 3) {//如果为3则不覆盖
+              noteInfo.parentLevel = 2
+            }
+            if (v.startsWith("note.parent.parent.doc.content")) {
+              noteInfo.hasNoteDoc = true
+            }
+          }else {
+            if (noteInfo.parentLevel < 2) {//如果小于2则不覆盖
+              noteInfo.parentLevel = 1
+            }
+            if (v.startsWith("note.parent.doc.content")) {
+              noteInfo.hasNoteDoc = true
+            }
+          }
+        }
+        if (v.startsWith("note.child.")) {
+          noteInfo.hasChild = true
+        }
+      }
+    })
+    return noteInfo
+  }
   static parseVars(template){
+  try {
+
     let tokens = mustache.parse(template)
     var pipelineRe = /\|\>?/;
     let vars = []
@@ -5543,6 +5833,7 @@ code.hljs {
       getChildToken(t)
     })
     // MNUtil.copy(vars)
+    // MNUtil.log({message:"vars",detail:vars})
     let config = {
       vars:MNUtil.unique(vars),
       hasContext:vars.includes("context"),
@@ -5556,6 +5847,8 @@ code.hljs {
       hasParentCardOCR:vars.includes("parentCardOCR"),
       hasUserInput:vars.includes("userInput"),
       hasCurrentDocInfo:vars.includes("currentDocInfo"),
+      hasCurrentPageInfo:vars.includes("hasCurrentPageInfo"),
+      hasCurrentDocContent:vars.includes("currentDoc.content"),
       hasNoteDocInfo:vars.includes("noteDocInfo"),
       hasNoteDocAttach:vars.includes("noteDocAttach"),
       hasCurrentDocAttach:vars.includes("currentDocAttach"),
@@ -5563,8 +5856,14 @@ code.hljs {
       hasSelectionText:vars.includes("selectionText"),
       hasKnowledge:vars.includes("knowledge"),
       hasCurrentDocName:vars.includes("currentDocName"),
+      noteInfo:this.getNoteInfo(vars),
     }
     return config
+    
+  } catch (error) {
+    this.addErrorLog(error, "parseVars")
+    throw error;
+  }
   }
   static getCurrentNotesInMindmap(){
     if (MNUtil.mindmapView) {
@@ -5613,6 +5912,12 @@ static getLineByIndex(str, index) {
       return false
     }
   }
+
+
+
+
+
+
   static async render(template,opt={}){
     try {
       if (opt.noteId) {
@@ -5629,9 +5934,16 @@ static getLineByIndex(str, index) {
     try {
     let replaceText= text//this.checkVariableForNote(text, userInput)//提前写好要退化到的变量
     let vars = this.parseVars(replaceText)
+    let noteInfo = vars.noteInfo
+    // MNUtil.log({message:"noteInfo",detail:noteInfo})
     let note = MNNote.new(noteid)
-    let docConfig = this.getDocObject(MNUtil.currentDoc)
-    let noteConfig = this.getNoteObject(note,{parent:true,child:true,parentLevel:3})
+    let docConfig = await this.getDocObject(MNUtil.currentDoc,{withContent:vars.hasCurrentDocContent})
+    let noteConfig = noteInfo.hasNote ? await this.getNoteObject(note,{
+      noteInfo:noteInfo,
+      parent:noteInfo.hasParent,
+      child:noteInfo.hasChild,
+      parentLevel:noteInfo.parentLevel
+    }) : undefined
     let config = noteConfig ? this.getVarInfo(vars,{note:noteConfig,visionMode:vision,currentDoc:docConfig}) : this.getVarInfo(vars,{visionMode:vision,currentDoc:docConfig})
     // let selectedText = MNUtil.selectionText
     let contextVar = ""
@@ -5730,7 +6042,8 @@ static getLineByIndex(str, index) {
         config.currentDocInfo = undefined
       }else{
         let PDFExtractMode = chatAIConfig.getConfig("PDFExtractMode")
-        config.currentDocInfo = await chatAIConfig.getFileContent(currentFile,PDFExtractMode === "local")
+        let fileInfo = await chatAIConfig.getFileContent(currentFile,PDFExtractMode === "local")
+        config.currentDocInfo = JSON.stringify(fileInfo,undefined,2)
       }
     }
     if (vars.hasNoteDocInfo) {
@@ -5742,7 +6055,8 @@ static getLineByIndex(str, index) {
         config.noteDocInfo = undefined
       }else{
         let PDFExtractMode = chatAIConfig.getConfig("PDFExtractMode")
-        config.noteDocInfo = await chatAIConfig.getFileContent(currentFile,PDFExtractMode === "local")
+        let fileInfo = await chatAIConfig.getFileContent(currentFile,PDFExtractMode === "local")
+        config.noteDocInfo = JSON.stringify(fileInfo,undefined,2)
       }
     }
     if (vars.hasNoteDocAttach) {
@@ -5785,11 +6099,13 @@ static getLineByIndex(str, index) {
 
 static async getTextVarInfo(text,userInput,vision=false,ocr=this.OCREnhancedMode) {
   try {
+  // MNUtil.log("getTextVarInfo")
   let vars = this.parseVars(text)
+  let noteInfo = vars.noteInfo
     // this.showHUD(userInput+vars.hasUserInput)
   let replaceText= text//this.checkVariableForText(text, userInput)//提前写好要退化到的变量
-  let noteConfig = this.getNoteObject(MNNote.getFocusNote())
-  let docConfig = this.getDocObject(MNUtil.currentDoc)
+  let noteConfig = noteInfo.hasNote ? await this.getNoteObject(MNNote.getFocusNote(),{noteInfo:vars.noteInfo,first:true,parentLevel:noteInfo.parentLevel,child:noteInfo.hasChild}) : undefined
+  let docConfig = await this.getDocObject(MNUtil.currentDoc,{withContent:vars.hasCurrentDocContent})
   let config = noteConfig ? this.getVarInfo(vars,{note:noteConfig,visionMode:vision,currentDoc:docConfig}) : this.getVarInfo(vars,{visionMode:vision,currentDoc:docConfig})
   let fileContent = undefined
   let selectedText = MNUtil.selectionText
@@ -5883,7 +6199,9 @@ static async getTextVarInfo(text,userInput,vision=false,ocr=this.OCREnhancedMode
       return undefined
     }
     let PDFExtractMode = chatAIConfig.getConfig("PDFExtractMode")
-    fileContent = await chatAIConfig.getFileContent(currentFile,PDFExtractMode === "local")
+    let fileInfo = await chatAIConfig.getFileContent(currentFile,PDFExtractMode === "local")
+    // MNUtil.log({message:"fileInfo",detail:fileInfo})
+    fileContent = JSON.stringify(fileInfo,undefined,2)
     // copy(fileContent)
     if (vars.hasCurrentDocInfo) {
       config.currentDocInfo = fileContent
@@ -6298,6 +6616,190 @@ static replaceLtInLatexBlocks(markdown) {
         return '$$' + latexContent.replace(/</g, '\\lt') + '$$';
     });
 }
+
+static codeBlockReplacer = (lang,format,code) => {
+    let encodedContent = encodeURIComponent(code);
+    if (lang === "userSelect") {
+      let url = `userselect://choice?content=${encodedContent}`
+      return `<div><a href="${url}" style="
+    display: block;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background: #e3eefc;
+    color: #1565c0;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-color: #90caf9;
+    font-size: 16px;
+    cursor: pointer;
+    box-sizing: border-box;
+"
+>
+${code.trim()}
+</a></div>`
+    }
+    if (lang === "addNote") {
+      let url = `userselect://addnote?content=${encodedContent}`
+      if (format === "markdown") {
+        url = `userselect://addnote?content=${encodedContent}&format=markdown`
+        code = MNUtil.md2html(code)
+      }
+      return `<div><a href="${url}" style="
+    display: block;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background:rgb(230, 255, 239);
+    color:#237427;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-color:#01b76e;
+    font-size: 16px;
+    cursor: pointer;
+    box-sizing: border-box;
+"
+>
+<div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击创建笔记：</div>
+${code.trim()}
+</a></div>`
+  }
+    if (lang === "addComment") {
+      let url = `userselect://addcomment?content=${encodedContent}`
+      if (format === "markdown") {
+        url = `userselect://addnote?content=${encodedContent}&format=markdown`
+        code = MNUtil.md2html(code)
+      }
+      return `<div><a href="${url}" style="
+    display: block;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background:rgb(230, 255, 239);
+    color:#237427;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-color:#01b76e;
+    font-size: 16px;
+    cursor: pointer;
+    box-sizing: border-box;
+"
+>
+<div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击添加卡片评论：</div>
+${code.trim()}
+</a></div>`
+  }
+  return ""
+}
+
+/**
+ * 从markdown中提取 userSelect 或 addNote 代码块，并替换成指定内容
+ * @param {string} markdown - 原始markdown
+ * @returns {{markdown: string, blocks: string[]}} 
+ */
+static replaceSpecialBlocks(markdown) {
+  // const blocks = [];
+  // 正则：匹配```userSelect 或 ```addNote 开头，直到下一个```
+const pattern = /```(userSelect|addNote|addComment)\s*(plaintext|markdown|json)?\n([\s\S]*?)```/g;
+const newMarkdown = markdown.replace(pattern, (match, lang, format, code) => {
+    // blocks.push(code);
+    if (this.cacheInfo.enabled) {
+      if (match in this.cache) {
+        // this.cacheInfo.times++
+        // this.cacheInfo.number = Object.keys(this.cache).length
+        // MNUtil.log({message:"Using cache",cacheInfo:this.cacheInfo})
+        return this.cache[match]
+      }
+      let res = this.codeBlockReplacer(lang,format,code)
+      this.cache[match] = res
+      return res
+    }else{
+      return this.codeBlockReplacer(lang,format,code)
+    }
+    // return typeof replacer === 'function'
+    //   ? replacer(lang,format,code)
+    //   : String(replacer);
+  });
+  return { markdown: newMarkdown };
+}
+static replaceButtonCodeBlocks(markdown) {
+//   let replacer = (lang,format,code) => {
+//     let encodedContent = encodeURIComponent(code);
+//     if (lang === "userSelect") {
+//       let url = `userselect://choice?content=${encodedContent}`
+//       return `<div><a href="${url}" style="
+//     display: block;
+//     padding: 10px 12px;
+//     margin-top: 10px;
+//     background: #e3eefc;
+//     color: #1565c0;
+//     border-radius: 8px;
+//     text-decoration: none;
+//     border: 2px solid transparent;
+//     border-color: #90caf9;
+//     font-size: 16px;
+//     cursor: pointer;
+//     box-sizing: border-box;
+// "
+// >
+// ${code.trim()}
+// </a></div>`
+//     }
+//     if (lang === "addNote") {
+//       let url = `userselect://addnote?content=${encodedContent}`
+//       if (format === "markdown") {
+//         url = `userselect://addnote?content=${encodedContent}&format=markdown`
+//         code = MNUtil.md2html(code)
+//       }
+//       return `<div><a href="${url}" style="
+//     display: block;
+//     padding: 10px 12px;
+//     margin-top: 10px;
+//     background:rgb(230, 255, 239);
+//     color:#237427;
+//     border-radius: 8px;
+//     text-decoration: none;
+//     border: 2px solid transparent;
+//     border-color:#01b76e;
+//     font-size: 16px;
+//     cursor: pointer;
+//     box-sizing: border-box;
+// "
+// >
+// <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击创建笔记：</div>
+// ${code.trim()}
+// </a></div>`
+//   }
+//     if (lang === "addComment") {
+//       let url = `userselect://addcomment?content=${encodedContent}`
+//       if (format === "markdown") {
+//         url = `userselect://addnote?content=${encodedContent}&format=markdown`
+//         code = MNUtil.md2html(code)
+//       }
+//       return `<div><a href="${url}" style="
+//     display: block;
+//     padding: 10px 12px;
+//     margin-top: 10px;
+//     background:rgb(230, 255, 239);
+//     color:#237427;
+//     border-radius: 8px;
+//     text-decoration: none;
+//     border: 2px solid transparent;
+//     border-color:#01b76e;
+//     font-size: 16px;
+//     cursor: pointer;
+//     box-sizing: border-box;
+// "
+// >
+// <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击添加卡片评论：</div>
+// ${code.trim()}
+// </a></div>`
+//   }
+//   return ""
+// }
+let res = this.replaceSpecialBlocks(markdown)
+  return res.markdown
+}
 /**
  * 通过对URL参数进行编码，来修复文本中特定格式的Markdown链接。
  * 此函数会查找形如 [文字](userselect://choice?content=文字) 的链接，
@@ -6310,7 +6812,9 @@ static fixMarkdownLinks(text) {
   // 正则表达式用于匹配并捕获链接文本和需要编码的内容。
   // 捕获组1 ($1): 方括号内的链接文本。
   // 捕获组2 ($2): `content=`之后到右括号之前的所有内容。
-  const brokenLinkRegex = /\[([^\]]+)\]\(userselect:\/\/(choice|addnote|addcomment)(\?content=([^)]+))?\)/g;
+  // const brokenLinkRegex = /\[([^\]]+)\]\(userselect:\/\/(choice|addnote|addcomment)(\?content=([^)]+))?\)/g;
+  // 匹配加粗链接
+  const brokenLinkRegex = /\**\[([^\]]+)\]\(userselect:\/\/(choice|addnote|addcomment)(\?content=([^)]+))?\)\**/g;
 
   /**
    * 这是一个自定义的替换函数。
@@ -6327,15 +6831,71 @@ static fixMarkdownLinks(text) {
       const encodedLinkText = encodeURIComponent(linkText);
     if (content) {
       const encodedContent = encodeURIComponent(decodeURIComponent(content).replace("?content=", ""));
+      let url = `userselect://${host}?content=${encodedContent}&linkText=${encodedLinkText}`
       // 重新组装成修复后的链接。
-      return `[${linkText}](userselect://${host}?content=${encodedContent}&linkText=${encodedLinkText})`;
+      return `\n<div>
+<a href="${url}" style="
+    display: block;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background: #e3eefc;
+    color: #1565c0;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-color: #90caf9;
+    font-size: 16px;
+    cursor: pointer;
+    box-sizing: border-box;
+"
+>
+    ${linkText}
+</a>
+</div>`
+      // return `[${linkText}](userselect://${host}?content=${encodedContent}&linkText=${encodedLinkText})`;
     }else{
-      return `[${linkText}](userselect://${host}?linkText=${encodedLinkText})`;
+      let url = `userselect://${host}?linkText=${encodedLinkText}`
+      // 重新组装成修复后的链接。
+      return `\n<div>
+<a href="${url}" style="
+    display: block;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background: #e3eefc;
+    color: #1565c0;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-color: #90caf9;
+    font-size: 16px;
+    cursor: pointer;
+    box-sizing: border-box;
+"
+>
+    ${linkText}
+</a>
+</div>`
+      // return `[${linkText}](userselect://${host}?linkText=${encodedLinkText})`;
     }
   };
 
   // 执行查找和替换。
   return text.replace(brokenLinkRegex, replacer);
+}
+/**
+ * 
+ * @param {MNNote} note 
+ * @returns {boolean}
+ */
+static isBlankNote(note){//指有图片摘录但图片分辨率为1x1的空白图片
+  if (note.excerptPic) {
+    let imageData = MNUtil.getMediaByHash(note.excerptPic.paint)
+    let image = UIImage.imageWithData(imageData)
+    if (image.size.width === 1 && image.size.height === 1) {
+      return true
+    }
+  }
+  return false
 }
 }
 
@@ -6425,6 +6985,9 @@ class chatAIConfig {
     githubKey: "",
     githubUrl: "https://models.inference.ai.azure.com/chat/completions",
     githubModel: "gpt-4o",
+    metasoKey:"",
+    metasoUrl:"https://metaso.cn/api/v1/chat/completions",
+    metasoModel:"fast",
     ppioKey:"",
     ppioUrl:"https://api.ppinfra.com/v3/openai/chat/completions",
     ppioModel:"deepseek/deepseek-v3/community",
@@ -6632,6 +7195,7 @@ class chatAIConfig {
           "meta-llama/Meta-Llama-3.1-405B-Instruct"
     ],
     "Github":["gpt-4.1","gpt-4.1-mini","gpt-4.1-nano","gpt-4o","gpt-4o-mini","DeepSeek-R1","Llama-3.3-70B-Instruct"],
+    "Metaso":["fast","fast_thinking","ds-r1"],
     "ChatGLM":[
           "glm-4-plus",
           "glm-4v-plus-0111",
@@ -6743,26 +7307,34 @@ class chatAIConfig {
     "note":"list below is the structure of a card:\n{{card}}",
     "text":"{{context}}"
   }
-  static default_usage = {
-    usage: 0,
-    limit: 100,
-    day: 0
-  }
   static init(mainPath){
+  try {
+
     if (mainPath) {
       this.mainPath = mainPath
     }
-    this.config = this.getByDefault('MNChatglm_config',this.defaultConfig)
-    this.prompts = this.getByDefault('MNChatglm_prompts', this.defaultPrompts)
-    // MNUtil.copyJSON(this.prompts)
-    this.knowledge = this.getByDefault('MNChatglm_knowledge',"")
-    this.keys = this.getByDefault('MNChatglm_builtInKeys', {})
-    // this.keys = {}
-    this.fileId = this.getByDefault("MNChatglm_fileId", {})
+    this.checkDataDir()
+    this.dataFolder = subscriptionUtils.extensionPath+"/data"
+    this.backUpFile = subscriptionUtils.extensionPath+"/data/MNChatAI_totalConfig.json"
     this.default_usage = {limit:100,day:chatAIUtils.getToday(),usage:0}
-    this.usage = this.getByDefault('MNChatglm_usage',this.default_usage)
-    this.dynamicPrompt = this.getByDefault("MNChatglm_dynamicPrompt", this.defaultDynamicPrompt)
-    this.modelConfig = this.getByDefault("MNChatglm_modelConfig", this.defaultModelConfig)
+    if (!this.isLocalConfigExists("MNChatglm_config") && this.isBackUpConfigExists()) {//不存在本地配置，但存在备份配置
+      let config = MNUtil.readJSON(this.backUpFile)
+      MNUtil.log("chatAIConfig.readFromBackupFile")
+      this.importConfig(config)
+      this.modelConfig = this.getByDefault("MNChatglm_modelConfig", this.defaultModelConfig)
+      this.keys = this.getByDefault('MNChatglm_builtInKeys', {})
+    }else{
+      this.config = this.getByDefault('MNChatglm_config',this.defaultConfig)
+      this.prompts = this.getByDefault('MNChatglm_prompts', this.defaultPrompts)
+      // MNUtil.copyJSON(this.prompts)
+      this.knowledge = this.getByDefault('MNChatglm_knowledge',"")
+      this.keys = this.getByDefault('MNChatglm_builtInKeys', {})
+      // this.keys = {}
+      this.fileId = this.getByDefault("MNChatglm_fileId", {})
+      this.usage = this.getByDefault('MNChatglm_usage',this.default_usage)
+      this.dynamicPrompt = this.getByDefault("MNChatglm_dynamicPrompt", this.defaultDynamicPrompt)
+      this.modelConfig = this.getByDefault("MNChatglm_modelConfig", this.defaultModelConfig)
+    }
     this.currentPrompt = this.getConfig("currentPrompt")
     // MNUtil.copyJSON({prompts:this.prompts,config:this.config})
     let currentPrompt = this.prompts[this.currentPrompt]
@@ -6790,7 +7362,7 @@ class chatAIConfig {
       this.config.ignoreShortText = false
     }
     chatAITool.initTools()
-    this.checkDataDir()
+
     // MNUtil.copy(this.config.r2password)
     // /**
     //  * @type {chatglmController}
@@ -6827,12 +7399,47 @@ class chatAIConfig {
     this.visionImage = MNUtil.getImage(this.mainPath + `/vision.png`,1.5)
     this.switchLocationImage = MNUtil.getImage(this.mainPath + `/switch.png`),
     this.replyImage = MNUtil.getImage(this.mainPath + `/reply.png`)
+    
+  } catch (error) {
+    chatAIUtils.addErrorLog(error, "chatAIConfig.init")
+  }
+  }
+  static isLocalConfigExists(key){
+    let value = NSUserDefaults.standardUserDefaults().objectForKey(key)
+    if (value && Object.keys(value).length > 0) {
+      return true
+    }
+    return false
+  }
+  static isBackUpConfigExists(){
+    if (MNUtil.isfileExists(this.backUpFile)) {
+      let backupConfig = MNUtil.readJSON(this.backUpFile)
+      if (backupConfig && Object.keys(backupConfig).length > 0) {
+        return true
+      }
+      return true
+    }
+    return false
   }
   
   static checkDataDir(){
-    if (subscriptionUtils.extensionPath) {
-      NSFileManager.defaultManager().createDirectoryAtPathAttributes(subscriptionUtils.extensionPath+"/data", undefined)
+    if (MNUtil.initialized) {
+      return
     }
+    let extensionPath = subscriptionUtils.extensionPath
+    if (extensionPath) {
+      let dataPath = extensionPath+"/data"
+      if (MNUtil.isfileExists(dataPath)) {
+        return
+      }
+      MNUtil.createFolderDev(dataPath)
+      // NSFileManager.defaultManager().createDirectoryAtPathAttributes(dataPath, undefined)
+    }
+  }
+  static backUp(){
+    MNUtil.log("chatAIConfig.backUp")
+    let totalConfig = this.getAllConfig()
+    MNUtil.writeJSON(this.backUpFile, totalConfig)
   }
   static exportChatData(data){
     this.checkDataDir()
@@ -6964,9 +7571,10 @@ class chatAIConfig {
     return this.getConfig("autoImport")
   }
   static getConfig(key){
-
+    if (!this.config) {
+      return false
+    }
     if (this.config[key] !== undefined) {
-
       return this.config[key]
     }else{
       return this.defaultConfig[key]
@@ -7002,6 +7610,8 @@ class chatAIConfig {
         return this.getConfig("volcengineKey")
       case "Github":
         return this.getConfig("githubKey")
+      case "Metaso":
+        return this.getConfig("metasoKey")
       default:
         return false
     }
@@ -7225,6 +7835,16 @@ class chatAIConfig {
     if (synchronize) {
       NSUserDefaults.standardUserDefaults().synchronize()
     }
+    if (this.backUpTimer) {//如果存在定时器，则取消定时器
+      this.backUpTimer.invalidate()
+      this.backUpTimer = undefined
+    }
+    //创建新的定时器
+    this.backUpTimer = NSTimer.scheduledTimerWithTimeInterval(1, false, function () {
+      chatAIConfig.backUpTimer.invalidate()
+      chatAIConfig.backUpTimer = undefined
+      chatAIConfig.backUp()
+    });
   }
   static checkCloudStore(notificaiton = true){
     let iCloudSync = this.getConfig("syncSource") === "iCloud"
@@ -7267,8 +7887,10 @@ class chatAIConfig {
       this.setCurrentPrompt(this.config.currentPrompt)
       this.saveAfterImport()
       this.setSyncStatus(false,true)
-      chatAIUtils.notifyController.refreshCustomButton()
-      MNUtil.log({message:"Import Config",source:"MN ChatAI",detail:newConfig})
+      if (chatAIUtils.notifyController) {
+        chatAIUtils.notifyController.refreshCustomButton()
+      }
+      // MNUtil.log({message:"Import Config",source:"MN ChatAI",detail:newConfig})
       return true
     }else{
       this.setSyncStatus(false)
@@ -8197,9 +8819,16 @@ class chatAIConfig {
     return NSUserDefaults.standardUserDefaults().objectForKey(key)
   }
 
-  static getByDefault(key,defaultValue) {
+  static getByDefault(key,defaultValue,backUpFile) {//记得在remove中增加备份文件的删除
     let value = NSUserDefaults.standardUserDefaults().objectForKey(key)
     if (value === undefined) {
+      if (backUpFile && MNUtil.isfileExists(backUpFile)) {//需要检查备份文件
+        let backupConfig = MNUtil.readJSON(backUpFile)
+        if (backupConfig && Object.keys(backupConfig).length > 0) {
+          MNUtil.log("backupConfig.readFromBackupFile")
+          return backupConfig
+        }
+      }
       NSUserDefaults.standardUserDefaults().setObjectForKey(defaultValue,key)
       return defaultValue
     }
@@ -8240,7 +8869,7 @@ class chatAIConfig {
     return this.usage
   }
   static allSource(withBuiltIn = false,checkKey = false){
-    let allSources = ['Subscription','ChatGPT','ChatGLM','KimiChat','Minimax','Deepseek','SiliconFlow','PPIO','Github','Qwen','Volcengine','Claude','Gemini','Custom']
+    let allSources = ['Subscription','ChatGPT','ChatGLM','KimiChat','Minimax','Deepseek','SiliconFlow','PPIO','Github','Qwen','Volcengine','Claude','Gemini','Metaso','Custom']
     if (checkKey) {
       allSources = allSources.filter(source=>this.hasAPIKeyInSource(source))
     }
@@ -8277,6 +8906,8 @@ class chatAIConfig {
         return "volcengineKey"
       case "Github":
         return "githubKey"
+      case "Metaso":
+        return "metasoKey"
       default:
         return ""
     }
@@ -8293,41 +8924,44 @@ class chatAIConfig {
     if (checkKey && !this.hasAPIKeyInSource(source)) {//如果对应的提供商的key不存在,就不返回任何模型
       return []
     }
+    let modelConfig = (source in this.modelConfig)?this.modelConfig:this.defaultModelConfig
     switch (source) {
       case "Volcengine":
-        return this.modelConfig["Volcengine"]
+        return modelConfig["Volcengine"]
       case "SiliconFlow":
-        return this.modelConfig["SiliconFlow"]
+        return modelConfig["SiliconFlow"]
       case "PPIO":
-        return this.modelConfig["PPIO"]
+        return modelConfig["PPIO"]
       case "Github":
-        return this.modelConfig["Github"]
+        return modelConfig["Github"]
+      case "Metaso":
+        return modelConfig["Metaso"]
       case "ChatGLM":
-        return this.modelConfig["ChatGLM"]
+        return modelConfig["ChatGLM"]
       case "Gemini":
-        return this.modelConfig["Gemini"]
+        return modelConfig["Gemini"]
       case "ChatGPT":
-        models = this.modelConfig["ChatGPT"]
+        models = modelConfig["ChatGPT"]
         if (this.config.customModel.trim()) {
           additionalModels = this.config.customModel.split(",").map(model=>model.trim()).filter(model=>!models.includes(model))
         }
         return models.concat(additionalModels)
       case "Subscription":
-        models = this.modelConfig["Subscription"]
+        models = modelConfig["Subscription"]
         if (this.config.customModel.trim()) {
           additionalModels = this.config.customModel.split(",").map(model=>model.trim()).filter(model=>!models.includes(model))
         }
         return models.concat(additionalModels)
       case "KimiChat":
-        return this.modelConfig["KimiChat"]
+        return modelConfig["KimiChat"]
       case "Claude":
-        return this.modelConfig["Claude"]
+        return modelConfig["Claude"]
       case "Minimax":
-        return this.modelConfig["Minimax"]
+        return modelConfig["Minimax"]
       case "Deepseek":
-        return this.modelConfig["Deepseek"]
+        return modelConfig["Deepseek"]
       case "Qwen":
-        return this.modelConfig["Qwen"]
+        return modelConfig["Qwen"]
       case "Custom":
         return this.config.customModel.split(",").map(model=>model.trim())
       case "Built-in":
@@ -8363,6 +8997,9 @@ class chatAIConfig {
         break;
       case "Github":
         this.config.githubKey = apikey
+        break;
+      case "Metaso":
+        this.config.metasoKey = apikey
         break;
       case "ChatGPT":
         this.config.openaiKey = apikey
@@ -8406,6 +9043,7 @@ class chatAIConfig {
       case "PPIO":
       case "Volcengine":
       case "Github":
+      case "Metaso":
       case "ChatGPT":
       case "KimiChat":
       case "Minimax":
@@ -8456,6 +9094,9 @@ class chatAIConfig {
         break;
       case "Github":
         this.config.githubModel = model
+        break;
+      case "Metaso":
+        this.config.metasoModel = model
         break;
       case "ChatGPT":
         this.config.model = model
@@ -8515,6 +9156,9 @@ class chatAIConfig {
         break;
       case "Github":
         model = this.getConfig("githubModel")
+        break;
+      case "Metaso":
+        model = this.getConfig("metasoModel")
         break;
       case "ChatGPT":
         model = this.getConfig("model")
@@ -8617,6 +9261,10 @@ class chatAIConfig {
       case "Github":
         config.key = this.getConfig("githubKey")
         config.url = this.getConfig("githubUrl")
+        return config
+      case "Metaso":
+        config.key = this.getConfig("metasoKey")
+        config.url = this.getConfig("metasoUrl")
         return config
       case "ChatGPT":
         config.key = this.getConfig("openaiKey")
@@ -8980,38 +9628,148 @@ static deleteFileId(fileObject){
 /**
  * @param {{name:String,path:String,md5:String}} fileObject
  */
-static async getFileContent(fileObject,local = false){
+static getLocalFileCache(fileObject){
+  let fileMd5 = fileObject.md5
+  if (MNUtil.isfileExists(this.dataFolder+"/"+fileMd5+".json")) {
+    // let res = MNUtil.readJSON(this.dataFolder+"/"+fileMd5+".json")
+    return MNUtil.readJSON(this.dataFolder+"/"+fileMd5+".json")
+  }
+  return {}
+}
+
+/**
+ * @param {{name:String,path:String,md5:String}} fileObject
+ */
+static async getFilePageContents(fileObject,pageRange = undefined){//目前只支持local
   try {
-  if (local) {
-    let content = await chatAIUtils.notifyController.getLocalFileContent(fileObject.path)
+    let fileMd5 = fileObject.md5
+    let cachedFile = this.getLocalFileCache(fileObject)
+    if ("pdfjsPageContents" in cachedFile) {
+      MNUtil.log("read file content from local cache")
+      // if (pageRange && "pageNo" in pageRange) {
+      //   let pageNo = pageRange.pageNo
+      //   let pageContents = cachedFile.pdfjsPageContents
+      //   let pageContent = pageContents[pageNo-1]
+      //   return pageContent
+      // }
+      return cachedFile.pdfjsPageContents
+    }
+    if (!MNUtil.isfileExists(fileObject.path)) {
+      return []
+    }
+    // if (this.fileContent[fileMd5]) {
+    //   return JSON.stringify(this.fileContent[fileMd5],null,2)
+    // }
+    let pageContents = await chatAIUtils.notifyController.getLocalFileContent(fileObject.path)
+    if (pageContents.length === 0) {
+      return []
+    }
     let fileInfo = {
-      content:content,
+      content:pageContents.join("\n\n"),
       file_type: "application/pdf",
       type: "file",
       filename: fileObject.name,
     }
+    let doc = MNUtil.getDocById(fileObject.md5)
+    fileInfo.pageCount = doc.pageCount
+    cachedFile.pdfjs = fileInfo
+    cachedFile.pdfjsPageContents = pageContents
+    MNUtil.writeJSON(this.dataFolder+"/"+fileObject.md5+".json", cachedFile)
     // MNUtil.copy(fileInfo)
-    return JSON.stringify(fileInfo,null,2);
+    return pageContents;
+    // return []
+  } catch (error) {
+    chatAIUtils.addErrorLog(error, "getFilePageContents")
+    throw new Error(error.message)
   }
-  let file_id = await this.getFileId(fileObject)
-  if (!file_id) {
-    return undefined
-  }
-  if (this.fileContent[file_id]) {
-    return JSON.stringify(this.fileContent[file_id],null,2)
-  }
+}
 
-  let key = this.config.moonshotKey
-  if (!key) {
-    MNUtil.showHUD("No Moonshot ApiKey!")
-    return undefined
-  }
-  MNUtil.waitHUD("Get file content: "+fileObject.name)
-  let url = `https://api.moonshot.cn/v1/files/${file_id}/content`
-  let headers = {
-      Authorization: "Bearer "+key,
-      "Content-Type": "application/json"
-  }
+/**
+ * @param {{name:String,path:String,md5:String}} fileObject
+ * @param {boolean} local
+ * @returns {Promise<{content:string,file_type:string,type:string,filename:string,pageCount:number}>}
+ */
+static async getFileContent(fileObject,local = false){
+  try {
+    let fileMd5 = fileObject.md5
+    let cachedFile = this.getLocalFileCache(fileObject)
+    if (local) {
+      if ("pdfjs" in cachedFile && cachedFile.pdfjs.content.trim()) {
+        MNUtil.log("read file content from local cache")
+        return cachedFile.pdfjs
+      }
+      // if (this.fileContent[fileMd5]) {
+      //   return JSON.stringify(this.fileContent[fileMd5],null,2)
+      // }
+      let pageContents = await chatAIUtils.notifyController.getLocalFileContent(fileObject.path)
+      let content = pageContents.join("\n\n")
+      if (content.trim()) {
+        let fileInfo = {
+          content:pageContents.join("\n\n"),
+          file_type: "application/pdf",
+          type: "file",
+          filename: fileObject.name,
+        }
+        let doc = MNUtil.getDocById(fileObject.md5)
+        fileInfo.pageCount = doc.pageCount
+        cachedFile.pdfjs = fileInfo
+        cachedFile.pdfjsPageContents = pageContents
+        MNUtil.writeJSON(this.dataFolder+"/"+fileObject.md5+".json", cachedFile)
+        // MNUtil.copy(fileInfo)
+        return fileInfo;
+      }else{
+        // 如果本地没有缓存，则尝试从moonshot获取
+        if ("moonshot" in cachedFile) {
+          MNUtil.log("read file content from moonshot cache")
+          return cachedFile.moonshot
+        }
+        let key = this.config.moonshotKey
+        if (key) {//如果用户配置了moonshot key，则提示用户是否重新获取
+          let confirm = await MNUtil.confirm("🤖 MN ChatAI","File content is empty from local extraction, do you want to retry with moonshot?\n\n本地文档内容抽取失败，是否重新使用Moonshot获取？")
+          if (!confirm) {
+            // 如果用户选择不重新获取，则返回空内容
+            return {
+              content:"",
+              file_type: "application/pdf",
+              type: "file",
+              filename: fileObject.name,
+            }
+          }
+        }else{
+          return {
+            content:"",
+            file_type: "application/pdf",
+            type: "file",
+            filename: fileObject.name,
+          }
+        }
+      }
+    }
+    if ("moonshot" in cachedFile) {
+      MNUtil.log("read file content from local cache")
+      return cachedFile.moonshot
+    }
+    let file_id = await this.getFileId(fileObject)
+    if (!file_id) {
+      return undefined
+    }
+    if (this.fileContent[file_id]) {
+      cachedFile.moonshot = this.fileContent[file_id]
+      MNUtil.writeJSON(this.dataFolder+"/"+fileObject.md5+".json", cachedFile)
+      return this.fileContent[file_id]
+    }
+
+    let key = this.config.moonshotKey
+    if (!key) {
+      MNUtil.showHUD("No Moonshot ApiKey!")
+      return undefined
+    }
+    MNUtil.waitHUD("Get file content: "+fileObject.name)
+    let url = `https://api.moonshot.cn/v1/files/${file_id}/content`
+    let headers = {
+        Authorization: "Bearer "+key,
+        "Content-Type": "application/json"
+    }
     const res = await MNConnection.fetch(url,
       {
         method: "Get",
@@ -9021,7 +9779,7 @@ static async getFileContent(fileObject,local = false){
     )
     if ("statusCode" in res && res.statusCode >= 400) {
       if("body" in res && res.body.error && res.body.error.message){
-        MNUtil.showHUD("Error("+res.statusCode+"): "	+  res.body.error.message)
+        chatAIUtils.addErrorLog(MNUtil.getStatusCodeDescription(res.statusCode), "getFileContent", res.body.error.message)
       }
       this.deleteFileId(fileObject)
       return await this.getFileContent(fileObject,false)
@@ -9029,16 +9787,21 @@ static async getFileContent(fileObject,local = false){
     // res.file_type = "application/pdf"
     res.filename = fileObject.name
     this.fileContent[file_id] = res
+    let doc = MNUtil.getDocById(fileObject.md5)
+    res.pageCount = doc.pageCount
+    cachedFile.moonshot = res
     // copyJSON(res)
     MNUtil.stopHUD()
+    MNUtil.writeJSON(this.dataFolder+"/"+fileObject.md5+".json", cachedFile)
     // MNUtil.copyJSON(res)
-    return JSON.stringify(res,null,2);
+    return res;
   } catch (error) {
     chatAIUtils.addErrorLog(error, "getFileContent")
     throw new Error(error.message)
   }
 }
 }
+
 
 class chatAINetwork {
   constructor(name) {
@@ -9071,6 +9834,7 @@ class chatAINetwork {
             }
             resolve(error)
           }
+          // MNUtil.log(res.statusCode())
           if (res.statusCode() === 200) {
             // MNUtil.showHUD("OCR success")
           }else{
@@ -9317,29 +10081,47 @@ Image Text Extraction Specialist
     return res
   }
  static async fetchModelConfig () {
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: "Bearer sk-gSrzDAH7TBrRCcOaCaFe8f159cAa4a57B7DaCd929f647a0d"
-    }
-
-    let body = {
-      "model":"modelConfig",
-      "messages":[{"role": "user", "content": "mnaddon"}]
-    }
-    let url = subscriptionConfig.getConfig("url")+ "/v1/chat/completions"
-    let options = {
-        method: "POST",
-        headers: headers,
+  let url = `https://vip.123pan.cn/1836303614/dl/new-api/model.json`
+   try {
+    const res = await this.fetch(url,
+      {
+        method: "Get",
         timeout: 60,
-        json: body
+        headers:{
+          "Cache-Control": "no-cache"
+        }
       }
-    try {
-      const res = await this.fetch(url,options)
-      return res;
-    } catch (error) {
-      chatAIUtils.addErrorLog(error, "fetchModelConfig")
-      return undefined
-    }
+    )
+    // MNUtil.copy(res)
+    return res.modelConfig;
+  } catch (error) {
+    MNUtil.showHUD(error)
+
+    return undefined
+  }
+    // const headers = {
+    //   "Content-Type": "application/json",
+    //   Authorization: "Bearer sk-gSrzDAH7TBrRCcOaCaFe8f159cAa4a57B7DaCd929f647a0d"
+    // }
+
+    // let body = {
+    //   "model":"modelConfig",
+    //   "messages":[{"role": "user", "content": "mnaddon"}]
+    // }
+    // let url = subscriptionConfig.getConfig("url")+ "/v1/chat/completions"
+    // let options = {
+    //     method: "POST",
+    //     headers: headers,
+    //     timeout: 60,
+    //     json: body
+    //   }
+    // try {
+    //   const res = await this.fetch(url,options)
+    //   return res;
+    // } catch (error) {
+    //   chatAIUtils.addErrorLog(error, "fetchModelConfig")
+    //   return undefined
+    // }
   }
 //备用，使用服务器而不是R2
   static async fetchKeys0 () {
@@ -9368,19 +10150,38 @@ Image Text Extraction Specialist
       return undefined
     }
   }
-  static async fetchKeys (authorization,string) {
-  let url = `https://file.feliks.top/sharedKeys.json?timestamp=`+Date.now()
+  /**
+   * 123云盘直链
+   * @returns 
+   */
+  static async fetchKeys () {
+  let url = `https://vip.123pan.cn/1836303614/dl/new-api/model.json`
   try {
     const res = await this.fetch(url,
       {
         method: "Get",
-        timeout: 60
+        timeout: 60,
+        headers:{
+          "Cache-Control": "no-cache"
+        }
       }
     )
-    return res;
+    // MNUtil.copy(res)
+    let modelConfig = res.modelConfig
+    let shareKeys = res.share
+    if (shareKeys && "message" in shareKeys) {
+      chatAIConfig.keys = shareKeys
+      chatAIConfig.save('MNChatglm_builtInKeys',true,false)
+    }
+    if (modelConfig && "Github" in modelConfig) {
+      let today = chatAIUtils.getToday()
+      modelConfig.refreshDay = today
+      chatAIConfig.modelConfig = modelConfig
+      chatAIConfig.save("MNChatglm_modelConfig",true,false)
+    }
+    return {modelConfig,shareKeys};
   } catch (error) {
-    MNUtil.showHUD(error)
-
+    chatAIUtils.addErrorLog(error, "fetchKeys")
     return undefined
   }
   }
@@ -9955,72 +10756,67 @@ static initRequestForClaude(history,apikey,url,model,temperature,funcIndices=[])
       chatAIUtils.addErrorLog(error, "initRequestForClaude")
   }
   }
- /**
-  * 
-  * @param {Array} originalHistory 
-  * @param {string} apikey 
-  * @param {string} url 
-  * @param {string} model 
-  * @param {number} temperature 
-  * @param {Array<number>} funcIndices 
-  * @returns 
-  */
- static initRequestForGemini (originalHistory,apikey,url,model,temperature,funcIndices=[]) {
-  let fullURL = url+"/v1beta/models/"+model+":streamGenerateContent?key="+apikey
-  try {
-    
-
+ 
+/**
+ * Initializes a request for ChatGPT using the provided configuration.
+ * 
+ * @param {Array} history - An array of messages to be included in the request.
+ * @param {string} apikey - The API key for authentication.
+ * @param {string} url - The URL endpoint for the API request.
+ * @param {string} model - The model to be used for the request.
+ * @param {number} temperature - The temperature parameter for the request.
+ * @param {Array<number>} funcIndices - An array of function indices to be included in the request.
+ * @throws {Error} If the API key is empty or if there is an error during the request initialization.
+ */
+static initRequestForGemini (history,apikey,url,model,temperature,funcIndices=[]) {
+  if (apikey.trim() === "") {
+    MNUtil.confirm("MN ChatAI", `❌ APIKey not found!\n\nURL: ${url}\n\nModel: ${model}\n\nPlease check your settings.`)
+    return
+  }
+  let key = apikey
+  if (/,/.test(apikey)) {
+    let apikeys = apikey.split(",").map(item=>item.trim())
+    key = chatAIUtils.getRandomElement(apikeys)
+  }
   const headers = {
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    Authorization: "Bearer "+key,
+    Accept: "text/event-stream"
   }
+    // copyJSON(headers)
   let body = {
+    "model":model,
+    "messages":history,
+    "stream":true,
+    "extra_body": {
+        "google": {
+          "thinking_config": {
+            "include_thoughts": true
+          }
+        }
+      }
   }
-  // let system = this.history.filter(item => item.role === "system")[0]
-  // copyJSON(system)
-  // if (system) {
-  //   body.system = system.content
-  //   body.messages = this.history.filter(item => item.role !== "system")
-  // }else{
-  // let historyWithoutSystem = this.history.filter(item => item.role !== "system")
-    // body.contents = this.history
-  let system = ""
-  let history = []
-  originalHistory.map(his=>{
-    if (his.role === "system") {
-      system = his.content
-      if (model === "gemini-1.5-pro-latest") {
-        body.system_instruction = {parts:{text:system}}
-        system = ""
+  // if (model !== "deepseek-reasoner") {
+    body.temperature = temperature
+    if (url === "https://api.minimax.chat/v1/text/chatcompletion_v2") {
+      let tools = chatAITool.getToolsByIndex(funcIndices,true)
+      if (tools.length) {
+        body.tools = tools
       }
-      // history.push({role:"system",parts:[{text:his.content}]})
-      return
-    }
-    if (his.role === "user") {
-      if (system) {
-        history.push({role:"user",parts:[{text:system+"\n"+his.content}]})
-        system = ""
-      }else{
-        history.push({role:"user",parts:[{text:his.content}]})
+      body.max_tokens = 8000
+    }else{
+      let tools = chatAITool.getToolsByIndex(funcIndices,false)
+      if (tools.length) {
+        body.tools = tools
+        body.tool_choice = "auto"
       }
-      return
     }
-    if (his.role === "assistant") {
-      history.push({role:"model",parts:[{text:his.content}]})
-      return
-    }
-  })
-  body.contents = history
-
-  // MNUtil.copyJSON(body)
-  const request = this.initRequest(fullURL, {
+  const request = this.initRequest(url, {
       method: "POST",
       headers: headers,
       timeout: 60,
       json: body
     })
   return request
-  } catch (error) {
-      chatAIUtils.addErrorLog(error, "initRequestForGemini")
-  }
 }
 }

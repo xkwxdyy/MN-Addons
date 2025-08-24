@@ -12,11 +12,15 @@
     <script src="pdf.js"></script>
     <script src="pdf.worker.js"></script>
     <script src="html2canvas.js" defer></script>
+    <link rel="stylesheet" href="notyf.min.css">
+    <script src="notyf.min.js" defer></script>
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script> -->
     <link rel="stylesheet" href="veditor.css" />
+    <script src="marked.js"></script>
     <!-- <script src="https://unpkg.com/vditor/dist/index.min.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"> -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" defer></script> -->
+  <script src="katex.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" defer/>
     <style>
       body{
         margin: 0px;
@@ -80,9 +84,49 @@
     <div id="vditor"></div>
 <script>
 
+
+let selectingText = ""
+let selectingTime = 0
 let editor
+// let preContent = `
+// ### 反馈与解析  
+// **选项A正确！**  
+// - 论文明确说明"Overbars and primes indicate basic-state quantities and perturbations"，即**上横线（$\\overline{}$）表示基本态，撇号（$'$）表示扰动量**，两者通过**加法分解**构成总变量（总涡度$\\zeta = \\overline{\\zeta} + \\zeta'$）。  
+// - 其他选项错误原因：  
+//   - B选项符号颠倒（应为$\T = \\overline{T} + T'$）；  
+//   - C选项使用乘法分解（不符合线性模型的加法分解假设）；  
+//   - D选项使用减法分解（应为$\\mathbf{u} = \\overline{\\mathbf{u}} + \\mathbf{u}'$）。  
+
+
+// ### 第四步：识别涡度方程的核心项  
+// 论文给出的方程(1)是准地转涡度方程：  
+// $$
+
+
+
+// \\overline{\\mathbf{u}} \\cdot \\nabla \\zeta' + u' \\frac{\\partial \\overline{\\zeta}}{\\partial x} + v' \\left( \\beta + \\frac{\\partial \\overline{\\zeta}}{\\partial y} \\right) - f_0 \\frac{\\partial \\omega'}{\\partial p} = \\kappa \\nabla^2 \\zeta'
+// $$  
+
+// 其中哪一项代表**基本气流对扰动涡度的平流输送**？  
+
+// \`\`\`userSelect
+// A. $\\overline{\\mathbf{u}} \\cdot \\nabla \\zeta'$（基本态风速与扰动涡度梯度的点积）
+// \`\`\`
+
+// \`\`\`userSelect
+// B. $u' \\frac{\\partial \\overline{\\zeta}}{\\partial x}$（扰动经向风与基本态涡度经向梯度的乘积）
+// \`\`\`
+
+// \`\`\`userSelect
+// C. $v' \\left( \\beta + \\frac{\\partial \\overline{\\zeta}}{\\partial y} \\right)$（扰动纬向风与绝对涡度梯度的乘积）
+// \`\`\`
+
+// \`\`\`userSelect
+// D. $- f_0 \\frac{\\partial \\omega'}{\\partial p}$（科里奥利参数与垂直速度散度的乘积）
+// \`\`\`
+// `
+// preContent = replaceButtonCodeBlocks(preContent)
 let preContent = `I'm thinking...`
-// let preContent = `[test](https://www.baidu.com)`
 let preHtml = ""
 let preFunc = ""
 let preReasoning = ""
@@ -107,6 +151,7 @@ const logElement = document.getElementById('funcResponse')
 let tem = document.getElementById('vditor')
 document.addEventListener('DOMContentLoaded', function () {
     Vditor.preview(tem,preContent,option)
+    notyf = new Notyf({position: {x: 'center', y: 'top'}, duration: 1000,ripple:false});
 })
 
     function openEdit(allowEdit) {
@@ -132,6 +177,11 @@ document.addEventListener('DOMContentLoaded', function () {
           html:true,
           mark:true
         }
+      },
+      select:(text)=>{
+        // 显示一条消息
+        // notyf.success("Select text: "+text.slice(0,10)+"...")
+        window.location.href = "chataction://selectText"
       },
       image:{
         isPreview:false,
@@ -242,8 +292,9 @@ document.addEventListener('DOMContentLoaded', function () {
     },
   }
       ],
+      value: preContent,
       after:()=>{
-        editor.setValue(preContent,true)
+        // editor.setValue(preContent,true)
         if (!allowEdit) {
           editor.disabled()
         }
@@ -298,7 +349,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // element.appendChild(copyBtn);
         element.insertBefore(copyBtn, element2Draw);
     });
-
+        if (!allowEdit) {
+          editor.disabled()
+        }
 
           notifyRefreshHeight()
           // window.location.href = "chataction://showerror="+encodeURIComponent("test")

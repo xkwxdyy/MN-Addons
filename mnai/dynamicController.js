@@ -1,6 +1,6 @@
 /** @return {dynamicController} */
 const getDynamicController = ()=>self
-var dynamicController = JSB.defineClass('dynamicController : UIViewController <NSURLConnectionDelegate>', {
+var dynamicController = JSB.defineClass('dynamicController : UIViewController <NSURLConnectionDelegate,UIWebViewDelegate>', {
   viewDidLoad: function() {
     try {
     let self = getDynamicController()
@@ -47,6 +47,51 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
     // self.settingButton.frame = MNUtil.genFrame(260, 0, 35, 25)
     self.promptInput.frame = MNUtil.genFrame(5, 35, 250, self.inputHeight)
     self.scrollview.frame = MNUtil.genFrame(0, 30, 300, 185)
+  },
+  webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
+    let self = getDynamicController()
+    let requestURL = request.URL().absoluteString()
+
+    // MNUtil.copy(requestURL)
+    let config = MNUtil.parseURL(requestURL)
+    if (config.scheme === "editoraction") {
+      switch (config.host) {
+        case "setHeight":
+          let height = MNUtil.constrain(config.params.height, 35, 175)
+          self.inputHeight = height
+          self.promptInput.frame = MNUtil.genFrame(45, 5, 210, height)
+          break;
+        case "sendMessage":
+          let content = config.params.content
+          // let timestamp = config.params.timestamp
+          self.sendMessage(content)
+          self.blur(0.1)
+          break;
+        case "blur":
+          self.promptInput.endEditing(true)
+          break;
+        case "keyboardShown":
+          if (self.miniMode()) {
+            break;
+          }
+          let keyboardHeight = config.params.keyboardHeight
+          if (keyboardHeight < -100) {
+            break;
+          }
+          let viewportHeight = config.params.viewportHeight
+          let frame = self.view.frame
+          frame.y = frame.y - (self.inputHeight - viewportHeight)-10
+            MNUtil.animate(()=>{
+              self.setFrame(frame)
+            },0.3)
+          break;
+        default:
+          MNUtil.log({message:"unknown editoraction",detail:config})
+          break;
+      }
+      return false
+    }
+    return true
   },
   onMoveGesture:function (gesture) {
     self.pinned = true;
@@ -97,7 +142,7 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
     chatAIUtils.visionMode = false
     let autoClear = chatAIConfig.getConfig("autoClear")
     if (autoClear) {
-      self.promptInput.text = ""
+      self.clearInput()
     }
   },
   addContext: async function (params) {
@@ -145,7 +190,7 @@ var dynamicController = JSB.defineClass('dynamicController : UIViewController <N
   },
   onLongPressSend: async function (gesture) {
     if (gesture.state === 1) {
-      self.promptInput.text = ""
+      self.clearInput()
       MNUtil.showHUD("Clear input")
     }
   },
@@ -484,57 +529,52 @@ try {
   },
   sendButtonTapped: async function () {
   try {
-    if (!chatAIUtils.checkCouldAsk()) {
-      return
-    }
     let self = getDynamicController();
-    MNUtil.delay(0.1).then(()=>{
-      self.promptInput.endEditing(true)
-    })
-    let userInput = self.promptInput.text
-    let notifyController = chatAIUtils.notifyController
-    let currentNoteId = chatAIUtils.currentNoteId
-    notifyController.notShow = false
+    let userInput = await self.getInput()
+    self.sendMessage(userInput)
+    // let notifyController = chatAIUtils.notifyController
+    // let currentNoteId = chatAIUtils.currentNoteId
+    // notifyController.notShow = false
 
-    if (chatAIUtils.visionMode) {
-      // MNUtil.showHUD("Vision")
-      let imageDatas
-      let system
-      if (currentNoteId) {
-        imageDatas = chatAIUtils.getImagesFromNote(MNNote.new(currentNoteId))
-        system = chatAIConfig.dynamicPrompt.note
-      }else{
-        imageDatas = [MNUtil.getDocImage(true,true)]
-        system = chatAIConfig.dynamicPrompt.text
-      }
-      if (system.trim()) {
-        let systemMessage = await chatAIUtils.getTextVarInfo(system,userInput)
-        let question = [{role:"system",content:systemMessage},chatAIUtils.genUserMessage(userInput, imageDatas)]
-        // MNUtil.copy(question)
-        notifyController.askByVision(question)
-        return
-      }
-      let question = chatAIUtils.genUserMessage(userInput, imageDatas)
-      notifyController.askByVision(question)
-      return
-    }
-    if (chatAIUtils.noSystemMode) {
-      let question = [{role: "user", content: userInput}]
-      notifyController.askByDynamic(question)
-      notifyController.currentPrompt = "Dynamic"
-      // notifyController.onChat = false
-      // MNUtil.showHUD("No System Message")
-      return
-    }
-    if (MNUtil.currentSelection.onSelection || !currentNoteId) {
-      notifyController.askWithDynamicPromptOnText(userInput)
-      // MNUtil.showHUD("askWithDynamicPromptOnText")
-      return
-    }else{
-      notifyController.askWithDynamicPromptOnNote(currentNoteId,userInput)
-      // MNUtil.showHUD("askWithDynamicPromptOnNote")
-      return
-    }
+    // if (chatAIUtils.visionMode) {
+    //   // MNUtil.showHUD("Vision")
+    //   let imageDatas
+    //   let system
+    //   if (currentNoteId) {
+    //     imageDatas = chatAIUtils.getImagesFromNote(MNNote.new(currentNoteId))
+    //     system = chatAIConfig.dynamicPrompt.note
+    //   }else{
+    //     imageDatas = [MNUtil.getDocImage(true,true)]
+    //     system = chatAIConfig.dynamicPrompt.text
+    //   }
+    //   if (system.trim()) {
+    //     let systemMessage = await chatAIUtils.getTextVarInfo(system,userInput)
+    //     let question = [{role:"system",content:systemMessage},chatAIUtils.genUserMessage(userInput, imageDatas)]
+    //     // MNUtil.copy(question)
+    //     notifyController.askByVision(question)
+    //     return
+    //   }
+    //   let question = chatAIUtils.genUserMessage(userInput, imageDatas)
+    //   notifyController.askByVision(question)
+    //   return
+    // }
+    // if (chatAIUtils.noSystemMode) {
+    //   let question = [{role: "user", content: userInput}]
+    //   notifyController.askByDynamic(question)
+    //   notifyController.currentPrompt = "Dynamic"
+    //   // notifyController.onChat = false
+    //   // MNUtil.showHUD("No System Message")
+    //   return
+    // }
+    // if (MNUtil.currentSelection.onSelection || !currentNoteId) {
+    //   notifyController.askWithDynamicPromptOnText(userInput)
+    //   // MNUtil.showHUD("askWithDynamicPromptOnText")
+    //   return
+    // }else{
+    //   notifyController.askWithDynamicPromptOnNote(currentNoteId,userInput)
+    //   // MNUtil.showHUD("askWithDynamicPromptOnNote")
+    //   return
+    // }
   } catch (error) {
     chatAIUtils.addErrorLog(error, "askWithPrompt")
   }
@@ -553,8 +593,7 @@ try {
     //   return
     // }
     let self = getDynamicController()
-    let userInput = self.promptInput.text
-    self.promptInput.endEditing(true)
+    let userInput = await self.getInput()
     let title = sender.id
     let selection = MNUtil.currentSelection
     if (selection.onSelection) {
@@ -593,51 +632,7 @@ try {
     }
     // MNUtil.copyJSON(scrollview.contentOffset)
     // MNUtil.showHUD("message"+scrollview.frame.height)
-  },
-  /**
-   * 
-   * @param {UITextView} textview 
-   */
-  textViewDidChange:async function (textview) {
-    let self = getDynamicController();
-    let size = textview.sizeThatFits({width:textview.frame.width,height:1000})
-    size.height = MNUtil.constrain(size.height, 35, 175)
-    self.inputHeight = size.height
-    self.promptInput.frame = MNUtil.genFrame(45, 5, 210, size.height)
-    // MNUtil.showHUD("change:"+JSON.stringify(size))
-    // MNUtil.genFrame(45, 5, 210, 35)
-    if (/\n\n$/.test(textview.text) && textview.text.trim()) {
-      let selectedRange = textview.selectedRange
-      if (textview.text.length !== selectedRange.location) {
-        return
-      }
-
-      if (chatAIUtils.notifyController.connection) {
-        MNUtil.showHUD("Wait...")
-        return
-      }
-      let text = textview.text.trim()
-      self.promptInput.text = text
-      let size = self.promptInput.sizeThatFits({width:210,height:1000})
-      size.height = MNUtil.constrain(size.height, 35, 175)
-      self.inputHeight = size.height
-      self.promptInput.frame = MNUtil.genFrame(45, 5, 210, size.height)
-      if (chatAIUtils.currentSelection || !chatAIUtils.currentNoteId) {
-        self.askWithPromptOnText()
-        return
-      }else if (chatAIUtils.currentNoteId) {
-        self.askWithPromptOnNote(chatAIUtils.currentNoteId)
-        return
-      }else{
-        let userInput = text
-        let question = [{role: "user", content: userInput}]
-        chatAIUtils.notifyController.askByDynamic(question)
-        chatAIUtils.notifyController.currentPrompt = "Dynamic"
-        MNUtil.showHUD("No System Message")
-        return
-      }
-    }
-  },
+  }
 });
 /**
  * @this {dynamicController}
@@ -744,16 +739,19 @@ dynamicController.prototype.init = function () {
   this.sendButton.backgroundColor =  MNUtil.hexColorAlpha("#e06c75",0.8)
   MNButton.addLongPressGesture(this.sendButton, this, "onLongPressSend:",0.5)
 
-  this.promptInput = this.creatTextView("view","#89a6d5",0.8)
+
+
+  // this.promptInput = this.creatTextView("view","#89a6d5",0.8)
+  this.createWebviewInput("view")
   this.promptInput.hidden = true
 
-  this.promptInput.layer.shadowOffset = {width: 0, height: 0};
-  this.promptInput.layer.shadowRadius = 15;
-  this.promptInput.layer.shadowOpacity = 0.5;
-  this.promptInput.layer.shadowColor = UIColor.colorWithWhiteAlpha(0.5, 1);
-  this.promptInput.layer.cornerRadius = 10
-  this.promptInput.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
-  this.promptInput.layer.borderWidth = 0
+  // this.promptInput.layer.shadowOffset = {width: 0, height: 0};
+  // this.promptInput.layer.shadowRadius = 15;
+  // this.promptInput.layer.shadowOpacity = 0.5;
+  // this.promptInput.layer.shadowColor = UIColor.colorWithWhiteAlpha(0.5, 1);
+  // this.promptInput.layer.cornerRadius = 10
+  // this.promptInput.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8)
+  // this.promptInput.layer.borderWidth = 0
 
   // this.promptInput.layer.borderColor = MNUtil.hexColorAlpha("#4769a0",0.3)
   // // this.promptInput.backgroundColor = MNUtil.hexColorAlpha("#e4eeff",0.8)
@@ -938,8 +936,16 @@ dynamicController.prototype.openInput = async function () {
   await this.setLayout()
   this.view.backgroundColor = MNUtil.hexColorAlpha("#e4eeff",0)
   this.view.hidden = false
-  if (MNUtil.version.type === "macOS" && (!MNUtil.activeTextView)) {
-    this.promptInput.becomeFirstResponder()
+  
+
+  // this.promptInput.loadFileURLAllowingReadAccessToURL(
+  //   NSURL.fileURLWithPath(chatAIUtils.mainPath + '/overtype.html'),
+  //   NSURL.fileURLWithPath(chatAIUtils.mainPath + '/')
+  // );
+  if (MNUtil.isMacOS()) {
+    MNUtil.delay(0.1).then(()=>{
+      this.focusInput()
+    })
   }
   } catch (error) {
     chatAIUtils.addErrorLog(error, "dynamicController.openInput")
@@ -1124,7 +1130,7 @@ dynamicController.prototype.getImageForOCR = function (noteId,userChoice,prompt)
 dynamicController.prototype.askWithPromptOnText = async function (userInput,ocr) {
   try {
   if (!userInput) {
-    userInput = this.promptInput.text
+    userInput = await this.getInput()
   }
   let dynamicPrompt = chatAIConfig.dynamicPrompt
   let system = dynamicPrompt.text
@@ -1144,7 +1150,7 @@ dynamicController.prototype.askWithPromptOnText = async function (userInput,ocr)
 dynamicController.prototype.askWithPromptOnNote = async function (noteid,userInput,ocr) {
   try {
   if (!userInput) {
-    userInput = this.promptInput.text
+    userInput = await this.getInput()
   }
   let system = chatAIConfig.dynamicPrompt.note
   let systemMessage = await chatAIUtils.getNoteVarInfo(noteid, system,userInput,undefined,ocr)
@@ -1278,6 +1284,148 @@ dynamicController.prototype.tableItem = function (title,selector,param = "",chec
 }
 dynamicController.prototype.miniMode = function () {
   return this.view.frame.width === 64
+}
+
+/**
+ * @this {dynamicController}
+ */
+dynamicController.prototype.createWebviewInput = function (superView) {
+  try {
+  this.promptInput = new UIWebView(this.view.bounds);
+  this.promptInput.backgroundColor = MNUtil.hexColorAlpha("#c0bfbf",0.8)
+  this.promptInput.scalesPageToFit = false;
+  this.promptInput.autoresizingMask = (1 << 1 | 1 << 4);
+  this.promptInput.delegate = this;
+  // this.promptInput.setValueForKey("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15","User-Agent")
+  this.promptInput.scrollView.delegate = this;
+  this.promptInput.layer.cornerRadius = 8;
+  this.promptInput.layer.masksToBounds = true;
+  this.promptInput.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8);
+  this.promptInput.layer.borderWidth = 0
+  this.promptInput.layer.opacity = 0.85
+  this.promptInput.scrollEnabled = false
+  // this.promptInput.scrollView.scrollEnabled = false
+  // this.promptInput.scrollView.scrollEnabled = false
+  // this.promptInput.loadFileURLAllowingReadAccessToURL(
+  //   NSURL.fileURLWithPath(chatAIUtils.mainPath + '/jsoneditor.html'),
+  //   NSURL.fileURLWithPath(chatAIUtils.mainPath + '/')
+  // );
+  this.promptInput.loadFileURLAllowingReadAccessToURL(
+    NSURL.fileURLWithPath(chatAIUtils.mainPath + '/overtype.html'),
+    NSURL.fileURLWithPath(chatAIUtils.mainPath + '/')
+  );
+  if (superView) {
+    this[superView].addSubview(this.promptInput)
+  }
+    } catch (error) {
+    chatAIUtils.addErrorLog(error, "createWebviewInput")
+  }
+}
+
+
+/** @this {dynamicController} */
+dynamicController.prototype.runJavaScript = async function(script) {
+  return new Promise((resolve, reject) => {
+    try {
+      this.promptInput.evaluateJavaScript(script,(result) => {
+        if (MNUtil.isNSNull(result)) {
+          resolve(undefined)
+        }else{
+          resolve(result)
+        }
+      });
+    } catch (error) {
+      chatAIUtils.addErrorLog(error, "runJavaScript")
+      resolve(undefined)
+    }
+  })
+};
+
+dynamicController.prototype.getInput = async function () {
+  let res = await this.runJavaScript(`editor.getValue()`)
+  MNUtil.delay(0.1).then(()=>{
+    this.runJavaScript(`editor.blur()`)
+    this.promptInput.endEditing(true)
+  })
+  return res
+}
+dynamicController.prototype.focusInput = function () {
+  this.runJavaScript(`editor.focus()`)
+}
+dynamicController.prototype.blur = function (delay = 0) {
+  MNUtil.delay(delay).then(()=>{
+    this.runJavaScript(`editor.blur()`)
+    this.promptInput.endEditing(true)
+  })
+}
+dynamicController.prototype.clearInput = async function () {
+  await this.runJavaScript(`editor.setValue("")`)
+}
+dynamicController.prototype.sendMessage = async function (userInput) {
+  try {
+    if (!chatAIUtils.checkCouldAsk()) {
+      this.showHUD("wait")
+      return
+    }
+    if (!userInput.trim()) {
+      this.showHUD("Please enter a message")
+      return
+    }
+    let notifyController = chatAIUtils.notifyController
+    let currentNoteId = chatAIUtils.currentNoteId
+    notifyController.notShow = false
+
+    if (chatAIUtils.visionMode) {
+      // MNUtil.showHUD("Vision")
+      let imageDatas
+      let system
+      if (currentNoteId) {
+        imageDatas = chatAIUtils.getImagesFromNote(MNNote.new(currentNoteId))
+        system = chatAIConfig.dynamicPrompt.note
+      }else{
+        imageDatas = [MNUtil.getDocImage(true,true)]
+        system = chatAIConfig.dynamicPrompt.text
+      }
+      if (system.trim()) {
+        let systemMessage = await chatAIUtils.getTextVarInfo(system,userInput)
+        let question = [{role:"system",content:systemMessage},chatAIUtils.genUserMessage(userInput, imageDatas)]
+        // MNUtil.copy(question)
+        notifyController.askByVision(question)
+        return
+      }
+      let question = chatAIUtils.genUserMessage(userInput, imageDatas)
+      notifyController.askByVision(question)
+      return
+    }
+    if (chatAIUtils.noSystemMode) {
+      let question = [{role: "user", content: userInput}]
+      notifyController.askByDynamic(question)
+      notifyController.currentPrompt = "Dynamic"
+      // notifyController.onChat = false
+      // MNUtil.showHUD("No System Message")
+      return
+    }
+    if (MNUtil.currentSelection.onSelection || !currentNoteId) {
+      notifyController.askWithDynamicPromptOnText(userInput)
+      // MNUtil.showHUD("askWithDynamicPromptOnText")
+      return
+    }else{
+      notifyController.askWithDynamicPromptOnNote(currentNoteId,userInput)
+      // MNUtil.showHUD("askWithDynamicPromptOnNote")
+      return
+    }
+  } catch (error) {
+    chatAIUtils.addErrorLog(error, "askWithPrompt")
+  }
+}
+/**
+ * 
+ * @param {string} title 
+ * @param {number} duration 
+ * @param {UIView} view 
+ */
+dynamicController.prototype.showHUD = function (title,duration = 1.5,view = this.view) {
+  MNUtil.showHUD(title,duration,view)
 }
 /**
  * @type {UIView}

@@ -207,6 +207,7 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
     menu.addMenuItem("🌋  Volcengine", selector,'Volcengine',source =='Volcengine')
     menu.addMenuItem("✴️  Claude", selector,'Claude',source =='Claude')
     menu.addMenuItem("✨  Gemini", selector,'Gemini',source =='Gemini')
+    menu.addMenuItem("🔍  Metaso", selector,'Metaso',source =='Metaso')
     menu.addMenuItem("🎨  Custom", selector,'Custom',source =='Custom')
     menu.show()
   },
@@ -313,7 +314,11 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
       menu.addMenuItem("🤖  "+model, selector,model,modelName == model)
       width.push(chatAIUtils.strCode("🤖  "+model))
     })
-    menu.width = Math.max(...width)*9+30
+    if (source === "Subscription") {
+      menu.addMenuItem("➕  More Models", "showMoreModels:")
+    }
+    menu.width = Math.max(...width)*9+40
+    // MNUtil.showHUD(menu.width)
     menu.show()
   } catch (error) {
     chatAIUtils.addErrorLog(error, "changeModel")
@@ -337,6 +342,17 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
     chatAIConfig.save("MNChatglm_config")
     self.showHUD("Save model")
   },
+  showMoreModels: function (params) {
+    let self = getChatglmController()
+    Menu.dismissCurrentMenu()
+    let url = subscriptionConfig.URL+"/pricing"
+
+    // if (typeof browserUtils !== "undefined") {
+    //   MNUtil.postNotification("openInBrowser", {url:url})
+    // }else{
+      MNUtil.openURL(url)
+    // }
+  },
   showNotification: async function (params) {
     if (chatAIUtils.notifyController.view.hidden) {
       chatAIUtils.notifyController.beginNotification("test")
@@ -348,8 +364,6 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
         return
       }
     let content = await self.getWebviewContent()
-    let customButton = JSON.parse(content)
-    MNUtil.log({message:"customButton",source:"MN ChatAI",detail:customButton})
     chatAIConfig.config.customButton = customButton
     chatAIConfig.save("MNChatglm_config")
     self.showHUD("Save Custom Buttons")
@@ -850,6 +864,7 @@ try {
     let mode = chatAIConfig.getConfig("PDFExtractMode")
     menu.addMenuItem("PDF.js", "setPDFExtractMode:","local",mode==="local")
     menu.addMenuItem("Moonshot", "setPDFExtractMode:","moonshot",mode==="moonshot")
+    menu.width = 200
     menu.show()
   },
   setPDFExtractMode: function (mode) {
@@ -972,12 +987,10 @@ try {
   refreshModel: async function (param) {
     Menu.dismissCurrentMenu()
     self.waitHUD("Refresh Model...")
-    let res = await chatAINetwork.fetchModelConfig()
-    if (res && "Github" in res) {
+    let res = await chatAINetwork.fetchKeys()
+    if (res && "modelConfig" in res) {
       // MNUtil.copy(res)
       self.waitHUD("✅ Refresh Success!")
-      chatAIConfig.modelConfig = res
-      chatAIConfig.save("MNChatglm_modelConfig")
       MNUtil.stopHUD(1)
     }
   },
@@ -1020,13 +1033,17 @@ try {
       if (self.titleInput.editable) {
         var commandTable = [
           self.tableItem("▶️   Test", 'promptAction:', "testSystem"),
-          self.tableItem("🗑️   Clear", 'promptAction:', "clearSystem")
+          self.tableItem("🗑️   Clear", 'promptAction:', "clearSystem"),
+          self.tableItem("📋   Copy", 'promptAction:', "copySystem"),
+          self.tableItem("📋   Paste", 'promptAction:', "pasteSystem"),
         ]
         self.popover(button, commandTable,120,0)
         return
       }else{
         var commandTable = [
-          self.tableItem("🗑️   Clear", 'promptAction:', "clearSystem")
+          self.tableItem("🗑️   Clear", 'promptAction:', "clearSystem"),
+          self.tableItem("📋   Copy", 'promptAction:', "copySystem"),
+          self.tableItem("📋   Paste", 'promptAction:', "pasteSystem"),
         ]
         self.popover(button, commandTable,120,0)
         return
@@ -1043,13 +1060,17 @@ try {
       if (self.titleInput.editable) {
         var commandTable = [
           self.tableItem("▶️   Test", 'promptAction:', "testUser"),
-          self.tableItem("🗑️   Clear", 'promptAction:', "clearUser")
+          self.tableItem("🗑️   Clear", 'promptAction:', "clearUser"),
+          self.tableItem("📋   Copy", 'promptAction:', "copyUser"),
+          self.tableItem("📋   Paste", 'promptAction:', "pasteUser")
         ]
         self.popover(button, commandTable,120,0)
         return
       }else{
         var commandTable = [
-          self.tableItem("🗑️   Clear", 'promptAction:', "clearUser")
+          self.tableItem("🗑️   Clear", 'promptAction:', "clearUser"),
+          self.tableItem("📋   Copy", 'promptAction:', "copyUser"),
+          self.tableItem("📋   Paste", 'promptAction:', "pasteUser")
         ]
         self.popover(button, commandTable,120,0)
         return
@@ -1208,6 +1229,7 @@ try {
     let selector = 'improtAction:'
     menu.addMenuItem("➕   New Prompt",selector,"New")
     menu.addMenuItem("📋   From Clipboard",selector,"Paste")
+    menu.addMenuItem("🌐   From Example",selector,"Example")
     menu.show()
     return
   },
@@ -1219,7 +1241,6 @@ try {
       return
     }
     try {
-
     let config = {}
     let prompt = {}
     let unusedKey = chatAIConfig.getUnusedKey()
@@ -1237,12 +1258,20 @@ try {
         config = {title:userInput.input,context:"input your prompt",system:""}
         self.importNewPrompt(config, unusedKey)
         return;
+      case "Example":
+        if (typeof browserUtils !== "undefined") {
+          MNUtil.postNotification("openInBrowser", {url:"https://mnaddon.craft.me/chatai/promptExample"})
+        }else{
+          MNUtil.openURL("https://mnaddon.craft.me/chatai/promptExample")
+        }
+        return;
       case "Paste":
         let clipboardText = MNUtil.clipboardText
         if (clipboardText && MNUtil.isValidJSON(clipboardText)) {
           prompt = JSON.parse(clipboardText)
+          let promptText= JSON.stringify(prompt,null,2).slice(0,1000)
           if (prompt.title) {
-            let confirm = await MNUtil.confirm("MN ChatAI\nImport prompt ["+prompt.title+"]?", "是否导入 prompt ["+prompt.title+"]？\n"+JSON.stringify(prompt,null,2))
+            let confirm = await MNUtil.confirm("MN ChatAI\nImport prompt ["+prompt.title+"]?", "是否导入 prompt ["+prompt.title+"]？\n"+promptText)
             if (!confirm) {
               self.showHUD("Cancel import")
               return
@@ -1392,6 +1421,9 @@ try {
       case "Github":
         self.openURL("https://github.com/settings/personal-access-tokens")
         break;
+      case "Metaso":
+        self.openURL("https://metaso.cn/search-api/api-keys")
+        break;
       case "Qwen":
         self.openURL("https://bailian.console.aliyun.com/?tab=model#/api-key")
         break;
@@ -1511,17 +1543,13 @@ try {
     switch (chatAIConfig.config.source) {
       case "Built-in":
         self.waitHUD("Refreshing...")
-        let keys = await chatAINetwork.fetchKeys0()
-        if (keys) {
-          chatAIConfig.keys = keys 
-          if (keys.message) {
-            self.waitHUD(keys.message)
-            chatAIConfig.save('MNChatglm_builtInKeys')
-            self.refreshView("modelView")
-            MNUtil.stopHUD(1)
-            // self.refreshButton.setTitleForState(`1️⃣: ${keys.key0.keys.length}, 2️⃣: ${keys.key1.keys.length}, 3️⃣: ${keys.key2.keys.length}, 4️⃣: ${keys.key3.keys.length}`,0)
-            return
-          }
+        let res = await chatAINetwork.fetchKeys()
+        if (res && "shareKeys" in res) {
+          self.waitHUD(res.shareKeys.message)
+          self.refreshView("modelView")
+          MNUtil.stopHUD(1)
+          // self.refreshButton.setTitleForState(`1️⃣: ${keys.key0.keys.length}, 2️⃣: ${keys.key1.keys.length}, 3️⃣: ${keys.key2.keys.length}, 4️⃣: ${keys.key3.keys.length}`,0)
+          return
         }
         return;
       case "ChatGLM":
@@ -1564,6 +1592,9 @@ try {
         break;
       case "Github":
         chatAIConfig.config.githubKey = self.apiKeyInput.text.trim()
+        break;
+      case "Metaso":
+        chatAIConfig.config.metasoKey = self.apiKeyInput.text.trim()
         break;
       case "Qwen":
         chatAIConfig.config.qwenKey = self.apiKeyInput.text.trim()
@@ -1641,11 +1672,34 @@ try {
       let currentPrompt = chatAIConfig.currentPrompt
       let prompt = chatAIConfig.prompts[currentPrompt]
       let vision = prompt.vision
+      let clipboardText = ""
       switch (params) {
+        case "copyUser":
+          MNUtil.copy(prompt.context)
+          self.showHUD("Copy user message")
+          break;
+        case "copySystem":
+          MNUtil.copy(prompt.system)
+          self.showHUD("Copy system message")
+          break;
+        case "pasteUser":
+          clipboardText = MNUtil.clipboardText
+          if (clipboardText && clipboardText.trim()) {
+            self.contextInput.text = clipboardText
+            self.showHUD("Paste user message")
+          }
+          break;
+        case "pasteSystem":
+          clipboardText = MNUtil.clipboardText
+          if (clipboardText && clipboardText.trim()) {
+            self.systemInput.text = clipboardText
+            self.showHUD("Paste system message")
+          }
+          break;
         case "Excute":
-          MNUtil.showHUD("Excute prompt: "+prompt.title)
+          self.showHUD("Excute prompt: "+prompt.title)
           if (chatAIUtils.currentSelection === "") {
-            MNUtil.showHUD("no text/card selected")
+            self.showHUD("no text/card selected")
             return
           }
           if (chatAIUtils.checkCouldAsk()) {
@@ -1654,7 +1708,7 @@ try {
           break;
         case "Chat":
           if (chatAIUtils.isMN3()) {
-            MNUtil.showHUD("Only available in MN4")
+            self.showHUD("Only available in MN4")
             return
           }
           if (!chatAIUtils.sideOutputController) {
@@ -1678,11 +1732,11 @@ try {
           break;
         case "Copy":
           MNUtil.copy(JSON.stringify(prompt,null,2))
-          MNUtil.showHUD("Copy prompt ["+prompt.title+"] to clipboard")
+          self.showHUD("Copy prompt ["+prompt.title+"] to clipboard")
           break;
         case "Delete":
           if (Object.keys(chatAIConfig.prompts).length === 1) {
-            MNUtil.showHUD("You can not clear all prompts!")
+            self.showHUD("You can not clear all prompts!")
             return
           }
           let confirm = await MNUtil.confirm("MN ChatAI\nDelete this prompt?", "删除这个prompt？")
@@ -1700,7 +1754,7 @@ try {
           break;
         case "Share":
           let config = JSON.stringify(prompt,undefined,2)
-          let url =  `[➕导入](marginnote4app://addon/mnchatai?action=importprompt&promptconfig=${encodeURIComponent(config)})
+          let url =  `[➕导入](marginnote4app://addon/mnchatai?action=importprompt&promptconfig=${encodeURIComponent(config)}) ${prompt.title}
 \`\`\`json
 ${config}
 \`\`\`
@@ -2327,7 +2381,35 @@ chatglmController.prototype.init = function () {
 /**
  * @this {chatglmController}
  */
+chatglmController.prototype.getQuestionWithOutRender = async function(promptKey = chatAIConfig.currentPrompt,userInput) {
+try {
+  let prompt = chatAIConfig.prompts[promptKey]
+  let selection = MNUtil.currentSelection
+  // MNUtil.copyJSON(selection)
+  if (selection.onSelection) {
+    // MNUtil.showHUD("getQuestionOnText")
+    let question = JSON.stringify(prompt)+"\n\n"+selection.text+(userInput?userInput:"")
+    return question
+  }
+  let focusNote = chatAIUtils.getFocusNote()
+  // MNUtil.showHUD(message)
+  if (focusNote) {
+    let question = JSON.stringify(prompt)+"\n\n"+focusNote.noteId+(userInput?userInput:"")
+    return question
+  }
+  let question = JSON.stringify(prompt)+"\n\n"+(userInput?userInput:"")
+  return question
+} catch (error) {
+  chatAIUtils.addErrorLog(error, "chatglmController.getQuestion")
+  throw error
+}
+};
+
+/**
+ * @this {chatglmController}
+ */
 chatglmController.prototype.getQuestion = async function(promptKey = chatAIConfig.currentPrompt,userInput) {
+  // MNUtil.log("getQuestion")
 try {
   let selection = MNUtil.currentSelection
   // MNUtil.copyJSON(selection)
@@ -2339,9 +2421,7 @@ try {
   let focusNote = chatAIUtils.getFocusNote()
   // MNUtil.showHUD(message)
   if (focusNote) {
-    // MNUtil.showHUD("getQuestionOnNote")
     let question = await this.getQuestionOnNote(focusNote.noteId,promptKey,userInput)
-    // MNUtil.copyJSON(question)
     return question
   }
   let question = await this.getQuestionOnText(promptKey,userInput)
@@ -2364,6 +2444,7 @@ chatglmController.prototype.getQuestionOnNote = async function(noteid,prompt = c
   let systemMessage
   let question
   let opt = {noteId:noteid,userInput:userInput,vision:(chatAIUtils.visionMode || !!vision)}
+  // MNUtil.log("getQuestionOnNote")
   contextMessage = await chatAIUtils.render(context,opt)
   if (!contextMessage || !contextMessage.trim()) {
     MNUtil.showHUD("User message is empty")
@@ -2403,6 +2484,7 @@ chatglmController.prototype.getQuestionOnText = async function(prompt = chatAICo
   let context = chatAIConfig.prompts[prompt].context
   let system = chatAIConfig.prompts[prompt].system
   let opt = {userInput:userInput,vision:(chatAIUtils.visionMode || !!vision)}
+  // MNUtil.log("getQuestionOnText")
   let contextMessage = await chatAIUtils.render(context,opt)
   if (!contextMessage || !contextMessage.trim()) {
     MNUtil.showHUD("User message is empty")
@@ -3426,6 +3508,7 @@ chatglmController.prototype.setModel = function (source) {
     case "PPIO":
     case "Volcengine":
     case "Github":
+    case "Metaso":
     case "Gemini":
     case "ChatGPT":
     case "Subscription":
@@ -3461,6 +3544,7 @@ chatglmController.prototype.setModel = function (source) {
     case "PPIO":
     case "Volcengine":
     case "Github":
+    case "Metaso":
     case "Minimax":
     case "Qwen":
     case "Deepseek":
@@ -3852,7 +3936,7 @@ chatglmController.prototype.createWebviewInput = function (superView) {
   this.webviewInput.layer.borderColor = MNUtil.hexColorAlpha("#9bb2d6",0.8);
   this.webviewInput.layer.borderWidth = 0
   this.webviewInput.layer.opacity = 0.85
-  this.webviewInput.scrollEnabled = false
+  // this.webviewInput.scrollEnabled = false
   // this.webviewInput.scrollView.scrollEnabled = false
   // this.webviewInput.loadFileURLAllowingReadAccessToURL(
   //   NSURL.fileURLWithPath(chatAIUtils.mainPath + '/jsoneditor.html'),

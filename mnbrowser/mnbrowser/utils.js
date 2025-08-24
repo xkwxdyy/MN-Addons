@@ -50,17 +50,64 @@ class browserUtils {
     return folderExist
   }
   static async checkMNUtil(alert = false,delay = 0.01){
+  try {
     if (typeof MNUtil === 'undefined') {//如果MNUtil未被加载，则执行一次延时，然后再检测一次
       //仅在MNUtil未被完全加载时执行delay
       await this.delay(delay)
       if (typeof MNUtil === 'undefined') {
         if (alert) {
+          let res = await this.confirm("MN Browser:", "Install 'MN Utils' first\n\n请先安装'MN Utils'",["Cancel","Open URL"])
+          if (res) {
+            this.openURL("https://bbs.marginnote.com.cn/t/topic/49699")
+          }
+        }else{
           this.showHUD("MN Browser: Please install 'MN Utils' first!",5)
         }
         return false
       }
     }
     return true
+  } catch (error) {
+    this.copy(error.toString())
+    // chatAIUtils.addErrorLog(error, "chatAITool.checkMNUtil")
+    return false
+  }
+  }
+  static copy(text) {
+    UIPasteboard.generalPasteboard().string = text
+  }
+  static openURL(url){
+    if (!this.app) {
+      this.app = Application.sharedInstance()
+    }
+    this.app.openURL(NSURL.URLWithString(url));
+  }
+  /**
+   * Displays a confirmation dialog with a main title and a subtitle.
+   * 
+   * This method shows a confirmation dialog with the specified main title and subtitle.
+   * It returns a promise that resolves with the button index of the button clicked by the user.
+   * 
+   * @param {string} mainTitle - The main title of the confirmation dialog.
+   * @param {string} subTitle - The subtitle of the confirmation dialog.
+   * @param {string[]} items - The items of the confirmation dialog.
+   * @returns {Promise<number|undefined>} A promise that resolves with the button index of the button clicked by the user.
+   */
+  static async confirm(mainTitle,subTitle,items = ["Cancel","Confirm"]){
+    if (MNOnAlert) {
+      return
+    }
+    MNOnAlert = true
+    return new Promise((resolve, reject) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        mainTitle,subTitle,0,items[0],items.slice(1),
+        (alert, buttonIndex) => {
+          MNOnAlert = false
+          // MNUtil.copyJSON({alert:alert,buttonIndex:buttonIndex})
+          resolve(buttonIndex)
+        }
+      )
+    })
   }
   static async delay (seconds) {
     return new Promise((resolve, reject) => {
@@ -726,9 +773,9 @@ static async parseNoteInfo(note){
   return results;
 }
 static extractBilibiliLinks(markdownText) {
-  if (!this.checkSubscribe(true)) {
-    return undefined
-  }
+  // if (!this.checkSubscribe(true)) {
+  //   return undefined
+  // }
   // 正则表达式匹配以 "marginnote4app://addon/BilibiliExcerpt?videoId=" 开头的链接
   const regex = /marginnote4app:\/\/addon\/BilibiliExcerpt\?videoId=([^&\s)]+)(?:&t=([\d.]+))?(?:&p=([\d.]+))?/g;
 
@@ -1043,8 +1090,22 @@ class browserConfig{
         "videoTimeToComment",
         "changeBilibiliVideoPart",
         "pauseOrPlay",
+        "play0.5x",
+        "play1.25x",
+        "play1.5x",
+        "play1.75x",
+        "play2x",
+        "play2.5x",
+        "play3x",
+        "play3.5x",
+        "play4x",
+        "toggleMute",
         "forward10s",
+        "forward15s",
+        "forward30s",
         "backward10s",
+        "backward15s",
+        "backward30s",
         "bigbang",
         "copyCurrentURL",
         "copyAsMDLink",
@@ -1073,11 +1134,31 @@ class browserConfig{
       case "videoTimeToNewNote":
         return "📌";
       case "forward10s":
+      case "forward15s":
+      case "forward30s":
         return "⏩";
       case "backward10s":
+      case "backward15s":
+      case "backward30s":
         return "⏪";
       case "pauseOrPlay":
         return "▶️"
+      case "toggleMute":
+        return "🔇"
+      case "volumeUp":
+        return "🔊"
+      case "volumeDown":
+        return "🔈"
+      case "play0.5x":
+      case "play1.25x":
+      case "play1.5x":
+      case "play1.75x":
+      case "play2x":
+      case "play2.5x":
+      case "play3x":
+      case "play3.5x":
+      case "play4x":
+        return "⏯️"
       case "bigbang":
         return "💥"
       case "openNewWindow":
@@ -1095,7 +1176,7 @@ class browserConfig{
       default:
         break;
     }
-    return "";
+    return "🔨";
   }
   static getCustomEmoji(index){
     let configName = (index === 1)?"custom":"custom"+index
@@ -1120,8 +1201,24 @@ class browserConfig{
       "videoTimeToNewNote":"timestamp to new note",
       "videoTimeToComment":"timestamp to comment",
       "pauseOrPlay":"pause or play",
+      "toggleMute":"toggle mute",
+      "volumeUp":"volume up",
+      "volumeDown":"volume down",
+      "play0.5x":"play 0.5x",
+      "play1.25x":"play 1.25x",
+      "play1.5x":"play 1.5x",
+      "play1.75x":"play 1.75x",
+      "play2x":"play 2x",
+      "play2.5x":"play 2.5x",
+      "play3x":"play 3x",
+      "play3.5x":"play 3.5x",
+      "play4x":"play 4x",
       "forward10s":"video forward 10s",
+      "forward15s":"video forward 15s",
+      "forward30s":"video forward 30s",
       "backward10s":"video backward 10s",
+      "backward15s":"video backward 15s",
+      "backward30s":"video backward 30s",
       "bigbang":"bigbang",
       "copyCurrentURL":"copy current URL",
       "copyAsMDLink":"copy as MD link",

@@ -174,6 +174,10 @@ function registerAllMenuTemplates() {
         {
           action: "addOrUpdateLaunchLink",
           menuTitle: "📱 添加/更新启动链接"
+        },
+        {
+          action: "copyCurrentPageLink",
+          menuTitle: "📋 复制当前页面链接"
         }
       ]
     }

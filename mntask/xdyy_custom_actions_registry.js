@@ -506,6 +506,22 @@ function registerAllCustomActions() {
     MNUtil.showHUD(result.message, 2);
   });
 
+  // copyCurrentPageLink - 复制当前页面链接到剪贴板
+  MNTaskGlobal.registerCustomAction("copyCurrentPageLink", function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    try {
+      // 调用 MNTaskManager 的方法
+      const result = MNTaskManager.copyCurrentPageLink();
+      
+      // 显示结果
+      MNUtil.showHUD(result.message, 2);
+    } catch (error) {
+      MNUtil.log(`❌ copyCurrentPageLink 执行失败: ${error.message || error}`);
+      MNUtil.showHUD(`复制页面链接失败: ${error.message || "未知错误"}`);
+    }
+  });
+
   MNTaskGlobal.registerCustomAction("addTimestampRecord", async function(context) {
     const { button, des, focusNote, focusNotes, self } = context;
     

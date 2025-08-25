@@ -1679,44 +1679,44 @@ class MNTaskManager {
     
     const defaultLaunchLink = "marginnote4app://uistatus/H4sIAAAAAAAAE5VSy5LbIBD8F87SFuIp%2BWbJ5VxyyCG3VCqF0LBmg4VKoM06W%2F73AHbiveY2j56mp5l3NHr%2F8zxxtEOGgNbYMNNJGGmHJWAsmRg7wRQIojpDZQtEj5ibpm0apeRI5ahBcKEx4agqZGFxNqIdzlmM%2Fjx5jXZGuQAV0mqdRv9WujmG6Q7Vzv%2BGB8zPEeYYSivNO3WB1U5JI2MDYw0b6l4OtGb7o6h72rY1wU2Hh33Ph%2BMh6YC3ND%2Bd%2FQSFwlgHNzLjvIpntdwSr7cw%2BwiFuj%2F27ND2pO4IYTXjvajbLqf4yEk74D2lXaI2m3MfV0pkn71W0foZ7d6RNyZAzNGPl%2BDnV%2BU2%2BHpZkg40fPri7RwTRzbgibWSck6YbEUjGO1khS6lzgWThLNUo7jlmF8rFLRyeZUnIiiTVGDcsK5JGHEtCgI4F9Kr375XyC%2Bw3uXgD5kfX26FLTo7P7xe1DMkf1O5tBc1gysTRUv6f960mLKOcdJgUqEVAqhVnwp6hVcLv26hfT7dnL0T32D5Iko%2F2AlGtT7a%2BUzsbHz2SvstGbNr0jZRjeFkpwnmf9B4gnM28ABGbS4bGP1i9f8cRJb59zCvfwCp6rmF9QIAAA%3D%3D";
     
-    let linkToUse = null;  // 不要立即设置默认值
+    let linkToUse = null;
     let hudMessage = "";
     
-    // 判断链接来源的优先级
     if (linkURL) {
       // 1. 优先使用传入的链接
       linkToUse = linkURL;
     } else {
-      // 2. 检查剪贴板
       const clipboardText = MNUtil.clipboardText;
-      if (clipboardText) {
-        if (clipboardText.startsWith("marginnote4app://uistatus/")) {
-          linkToUse = clipboardText;
-          hudMessage = "✅ 更新 UI 状态链接";
-        } else if (clipboardText.startsWith("marginnote4app://page/")) {
-          linkToUse = clipboardText;
-          hudMessage = "✅ 更新页面定位链接";
-        } else if (clipboardText.ifNoteIdorURL()) {
-          linkToUse = clipboardText.toNoteURL();
-          const linkedNote = MNNote.new(clipboardText);
-          hudMessage = "✅ 更新卡片链接: " + (linkedNote ? linkedNote.title : "");
-        }
+      
+      // 2. 检查剪贴板是否包含特定类型的链接
+      if (clipboardText && clipboardText.startsWith("marginnote4app://uistatus/")) {
+        linkToUse = clipboardText;
+        hudMessage = "✅ 更新 UI 状态链接";
+      } else if (clipboardText && clipboardText.ifNoteIdorURL()) {
+        linkToUse = clipboardText.toNoteURL();
+        const linkedNote = MNNote.new(clipboardText);
+        hudMessage = "✅ 更新卡片链接: " + (linkedNote ? linkedNote.title : "");
+      } else if (clipboardText && clipboardText.startsWith("marginnote4app://page/")) {
+        // 保留这个判断，用于从剪贴板粘贴页面链接
+        linkToUse = clipboardText;
+        hudMessage = "✅ 更新页面定位链接";
       } else {
-        // 3. 剪贴板为空，尝试生成当前页面链接
-        if (MNUtil.studyController.docMapSplitMode) {  // 不为 0 时表示有文档打开
+        // 3. 剪贴板不是已知链接类型（或为空），检查是否有文档打开
+        if (MNUtil.studyController.docMapSplitMode) {  // 不为 0 表示有文档打开
           const pageLink = this.generatePageLink();
           if (pageLink) {
             linkToUse = pageLink;
-            const pageNo = MNUtil.currentDocController.currPageNo || (MNUtil.currentDocController.currPageIndex + 1);
+            const pageNo = MNUtil.currentDocController.currPageNo || 
+                           (MNUtil.currentDocController.currPageIndex + 1);
             hudMessage = `✅ 已保存当前页面链接（第 ${pageNo} 页）`;
           }
         }
-      }
-      
-      // 4. 如果以上都没有，才使用默认链接
-      if (!linkToUse) {
-        linkToUse = defaultLaunchLink;
-        hudMessage = hudMessage || "✅ 使用默认 UI 状态链接";
+        
+        // 4. 如果没有文档打开或生成失败，使用默认链接
+        if (!linkToUse) {
+          linkToUse = defaultLaunchLink;
+          hudMessage = hudMessage || "✅ 使用默认 UI 状态链接";
+        }
       }
     }
     
@@ -1754,6 +1754,44 @@ class MNTaskManager {
   }
 
   /**
+   * 复制当前页面链接到剪贴板
+   * @returns {Object} 操作结果
+   */
+  static copyCurrentPageLink() {
+    // 检查是否有文档打开
+    if (!MNUtil.studyController.docMapSplitMode) {
+      return { 
+        success: false, 
+        message: "❌ 没有打开的文档" 
+      };
+    }
+    
+    // 生成页面链接（调用同类的方法）
+    const pageLink = this.generatePageLink();
+    if (!pageLink) {
+      return { 
+        success: false, 
+        message: "❌ 无法生成页面链接" 
+      };
+    }
+    
+    // 复制到剪贴板
+    MNUtil.copy(pageLink);
+    
+    // 获取页面信息用于提示
+    const pageNo = MNUtil.currentDocController.currPageNo || 
+                   (MNUtil.currentDocController.currPageIndex + 1);
+    const doc = MNUtil.getDocById(MNUtil.currentDocMd5);
+    const docTitle = doc ? doc.docTitle : "未知文档";
+    
+    return { 
+      success: true, 
+      message: `📋 已复制页面链接\n${docTitle} - 第 ${pageNo} 页`,
+      link: pageLink
+    };
+  }
+
+  /**
    * 生成当前页面的定位链接
    * @returns {string|null} 页面链接URL
    */
@@ -1761,7 +1799,7 @@ class MNTaskManager {
     const docController = MNUtil.currentDocController;
     if (!docController) return null;
     
-    const docMd5 = MNUtil.currentDocMd5;
+    const docMd5 = MNUtil.currentDocmd5;
     const pageIndex = docController.currPageIndex;
     const pageNo = docController.currPageNo || (pageIndex + 1);
     
@@ -6693,7 +6731,7 @@ ${content.trim()}`
       }
       
       // 如果不是当前文档，先打开文档
-      if (docMd5 !== MNUtil.currentDocMd5) {
+      if (docMd5 !== MNUtil.currentDocmd5) {
         MNUtil.openDoc(docMd5);
         
         // 如果当前是纯脑图模式，切换到分割模式以显示文档

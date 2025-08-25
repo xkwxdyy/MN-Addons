@@ -112,7 +112,7 @@ class MNMath {
       englishName: 'example',
       templateNoteId: 'DDF06F4F-1371-42B2-94C4-111AE7F56CAB',
       ifIndependent: false,
-      colorIndex: 15,  // 紫色
+      colorIndex: 7,  // 紫色
       fields: [
         "证明",
         "相关思考",
@@ -170,7 +170,7 @@ class MNMath {
       englishName: 'question',
       templateNoteId: 'BED89238-9D63-4150-8EB3-4AAF9179D338',
       ifIndependent: false,
-      colorIndex: 1,  // 淡绿色
+      colorIndex: 12,  // 橙色
       fields: [
         "问题详情",
         "研究脉络",
@@ -186,7 +186,7 @@ class MNMath {
       englishName: 'idea',
       templateNoteId: '6FF1D6DB-3349-4617-9972-FC55BFDCB675',
       ifIndependent: true,
-      colorIndex: 13,  // 淡灰色
+      colorIndex: 5,  // 荧光绿
       fields: [
         "思路详情",
         "具体尝试",
@@ -228,7 +228,7 @@ class MNMath {
       englishName: 'paper',
       templateNoteId: '032FC61B-37BD-4A90-AE9D-5A946842F49B',
       ifIndependent: false,
-      colorIndex: 15,  // 紫色
+      colorIndex: 11,  // 紫色
       fields: [
         "文献信息",
         "相关思考",
@@ -243,7 +243,7 @@ class MNMath {
       englishName: 'book',
       templateNoteId: '032FC61B-37BD-4A90-AE9D-5A946842F49B',
       ifIndependent: false,
-      colorIndex: 15,  // 紫色
+      colorIndex: 11,  // 紫色
       fields: [
         "文献信息",
         "相关思考",
@@ -258,7 +258,7 @@ class MNMath {
       englishName: 'literature',
       templateNoteId: '032FC61B-37BD-4A90-AE9D-5A946842F49B',
       ifIndependent: false,
-      colorIndex: 15,  // 紫色
+      colorIndex: 11,  // 紫色
       fields: [
         "文献信息",
         "相关思考",

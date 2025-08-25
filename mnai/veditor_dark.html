@@ -17,10 +17,11 @@
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script> -->
     <link rel="stylesheet" href="veditor.css" />
     <script src="marked.js"></script>
+    <script src="jsonrepair.js"></script>
     <!-- <script src="https://unpkg.com/vditor/dist/index.min.js"></script> -->
   <!-- <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" defer></script> -->
   <script src="katex.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" defer/>
+  <link rel="stylesheet" href="katex.min.css" defer/>
     <style>
       body{
         margin: 0px;
@@ -88,6 +89,7 @@
 let selectingText = ""
 let selectingTime = 0
 let editor
+let theme = "dark"
 // let preContent = `
 // ### 反馈与解析  
 // **选项A正确！**  
@@ -132,7 +134,7 @@ let preFunc = ""
 let preReasoning = ""
 let reasoningBegin
 let option = {
-      theme:"dark",
+      theme:theme,
       math:{
         engine:"MathJax",
         mathJaxOptions:{
@@ -141,8 +143,6 @@ let option = {
           }
         },
         inlineDigit: true
-        
-        
       },
       cdn:"https://unpkg.com/vditor@3.11.0",
       after: notifyRefreshHeight
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
       cache: {
         enable: false,
       },
-      theme:"dark",
+      theme:theme,
       preview:{
         math:{
           engine:"MathJax",

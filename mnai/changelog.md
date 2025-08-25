@@ -37,6 +37,13 @@ Cmd + Shift + 8 - Bullet list
 当PDF.js无法提取文本时，会尝试使用Moonshot方案
 修复updatChat的报错
 
+新增选择题的按钮渲染（渲染整个选择题），支持一键将题目创建为卡片
+取消复制内容后的提示
+修复不能设置自定义按钮的问题
+自定义按钮新增绑定/解绑按钮
+katex本地化
+
+
 killall "MarginNote 4" && sleep 1 && open "/Applications/MarginNote 4.app"
 
 pgrep -x "MarginNote 4" > /dev/null && (killall "MarginNote 4" && sleep 1 && open "/Applications/MarginNote 4.app") || open "/Applications/MarginNote 4.app"

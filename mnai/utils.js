@@ -6616,8 +6616,77 @@ static replaceLtInLatexBlocks(markdown) {
         return '$$' + latexContent.replace(/</g, '\\lt') + '$$';
     });
 }
-
-static codeBlockReplacer = (lang,format,code) => {
+/**
+ * 
+ * @param {string} code 
+ * @returns 
+ */
+static getChoiceBlock(code) {
+  let url = `userselect://choice?content=${encodeURIComponent(code)}`
+  let tem = code.split(". ")
+  if (tem.length > 1 && tem[0].trim().length === 1) {
+    
+  return `<div style="margin-top: 15px;">
+    <div style="
+      display: block;
+      padding: 0.8em 0.8em;
+      color: #495057;
+      border-radius: 20px;
+      text-decoration: none;
+      border: 0.1em solid #dee2e6;
+      background: #f1f7fe;
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      position: relative;
+      "
+     >
+      <span style="
+          display: inline-block;
+          width: 1.8em;
+          height: 1.8em;
+          background: #2196f3;
+          color: white;
+          border-radius: 50%;
+          text-align: center;
+          line-height: 1.8em;
+          font-weight: 600;
+          margin-right: 0.5em;
+          vertical-align: middle;
+          ">${tem[0]}</span>
+      <span style="vertical-align: middle;">${tem.slice(1).join(". ")}</span>
+  </div>
+  </div>`
+  }
+  return `<div style="margin-top: 15px;">
+    <div 
+     style="
+      display: block;
+      padding: 0.8em 0.8em;
+      color: #495057;
+      border-radius: 20px;
+      text-decoration: none;
+      border: 0.1em solid #dee2e6;
+      background: #f1f7fe;
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      position: relative;
+      "
+     >
+      <span style="vertical-align: middle;">${code}</span>
+  </div>
+  </div>`
+}
+static getChoicesHTML(choices){
+  let choicesHTML = choices.map(choice => {
+    return this.getChoiceBlock(choice)
+}).join("\n")
+return choicesHTML
+}
+static codeBlockReplacer(lang,format,code){
     let encodedContent = encodeURIComponent(code);
     if (lang === "userSelect") {
       let url = `userselect://choice?content=${encodedContent}`
@@ -7090,6 +7159,7 @@ class chatAIConfig {
     markdown2Mindmap:"mindmapImage",
     addBlankComment:"commentImage",
     editMode:"editorImage",
+    bindNote:"bindImage",
     openInEditor:"editorImage",
     snipaste:"snipasteImage",
     menu:"menuImage",
@@ -7399,6 +7469,9 @@ class chatAIConfig {
     this.visionImage = MNUtil.getImage(this.mainPath + `/vision.png`,1.5)
     this.switchLocationImage = MNUtil.getImage(this.mainPath + `/switch.png`),
     this.replyImage = MNUtil.getImage(this.mainPath + `/reply.png`)
+    this.aiFreeImage = MNUtil.getImage(this.mainPath + `/aiFree.png`)
+    this.aiBindImage = MNUtil.getImage(this.mainPath + `/aiBind.png`)
+    this.bindImage = MNUtil.getImage(this.mainPath + `/bind.png`)
     
   } catch (error) {
     chatAIUtils.addErrorLog(error, "chatAIConfig.init")

@@ -132,11 +132,16 @@ var snipasteController = JSB.defineClass('snipasteController : UIViewController 
     self.webview.delegate = null;
     UIApplication.sharedApplication().networkActivityIndicatorVisible = false;
   },
+viewDidLayoutSubviews: function() {
+    // MNUtil.showHUD("viewDidLayoutSubviews")
+
+},
 viewWillLayoutSubviews: function() {
     if (self.miniMode) {
       // self.webview.hidden = true
       return
     }
+    // MNUtil.showHUD("viewWillLayoutSubviews")
 
     var viewFrame = self.view.bounds;
     var xLeft     = viewFrame.x
@@ -158,22 +163,67 @@ viewWillLayoutSubviews: function() {
     self.pageIndexButton.hidden = self.mode !== "pdf"
     self.locButton.hidden = (self.mode !== "pdf") && (self.mode !== "note") && !self.docMd5
     self.linkButton.hidden = (self.mode !== "note")
-    self.screenButton.frame = {x: xRight - 35,y: yBottom - 30,width: 30,height: 25};
+    self.screenButton.frame = {x: xRight - 40,y: yBottom - 35,width: 35,height: 30};
     self.moveButton.frame = {  x: xRight*0.5-75,  y: yTop,  width: 150,  height: 18};
-    self.searchButton.frame = {  x: xRight - 70,  y: yBottom - 30,  width: 30,  height: 25}
-    self.locButton.frame = {  x: xRight - 105,  y: yBottom - 30,  width: 30,  height: 25,}
-    self.linkButton.frame = {  x: xRight - 140,  y: yBottom - 30,  width: 30,  height: 25,}
+    self.searchButton.frame = {  x: xRight - 80,  y: yBottom - 35,  width: 35,  height: 30}
+    self.locButton.frame = {  x: xRight - 120,  y: yBottom - 35,  width: 35,  height: 30,}
+    self.linkButton.frame = {  x: xRight - 160,  y: yBottom - 35,  width: 35,  height: 30,}
 
-    self.goBackButton.frame = {  x: xLeft+6,  y: yBottom - 30,  width: 30,  height: 25,};
-    self.goForwardButton.frame = {  x: xLeft+41,  y: yBottom - 30,  width: 30,  height: 25,};
+    self.goBackButton.frame = {  x: xLeft+6,  y: yBottom - 35,  width: 35,  height: 30,};
+    self.goForwardButton.frame = {  x: xLeft+41,  y: yBottom - 35,  width: 35,  height: 30,};
     self.webview.frame = {x:xLeft,y:yTop+8,width:viewFrame.width,height:viewFrame.height-8}
   },
-  scrollViewDidScroll: function() {
+  /**
+   * 
+   * @param {UIScrollView} scrollview
+   */
+  scrollViewDidScroll: function(scrollview) {
+    if (!self.onLoading && scrollview.isDescendantOfView(self.webview)) {
+      // MNUtil.log("scrollViewDidScroll")
+      let height = scrollview.contentSize.height
+      let pages = self.pageCount
+      let pageHeight = height/pages
+      let y = scrollview.contentOffset.y
+      let pageNo = Math.floor(y/pageHeight)+1
+      if (self.pageNo !== pageNo) {
+        self.pageNo = pageNo
+        self.pageIndex = self.indexFromPageNo(pageNo)
+        self.pageIndexButton.setTitleForState(self.pageIndex+1,0)
+        
+      }
+      // MNUtil.log("setPage:"+pageNo)
+
+      // MNUtil.showHUD("scrollViewDidScroll:"+pageNo)
+    }
   },
   webViewDidStartLoad: function(webView) {
   },
-  webViewDidFinishLoad: function(webView) {
+  /**
+   * 
+   * @param {UIWebView} webView 
+   */
+  webViewDidFinishLoad: async function(webView) {
+  try {
+
     let currentURL = webView.request.URL().absoluteString()
+    // MNUtil.showHUD("webViewDidFinishLoad")
+    // MNUtil.log(self.mode)
+    if (self.mode === "pdf") {
+      let scrollview = self.webview.scrollView
+      let height = scrollview.contentSize.height
+      let pages = self.pageCount
+      let pageHeight = height/pages
+      await MNUtil.delay(0.1)
+      while (pageHeight < 100) {
+        // MNUtil.showHUD("delay")
+        height = scrollview.contentSize.height
+        pageHeight = height/pages
+        await MNUtil.delay(0.1)
+      }
+      self.onLoading = false
+      // MNUtil.log("pageNo:"+self.pageNo)
+      self.toPage(self.pageNo)
+    }
     self.goBackButton.hidden = !webView.canGoBack
     self.goForwardButton.hidden = !webView.canGoForward
     if (self.focusNoteId) {
@@ -209,12 +259,81 @@ viewWillLayoutSubviews: function() {
         }
       }
     })
+    
+  } catch (error) {
+    snipasteUtils.addErrorLog(error, "webViewDidFinishLoad")
+  }
   },
   webViewDidFailLoadWithError: function(webView, error) {
   },
   webViewShouldStartLoadWithRequestNavigationType: function(webView,request,type){
     let currentURL = webView.request.URL().absoluteString()
     let requestURL = request.URL().absoluteString()
+    let config = MNUtil.parseURL(requestURL)
+      // MNUtil.copy(config)
+    switch (config.scheme) {
+      case "about":
+        if (self.mode === "pdf" && requestURL.startsWith("about://#page")) {
+          // let page = requestURL.split("#page")[1]
+          // MNUtil.showHUD("page"+page)
+
+          return false
+        }
+      case "snipaste":
+        switch (config.host) {
+          case "showhud":
+            let message = config.params.message
+            if (message) {
+              MNUtil.stopHUD()
+              MNUtil.showHUD(message)
+            }
+            return false
+          case "mermaid":
+            let action = config.params.action
+            if (action === "endRendering") {
+              self.onRendering = false
+              // MNUtil.showHUD("endRendering")
+              MNUtil.log("endRendering")
+              // if (config.params.content) {
+              //   MNUtil.copy(config.params.content)
+              // }
+            }
+            return false
+          case "downloadpdf":
+            self.downloadPDF(config.params)
+            return false
+          case "copyimage":
+            let base64 = config.params.image //requestURL.split("?image=")[1]
+            // MNUtil.copy(base64)
+            let imageData = NSData.dataWithContentsOfURL(NSURL.URLWithString(base64))
+            let image = UIImage.imageWithData(imageData)
+            MNUtil.waitHUD("✅ Image copied to clipboard...")
+            MNUtil.copyImage(image.jpegData(0.5))
+            MNUtil.stopHUD(0.5)
+            return false
+          case "copyimage2childnote":
+            let base641 = config.params.image //requestURL.split("?image=")[1]
+            // MNUtil.copy(base64)      
+            let imageData1 = NSData.dataWithContentsOfURL(NSURL.URLWithString(base641))
+            let image1 = UIImage.imageWithData(imageData1)
+            MNUtil.waitHUD("✅ Image copied to clipboard...")
+            MNUtil.copyImage(image1.jpegData(0.5))
+            let focusNote = MNNote.getFocusNote()
+            let child = focusNote.createChildNote({title:""},true)
+            MNUtil.delay(0.5).then(()=>{
+              MNUtil.waitHUD("✅ Image pasted to Childnote...")
+              child.paste()
+              child.focusInMindMap()
+              MNUtil.stopHUD(0.5)
+            })
+            return false
+        }
+        break;
+    
+      default:
+        break;
+      return false
+    }
     if (/^https?:\/\//.test(requestURL)) {
       MNUtil.confirm("Open URL", requestURL).then((confirm)=>{
         if (confirm) {
@@ -229,28 +348,28 @@ viewWillLayoutSubviews: function() {
       MNUtil.openURL(requestURL)
       return false
     }
-    if (/^snipaste:\/\/copyimage2childnote/.test(requestURL)) {
-      let base64 = requestURL.split("?image=")[1]
-      // MNUtil.copy(base64)
-      let imageData = NSData.dataWithContentsOfURL(NSURL.URLWithString(base64))
-      MNUtil.copyImage(imageData)
-      let focusNote = MNNote.getFocusNote()
-      let child = focusNote.createChildNote({title:""},true)
-      MNUtil.showHUD("copyimage2childnote")
-      MNUtil.delay(0.5).then(()=>{
-        child.paste()
-        child.focusInMindMap()
-      })
-      return false
-    }
-    if (/^snipaste:\/\/copyimage/.test(requestURL)) {
-      let base64 = requestURL.split("?image=")[1]
-      // MNUtil.copy(base64)
-      let imageData = NSData.dataWithContentsOfURL(NSURL.URLWithString(base64))
-      MNUtil.showHUD("copyimage")
-      MNUtil.copyImage(imageData)
-      return false
-    }
+    // if (/^snipaste:\/\/copyimage2childnote/.test(requestURL)) {
+    //   let base64 = requestURL.split("?image=")[1]
+    //   // MNUtil.copy(base64)
+    //   let imageData = NSData.dataWithContentsOfURL(NSURL.URLWithString(base64))
+    //   MNUtil.copyImage(imageData)
+    //   let focusNote = MNNote.getFocusNote()
+    //   let child = focusNote.createChildNote({title:""},true)
+    //   MNUtil.showHUD("copyimage2childnote")
+    //   MNUtil.delay(0.5).then(()=>{
+    //     child.paste()
+    //     child.focusInMindMap()
+    //   })
+    //   return false
+    // }
+    // if (/^snipaste:\/\/copyimage/.test(requestURL)) {
+    //   let base64 = requestURL.split("?image=")[1]
+    //   // MNUtil.copy(base64)
+    //   let imageData = NSData.dataWithContentsOfURL(NSURL.URLWithString(base64))
+    //   MNUtil.showHUD("copyimage")
+    //   MNUtil.copyImage(imageData)
+    //   return false
+    // }
 
     if (/^snipaste:\/\//.test(requestURL)) {
       let noteid = requestURL.split("snipaste://")[1]
@@ -286,21 +405,168 @@ viewWillLayoutSubviews: function() {
     menu.addMenuItem("📄  PDF (First Page)", "snipasteFromPDF:","First")
     menu.addMenuItem("📄  PDF (Last Page)", "snipasteFromPDF:","Last")
     menu.addMenuItem('🫧  Opacity', 'changeOpacity:', button)
-    menu.addMenuItem('📤  Export', 'export:')
+    menu.addMenuItem('📤  Export to Image', 'exportToImage:')
+    switch (self.mode) {
+      case "mermaid":
+        menu.addMenuItem('🌐  Mermaid ➡️ ChildNote', 'mermaid2ChildNote:')
+        menu.addMenuItem('🌐  Mermaid ➡️ Clipboard', 'mermaid2Clipboard:')
+        menu.addMenuItem('📤  Export to PDF', 'exportToPDF:')
+        break;
+      case "pdf":
+
+        break;
+      case "note":
+        menu.addMenuItem('➡️ As ChildNote (First)', 'noteAction:', 'asChildNoteFirst')
+        menu.addMenuItem('➡️ As ChildNote (Last)', 'noteAction:', 'asChildNoteLast')
+        menu.addMenuItem('➡️ As BrotherNote (Before)', 'noteAction:', 'asBrotherNoteBefore')
+        menu.addMenuItem('➡️ As BrotherNote (After)', 'noteAction:', 'asBrotherNoteAfter')
+        menu.addMenuItem('➡️ Merge into note', 'noteAction:', 'mergeNote')
+        menu.addMenuItem('➡️ Show in float window', 'noteAction:', 'showInFloat')
+        menu.addMenuItem('📤  Export to PDF', 'exportToPDF:')
+        break;
+      case "html":
+        menu.addMenuItem('🌐  HTML ➡️ ChildNote', 'html2ChildNote:')
+        menu.addMenuItem('🌐  HTML ➡️ Clipboard', 'html2Clipboard:')
+        menu.addMenuItem('🌐  Edit HTML', 'editHTML:')
+        menu.addMenuItem('📤  Export to PDF', 'exportToPDF:')
+      break;
+      default:
+        break;
+    }
     menu.addMenuItem('🎬  Screenshot', 'screenshot:', self.view.frame.width>1000?self.view.frame.width:1000)
     menu.addMenuItem('🎬  Screenshot ➡️ ChildNote', 'screenshot2ChildNote:', self.view.frame.width>1000?self.view.frame.width:1000)
-    menu.addMenuItem('🌐  HTML ➡️ ChildNote', 'html2ChildNote:')
-    menu.addMenuItem('🌐  HTML ➡️ Clipboard', 'html2Clipboard:')
-    menu.addMenuItem('🌐  Edit HTML', 'editHTML:')
+    // menu.addMenuItem('Audio setting', 'openAudioSetting:',button)
     menu.show()
+  },
+  openAudioSetting: function (button) {
+    Menu.dismissCurrentMenu()
+    let self = getSnipasteController()
+    // let autoPlay = 
+    // self.webview.loadFileURLAllowingReadAccessToURL(NSURL.fileURLWithPath(self.mainPath + "/audioPlayer.html"),ns)
+    // MNConnection.loadFile(self.webview, self.mainPath + "/audioPlayer.html", self.mainPath+"/")
+
+  },
+  noteAction: async function (action) {
+    Menu.dismissCurrentMenu()
+    try {
+
+    let targetNote = MNNote.new(self.focusNoteId)
+    if (targetNote.realGroupNoteIdForTopicId()) {
+      targetNote = targetNote.realGroupNoteForTopicId()
+    }
+    if (action === "showInFloat") {
+      targetNote.focusInFloatMindMap()
+      return
+    }
+
+    let focusNote= MNNote.getFocusNote()
+    if (focusNote.realGroupNoteIdForTopicId()) {
+      focusNote = focusNote.realGroupNoteForTopicId()
+    }
+    // MNUtil.log("log"+focusNote.realGroupNoteIdForTopicId())
+    // focusNote = focusNote.realGroupNoteForTopicId()
+
+    if (focusNote.notebookId !== targetNote.notebookId) {
+      MNUtil.showHUD("Notes not in current notebook")
+      return
+    }
+    // MNUtil.log("log"+targetNote.realGroupNoteIdForTopicId())
+    // targetNote = targetNote.realGroupNoteForTopicId()
+    switch (action) {
+      case 'mergeNote':
+        if (focusNote) {
+          MNUtil.undoGrouping(()=>{
+            focusNote.merge(targetNote)
+          })
+        }
+        break;
+      case 'asChildNoteFirst':
+        if (focusNote) {
+          MNUtil.undoGrouping(()=>{
+try {
+            if (focusNote.childNotes.length > 0) {
+              focusNote.note.insertChildBefore(targetNote.note,focusNote.childNotes[0].note)
+              // focusNote.addAsChildNote(targetNote)
+              targetNote.focusInMindMap(0.5)
+            }else{
+              focusNote.addAsChildNote(targetNote)
+              targetNote.focusInMindMap(0.5)
+            }
+  
+} catch (error) {
+  snipasteUtils.addErrorLog(error, "noteAction.asChildNote")
+}
+          })
+        }
+        break;
+      case 'asChildNoteLast':
+        if (focusNote) {
+          MNUtil.undoGrouping(()=>{
+            focusNote.addAsChildNote(targetNote)
+            targetNote.focusInMindMap(0.5)
+          })
+        }
+        break;
+      case 'asBrotherNoteBefore':
+        if (focusNote) {
+          let parentNote = focusNote.parentNote
+          if (!parentNote) {
+            MNUtil.showHUD("Parent note not found")
+            return
+          }
+          // let childNoteIds = parentNote
+          MNUtil.undoGrouping(()=>{
+          try {
+            parentNote.note.insertChildBefore(targetNote.note,focusNote.note)
+            targetNote.focusInMindMap(0.5)
+          } catch (error) {
+            snipasteUtils.addErrorLog(error, "noteAction.asBrotherNote")
+          }
+          })
+        }
+        break;
+      case 'asBrotherNoteAfter':
+        if (focusNote) {
+          let parentNote = focusNote.parentNote
+          if (!parentNote) {
+            MNUtil.showHUD("Parent note not found")
+            return
+          }
+          // let childNoteIds = parentNote
+          MNUtil.undoGrouping(()=>{
+          try {
+            parentNote.note.insertChildBefore(targetNote.note,focusNote.note)
+            parentNote.note.insertChildBefore(focusNote.note,targetNote.note)
+            targetNote.focusInMindMap(0.5)
+          } catch (error) {
+            snipasteUtils.addErrorLog(error, "noteAction.asBrotherNote")
+          }
+          })
+        }
+        break;
+      default:
+        MNUtil.showHUD("Not supported yet...")
+        break;
+    }
+      
+    } catch (error) {
+      snipasteUtils.addErrorLog(error, "noteAction")
+    }
   },
   screenshot: async function (width) {
     Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
-    MNUtil.showHUD("screenshot")
+    if (self.mode === "pdf") {
+      MNUtil.showHUD("当前模式不支持截图")
+      // let imageData = await snipasteUtils.screenshot(self.webview,width)
+      // MNUtil.copyImage(imageData)
+      // MNUtil.showHUD('截图已复制到剪贴板')
+      return
+    }
+    MNUtil.waitHUD("Screenshot using html2canvas...")
     self.runJavaScript(`
            // 动态加载脚本的函数
-        function loadScript( callback) {
+        function loadHtml2CanvasScript( callback) {
             let url = 'https://vip.123pan.cn/1836303614/dl/cdn/html2canvas.js'
             const script = document.createElement('script');
             script.type = 'text/javascript';
@@ -327,12 +593,33 @@ viewWillLayoutSubviews: function() {
 
             // 监听脚本加载失败事件
             script.onerror = () => {
+                  window.location.href = 'snipaste://showhud?message='+encodeURIComponent('加载失败'+url)
                 console.error(url + ' 加载失败');
             };
 
             document.head.appendChild(script); // 或者 document.body.appendChild(script);
         }
+/**
+ * 计算页面的最大缩放比例。
+ * @returns {number} - 计算出的最大安全scale值.
+ */
+function calculateMaxScale() {
+    // 1. 定义一个在所有主流浏览器中都相对安全的最大画布面积常量。
+    // 16,777,216 是 4096 * 4096，这是iOS Safari的一个常见限制，非常安全。
+    const SAFE_MAX_CANVAS_AREA = 16777216;
 
+    const originalWidth = document.documentElement.scrollWidth;
+    const originalHeight = document.documentElement.scrollHeight;
+    const originalArea = originalWidth * originalHeight;
+
+    // 3. 计算最大缩放比例
+    // scale^2 * originalArea <= SAFE_MAX_CANVAS_AREA
+    // scale <= sqrt(SAFE_MAX_CANVAS_AREA / originalArea)
+    const maxScale = Math.sqrt(SAFE_MAX_CANVAS_AREA / originalArea);
+
+    // 返回一个稍微向下取整的值以增加保险系数，比如保留两位小数
+    return Math.floor(maxScale * 100) / 100;
+}
         // 截图函数
         function captureScreenshot() {
             // 检查 html2canvas 是否已加载
@@ -342,11 +629,13 @@ viewWillLayoutSubviews: function() {
             }
 
             console.log('开始截图...');
+            const maxScale = calculateMaxScale();
+            console.log('最大缩放比例:', maxScale);
 
             // 使用 html2canvas 截取整个 body
             // 你可以根据需要调整截图的配置参数
             html2canvas(document.body, {
-                scale: 3,
+                scale: maxScale,
                 allowTaint: true, // 允许跨域图片，但可能会污染 canvas
                 useCORS: true,    // 尝试使用 CORS 加载图片，避免污染
                 scrollY: -window.scrollY, // 确保从页面顶部开始截图
@@ -366,7 +655,7 @@ viewWillLayoutSubviews: function() {
         // 检查 html2canvas 是否已定义，如果未定义则加载
         if (typeof html2canvas === 'undefined') {
             console.log('html2canvas 未加载，正在动态加载...');
-            loadScript( () => {
+            loadHtml2CanvasScript( () => {
                 // 加载完成后执行截图
                 captureScreenshot();
             });
@@ -430,6 +719,19 @@ getFullDocumentSize()
     }
     MNUtil.copy(html)
   },
+  mermaid2ChildNote: async function (params) {
+    Menu.dismissCurrentMenu()
+    let text = '```mermaid\n'+self.currentMermaidString+'\n```'
+    let focusNote = MNNote.getFocusNote()
+    MNUtil.undoGrouping(()=>{
+      let child = focusNote.createChildNote({title:"",excerptText:text,excerptTextMarkdown:true})
+      child.focusInMindMap()
+    })
+  },
+  mermaid2Clipboard: async function (params) {
+    Menu.dismissCurrentMenu()
+    MNUtil.copy(self.currentMermaidString)
+  },
   editHTML: async function (params) {
     Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
@@ -439,9 +741,24 @@ getFullDocumentSize()
   screenshot2ChildNote: async function (width) {
     Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
+    if (self.mode === "pdf") {
+      MNUtil.showHUD("当前模式不支持截图")
+      let imageData = await snipasteUtils.screenshot(self.webview,width)
+      MNUtil.copyImage(imageData)
+      MNUtil.showHUD('截图已复制到剪贴板')
+      let focusNote = MNNote.getFocusNote()
+      let child = focusNote.createChildNote({title:""},true)
+      MNUtil.delay(0.5).then(()=>{
+        MNUtil.waitHUD("✅ Image pasted to Childnote...")
+        child.paste()
+        child.focusInMindMap()
+        MNUtil.stopHUD(0.5)
+      })
+      return
+    }
     self.runJavaScript(`
            // 动态加载脚本的函数
-        function loadScript( callback) {
+        function loadHtml2CanvasScript( callback) {
             let url = 'https://vip.123pan.cn/1836303614/dl/cdn/html2canvas.js'
             const script = document.createElement('script');
             script.type = 'text/javascript';
@@ -468,6 +785,7 @@ getFullDocumentSize()
 
             // 监听脚本加载失败事件
             script.onerror = () => {
+                  window.location.href = 'snipaste://showhud?message='+encodeURIComponent('加载失败'+url)
                 console.error(url + ' 加载失败');
             };
 
@@ -507,7 +825,7 @@ getFullDocumentSize()
         // 检查 html2canvas 是否已定义，如果未定义则加载
         if (typeof html2canvas === 'undefined') {
             console.log('html2canvas 未加载，正在动态加载...');
-            loadScript( () => {
+            loadHtml2CanvasScript( () => {
                 // 加载完成后执行截图
                 captureScreenshot();
             });
@@ -525,16 +843,73 @@ getFullDocumentSize()
     // child.paste()
     // child.focusInMindMap()
   },
-  export: async function (width) {
+  exportToImage: async function (width) {
     Menu.dismissCurrentMenu()
     if (self.view.popoverController) {self.view.popoverController.dismissPopoverAnimated(true);}
     if (self.currentHTMLString) {
       MNUtil.writeText(MNUtil.tempFolder+"/export.html", self.currentHTMLString)
       MNUtil.saveFile(MNUtil.tempFolder+"/export.html", ["public.html"])
     }else{
+      if (self.mode === "pdf") {
+        MNUtil.showHUD("当前模式不支持截图")
+        return
+      }
       let imageData = await snipasteUtils.screenshot(self.webview,width)
       snipasteUtils.exportFile(imageData, "image.png", "public.png")
     }
+  },
+  exportToPDF: async function () {
+    Menu.dismissCurrentMenu()
+    self.waitHUD("Exporting to PDF...")
+    await MNUtil.delay(0.1)
+    // self.runJavaScript(`pngToPDF("${encodeURIComponent(imageBase64)}")`)
+    switch (self.mode) {
+      case "image":
+      case "note":
+        self.runJavaScript(`exportToPDF()`)
+        break;
+      case "html":
+        self.runJavaScript(snipasteUtils.getSubFuncScript()+`
+async function exportToPDF() {
+    // 检查 html2canvas 是否已定义，如果未定义则加载
+  if (typeof html2canvas === 'undefined') {
+      console.log('html2canvas 未加载，正在动态加载...');
+      loadHtml2CanvasScript( async () => {
+          // 加载完成后执行截图
+          let image = await screenshotToPNGBase64();
+          if (typeof jsPDF === 'undefined') {
+            loadJSPDFScript( async () => {
+              const pdfBase64 = await convertPngBase64ToPdfBase64(image);
+              postMessageToAddon("snipaste","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+            });
+          }else{
+            const pdfBase64 = await convertPngBase64ToPdfBase64(image);
+            postMessageToAddon("snipaste","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+          }
+      });
+  } else {
+      console.log('html2canvas 已加载，直接执行截图。');
+      // 如果已加载，则直接执行截图
+      let image = await screenshotToPNGBase64()
+      if (typeof jsPDF === 'undefined') {
+        loadJSPDFScript( async () => {
+          const pdfBase64 = await convertPngBase64ToPdfBase64(image,true);
+          postMessageToAddon("snipaste","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+        });
+      }else{
+        const pdfBase64 = await convertPngBase64ToPdfBase64(image,true);
+        postMessageToAddon("snipaste","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+      }
+  }
+}
+exportToPDF()
+        `)
+        break;
+    
+      default:
+        break;
+    }
+    return
   },
   changeOpacity: function(sender) {
     Menu.dismissCurrentMenu()
@@ -580,6 +955,8 @@ getFullDocumentSize()
       self.docMd5 = selection.docMd5
       self.pageIndex = selection.pageIndex
       let imageData = selection.image
+      let imageBase64 = imageData.base64Encoding()
+
       let image = UIImage.imageWithData(imageData)
       let wholeFrame = MNUtil.currentWindow.bounds
       // let rotateImage = UIImage.imageWithCGImageScaleOrientation(image.CGImage,1.5,UIImage.orientation)
@@ -661,6 +1038,9 @@ getFullDocumentSize()
       // MNUtil.showHUD(self.docMd5)
       if (self.docMd5 !== MNUtil.currentDocMd5) {
         MNUtil.openDoc(self.docMd5)
+        if (MNUtil.docMapSplitMode === 0) {
+          MNUtil.studyController.docMapSplitMode = 1
+        }
         await MNUtil.delay(0.01)
       }
       let docController = MNUtil.currentDocController
@@ -706,18 +1086,18 @@ getFullDocumentSize()
         if (target === "Current") {
           self.pageIndex = docController.currPageIndex
           // MNUtil.showHUD("PageIndex: "+self.pageIndex)
-          self.snipastePDF(docController.docMd5,docController.currPageNo)
+          self.snipastePDFDev(docController.docMd5,docController.currPageNo)
         }else if (target === "First") {
           self.pageIndex = 0
           let pageNo = docController.pageNoFromIndex(0)
-          self.snipastePDF(docController.docMd5,pageNo)
+          self.snipastePDFDev(docController.docMd5,pageNo)
         }else if (target === "Last") {
           let pageNo = docController.document.pageCount
           self.pageIndex = docController.indexFromPageNo(pageNo)
           // MNUtil.showHUD("PageIndex: "+self.pageIndex)
           // let tem = {pageNo:pageNo,pageIndex:self.pageIndex,newPageNo:docController.pageNoFromIndex(self.pageIndex),pageIndices:docController.indicesFromPageNo(docController.currPageNo)}
           // MNUtil.copy(tem)
-          self.snipastePDF(docController.docMd5,pageNo)
+          self.snipastePDFDev(docController.docMd5,pageNo)
         }
   },
   goBackButtonTapped: function() {
@@ -953,20 +1333,26 @@ getFullDocumentSize()
     self.currentFrame  = self.view.frame
   },
   firstPageButtonTapped: function() {
-    self.pageIndex = 0
-    self.pageNo = self.pageNoFromIndex(self.pageIndex)
+    let firstPageNo = self.pageNoFromIndex(0)
+    if (firstPageNo === self.pageNo) {
+      self.showHUD("Already at the first page")
+      return
+    }
     // if (self.hasDocController()) {
     //   self.pageNo = self.docController.pageNoFromIndex(self.pageIndex)
     // }else{
     //   self.pageNo = 1
     // }
-    if (self.pageNo > 20000) {
-      MNUtil.showHUD("Unspported pageNo: "+self.pageNo)
+    if (firstPageNo > 20000) {
+      MNUtil.showHUD("Unspported pageNo: "+firstPageNo)
       return
     }
-    self.runJavaScript(`
-      window.renderPageDev(${self.pageNo})
-    `)
+    self.pageIndex = 0
+    self.pageNo = firstPageNo
+    // self.runJavaScript(`
+    //   window.renderPageDev(${self.pageNo})
+    // `)
+    self.toPage(self.pageNo)
     self.pageIndexButton.setTitleForState(self.pageIndex+1,0)
     // self.snipastePDF(self.docMd5,self.pageIndex)
   },
@@ -989,9 +1375,10 @@ getFullDocumentSize()
     }
     self.pageIndex = prevPageIndex
     self.pageNo = prevPageNo
-    self.runJavaScript(`
-      window.renderPageDev(${self.pageNo})
-    `)
+    // self.runJavaScript(`
+    //   window.renderPageDev(${self.pageNo})
+    // `)
+    self.toPage(self.pageNo)
     self.pageIndexButton.setTitleForState(self.pageIndex+1,0)
     // self.snipastePDF(self.docMd5,self.pageIndex)
   },
@@ -1015,30 +1402,44 @@ getFullDocumentSize()
     self.pageIndex = nextPageIndex
     self.pageNo = nextPageNo
 
-    self.runJavaScript(`
-      window.renderPageDev(${self.pageNo})
-    `)
+    // self.runJavaScript(`
+    //   window.renderPageDev(${self.pageNo})
+    // `)
+    self.toPage(self.pageNo)
     self.pageIndexButton.setTitleForState(self.pageIndex+1,0)
     // self.snipastePDF(self.docMd5,self.pageIndex)
   },
   lastPageButtonTapped: function() {
+  try {
+
     let doc = MNUtil.getDocById(self.docMd5)
-    self.pageIndex = doc.pageCount - 1
+    let lastPageIndex = doc.pageCount - 1
+    let lastPageNo = self.pageIndex+1
     if (self.hasDocController()) {
-      self.pageNo = self.docController.pageNoFromIndex(self.pageIndex)
-      self.pageIndex = self.docController.indexFromPageNo(self.pageNo)
-    }else{
-      self.pageNo = pageIndex+1
+      lastPageNo = self.docController.pageNoFromIndex(lastPageIndex)
+      lastPageIndex = self.docController.indexFromPageNo(lastPageNo)
     }
+    if (lastPageNo === self.pageNo) {
+      self.showHUD("Already at the last page")
+      return
+    }
+    self.pageNo = lastPageNo
+    self.pageIndex = doc.pageCount - 1
     if (self.pageNo > 20000) {
       MNUtil.showHUD("Unspported pageNo: "+self.pageNo)
       return
     }
-    self.runJavaScript(`
-      window.renderPageDev(${self.pageNo})
-    `)
+    // self.runJavaScript(`
+    //   window.renderPageDev(${self.pageNo})
+    // `)
+    self.toPage(self.pageNo)
+
     self.pageIndexButton.setTitleForState(self.pageIndex+1,0)
     // self.snipastePDF(self.docMd5,self.pageIndex)
+    
+  } catch (error) {
+   snipasteUtils.addErrorLog(error, "lastPageButtonTapped")
+  }
   },
   choosePageIndex: function(button) {
     try {
@@ -1053,9 +1454,10 @@ getFullDocumentSize()
     }
     let selector = "setPageIndex:"
     // menu.addMenuItem("Current",selector)
-    for (let i = firstPage; i <= lastPage; i++) {
-      menu.addMenuItem("Page "+i,selector,i)
+    for (let i = firstPage; i <= lastPage-1; i++) {
+      menu.addMenuItem("Page "+(i+1),selector,i)
     }
+    menu.width = 100
     menu.preferredPosition = 0
     menu.show()
     return
@@ -1072,9 +1474,11 @@ getFullDocumentSize()
     // }else{
     //   self.pageNo = index+1
     // }
-    self.runJavaScript(`
-      window.renderPageDev(${self.pageNo})
-    `)
+    // self.runJavaScript(`
+    //   window.renderPageDev(${self.pageNo})
+    // `)
+    self.toPage(self.pageNo)
+
     self.pageIndexButton.setTitleForState(index+1,0)
   }
 });
@@ -1202,6 +1606,24 @@ snipasteController.prototype.toMinimode = async function (frame) {
     this.moveButton.setImageForState(this.snipasteImage,0)
   })
 }
+/**
+ * @this {snipasteController}
+ */
+snipasteController.prototype.blur = async function (delay = 0) {
+try {
+
+  if (delay) {
+    await MNUtil.delay(delay)
+  }
+    await this.runJavaScript(`document.activeElement.blur();`)
+    this.webview.endEditing(true)
+
+    MNUtil.studyView.becomeFirstResponder()
+  
+} catch (error) {
+  snipasteUtils.addErrorLog(error, "blur")
+}
+}
 /** @this {snipasteController} */
 snipasteController.prototype.setFrame = function(x,y,width,height){
     if (typeof x === "object") {
@@ -1217,6 +1639,8 @@ snipasteController.prototype.setFrame = function(x,y,width,height){
  * @this {snipasteController}
  */
 snipasteController.prototype.snipasteHtml = async function (html,force = false) {
+try {
+
   // MNUtil.showHUD("snipasteHtml")
   this.history.push({type:"html",content:html,id:MNUtil.MD5(html)})
   this.htmlMode = true
@@ -1225,9 +1649,11 @@ snipasteController.prototype.snipasteHtml = async function (html,force = false) 
   this.currentHTMLString = html
   this.mode = "html"
   if (this.onRendering && !force) {
+    MNUtil.log("reject:onRendering"+force)
     return
   }
   this.onRendering = true
+  // MNUtil.copy(html)
   this.webview.loadHTMLStringBaseURL(html)
   if (this.view.hidden) {
     this.show()
@@ -1259,7 +1685,95 @@ snipasteController.prototype.snipasteHtml = async function (html,force = false) 
   // this.webview.context["hide"] = (message)=>{
   //   Application.sharedInstance().showHUD("123", this.view.window, 2);
   // }
+  
+} catch (error) {
+  snipasteUtils.addErrorLog(error, "snipasteHtml")
+}
+}
 
+/**
+ * 
+ * @param {string} html 
+ * @this {snipasteController}
+ */
+snipasteController.prototype.snipasteMermaid = async function (content,force = false) {
+try {
+
+  // MNUtil.showHUD("snipasteHtml")
+  this.history.push({type:"mermaid",content:content,id:MNUtil.MD5(content)})
+  this.htmlMode = true
+  this.focusNoteId = undefined
+  this.onSnipaste = true
+  this.currentMermaidString = content
+
+  if (this.mode !== "mermaid") {
+    // MNUtil.showHUD("load mermaid")
+    MNConnection.loadFile(this.webview, this.mainPath + "/mermaid.html",this.mainPath)
+    this.mode = "mermaid"
+    this.onRendering = true
+  }
+  if (this.onRendering && !force) {
+    // MNUtil.showHUD("onRendering")
+    // MNUtil.log("reject:onRendering"+force)
+    return
+  }
+  if (content.trim()) {
+    let timeInterval = this.lastRenderingTime?(Date.now()-this.lastRenderingTime):200
+    // MNUtil.copy(`renderMermaid(\`${content}\`)`)
+    // MNUtil.log(`renderMermaid(\`${content}\`)`)
+    if (timeInterval < 150 && !force) {
+    // MNUtil.log("reject:shortInterval"+force)
+      return
+    }
+    // MNUtil.log("lastRenderingTime:"+timeInterval)
+    this.lastRenderingTime = Date.now()
+    if (force) {
+      // MNUtil.log("render")
+      // MNUtil.copy(`renderMermaidEncoded(\`${encodeURIComponent(content)}\`)`)
+      await this.runJavaScript(`renderMermaidEncoded(\`${encodeURIComponent(content)}\`)`)
+      MNUtil.delay(1).then(()=>{
+        // MNUtil.log("render")
+        this.runJavaScript(`renderMermaidEncoded(\`${encodeURIComponent(content)}\`)`)
+      })
+    }else{
+      // MNUtil.log("render")
+      this.runJavaScript(`renderMermaidEncoded(\`${encodeURIComponent(content)}\`)`)
+    }
+    this.onRendering = true
+  }
+  if (this.view.hidden) {
+    this.show()
+  }
+
+    let htmlSizeString = await this.runJavaScript(`document.body.scrollHeight`)
+    if (!htmlSizeString) {
+      this.onRendering = false
+      return
+    }
+    let htmlSize = parseFloat(htmlSizeString)
+    if (htmlSize < 100) {
+      htmlSize = 100
+    }
+    let viewFrame = this.view.frame
+    let windowHeight = MNUtil.studyHeight
+    if (viewFrame.y+htmlSize+40 >= windowHeight) {
+      viewFrame.height = windowHeight-viewFrame.y
+    }else{
+      viewFrame.height = htmlSize+40
+    }
+    this.view.frame = viewFrame
+    this.currentFrame = viewFrame
+    // this.onRendering = false
+  // this.runJavaScript(`
+  //   document.body.scrollIntoView(false);
+  // `)
+  // this.webview.context["hide"] = (message)=>{
+  //   Application.sharedInstance().showHUD("123", this.view.window, 2);
+  // }
+  
+} catch (error) {
+  snipasteUtils.addErrorLog(error, "snipasteMermaid")
+}
 }
 
 /**
@@ -1436,136 +1950,36 @@ try {
           MNUtil.showHUD("Unspported pageNo: "+pageNo)
           return
         }
+        if (this.mode === "pdf" && md5 === this.docMd5) {
+          this.toPage(pageNo)
+          return
+        }
         let document = MNUtil.getDocById(md5)
         let path = document.fullPathFileName
+        let pdfData = MNUtil.getFile(path)
         this.pageCount = document.pageCount
         this.mode = "pdf"
         this.pageNo = pageNo
         this.docMd5 = md5
-        
-        // let 
-
-        let pdfData = NSData.dataWithContentsOfURL(NSURL.fileURLWithPath(path))
-        let size = pdfData.length()/1024/1024
-        this.pdfSize = size
-        if (size > 50) {
-          MNUtil.waitHUD("Open PDF with "+size+"MB")
-          await MNUtil.delay(0.01)
-        }
-        this.webview.loadHTMLStringBaseURL(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>自定义 PDF 渲染</title>
-    <style>
-        #pdf-canvas {
-            border: 1px solid black;
-        }
-    </style>
-</head>
-<body>
-    <div>
-        <button id="prev-page">上一页</button>
-        <button id="next-page">下一页</button>
-        <span>Page: <span id="page-num"></span> / <span id="page-count"></span></span>
-    </div>
-    <canvas id="pdf-canvas"></canvas>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.0.375/pdf.min.mjs" type="module"></script>
-
-    <script type="module">
-        // 指定 workerSrc
-        const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.0.375/pdf.worker.min.mjs';
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-
-        const url = 'https://vip.123pan.cn/1836303614/dl/test.pdf'; // 使用一个在线的 PDF 文件作为例子
-        const canvas = document.getElementById('pdf-canvas');
-        const ctx = canvas.getContext('2d');
-
-        let pdfDoc = null;
-        let pageNum = 1;
-        let pageRendering = false;
-        let pageNumPending = null;
-
-        const scale = 1.5;
-
-        /**
-         * 渲染指定页码
-         */
-        async function renderPage(num) {
-            pageRendering = true;
-            // 获取页面
-            const page = await pdfDoc.getPage(num);
-            const viewport = page.getViewport({ scale });
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
-            // 渲染到 canvas 上下文
-            const renderContext = {
-                canvasContext: ctx,
-                viewport: viewport
-            };
-            await page.render(renderContext).promise;
-            pageRendering = false;
-
-            if (pageNumPending !== null) {
-                renderPage(pageNumPending);
-                pageNumPending = null;
-            }
-
-            // 更新页码显示
-            document.getElementById('page-num').textContent = num;
-        }
-
-        /**
-         * 处理翻页请求
-         */
-        function queueRenderPage(num) {
-            if (pageRendering) {
-                pageNumPending = num;
-            } else {
-                renderPage(num);
-            }
-        }
-
-        // 上一页
-        document.getElementById('prev-page').addEventListener('click', () => {
-            if (pageNum <= 1) {
-                return;
-            }
-            pageNum--;
-            queueRenderPage(pageNum);
-        });
-
-        // 下一页
-        document.getElementById('next-page').addEventListener('click', () => {
-            if (pageNum >= pdfDoc.numPages) {
-                return;
-            }
-            pageNum++;
-            queueRenderPage(pageNum);
-        });
-
-
-        /**
-         * 异步加载 PDF
-         */
-        try {
-            pdfDoc = await pdfjsLib.getDocument(url).promise;
-            document.getElementById('page-count').textContent = pdfDoc.numPages;
-            renderPage(pageNum);
-        } catch (error) {
-            console.error('Error loading PDF: ' + error);
-        }
-
-    </script>
-</body>
-</html>
-`)
-  this.pageIndexButton.setTitleForState(this.pageIndex+1,0)
+        // MNUtil.showHUD("snipastePDFDev:"+pageNo)
   if (this.view.hidden) {
-    this.show()
+    await this.show()
   }
+    this.onLoading = true
+    this.webview.loadDataMIMETypeTextEncodingNameBaseURL(pdfData,"application/pdf","UTF-8",undefined)
+    // // await MNUtil.delay(1)
+    // /**
+    //  * @type {UIScrollView}
+    //  */
+    // let scrollview = this.webview.scrollView
+    // let height = scrollview.contentSize.height
+    // let pages = document.pageCount
+    // let pageHeight = height/pages
+    // MNUtil.copy({height:height,pages:pages,pageHeight:pageHeight})
+    // scrollview.setContentOffsetAnimated({x:0,y:pageHeight*(pageNo-1)},false)
+   
+  this.pageIndexButton.setTitleForState(this.pageIndex+1,0)
+
   this.view.setNeedsLayout()
   MNUtil.stopHUD()
 } catch (error) {
@@ -1581,15 +1995,14 @@ try {
  * @param {MNNote} focusNote 
  * @this {snipasteController}
  */
-snipasteController.prototype.snipasteNote = function (focusNote) {
+snipasteController.prototype.snipasteNote = async function (focusNote,audioAutoPlay = false) {
   this.htmlMode = true
-  this.mode = "note"
-  MNUtil.studyView.bringSubviewToFront(this.view)
-  if (!focusNote.excerptText && focusNote.comments.length === 1 && focusNote.comments[0].type === "HtmlNote") {
+  if (snipasteUtils.isPureHTMLComment(focusNote)) {
     let html = focusNote.comments[0].html
     this.snipasteHtml(html)
     return
   }
+  this.mode = "note"
   this.history.push({type:"note",noteId:focusNote.noteId})
   this.focusNoteId = focusNote.noteId
   let title = focusNote.noteTitle?focusNote.noteTitle:"..."
@@ -1607,30 +2020,15 @@ snipasteController.prototype.snipasteNote = function (focusNote) {
     excerpt = `<p class="excerpt"><img width="100%" src="data:image/jpeg;base64,${imageData.base64Encoding()}"/></p>`
   }else if (focusNote.excerptText) {
     if (focusNote.excerptTextMarkdown) {
-      excerpt = MNUtil.md2html(focusNote.excerptText)
+      // excerpt = MNUtil.md2html(focusNote.excerptText)
+      excerpt = snipasteUtils.wrapText(MNUtil.md2html(focusNote.excerptText),"div","markdown")
     }else{
       excerpt = snipasteUtils.wrapText(focusNote.excerptText,"p","excerpt")
     }
   }
-  let noteColorHexes = ["#ffffb4","#ccfdc4","#b4d1fb","#f3aebe","#ffff54","#75fb4c","#55bbf9","#ea3323","#ef8733","#377e47","#173dac","#be3223","#ffffff","#dadada","#b4b4b4","#bd9edc"]
-  let theme = MNUtil.app.currentTheme
-  let textColor = `rgb(0, 0, 0)`
-  let themeHtml = ``
-  if (theme === "Gray") {
-    noteColorHexes = ["#d2d294","#a8d1a1","#94accf","#c88f9d","#d2d244","#5fcf3d","#459acd","#c0281b","#c46f28","#2c683a","#12328e","#9c281c","#d2d2d2","#b4b4b4","#949494","#9c82b5"]
-    themeHtml = `      
-    body{
-      background-color: #414141;
-    }`
-    textColor = `rgb(255, 255, 255)`
-  }else if (theme === "Dark") {
-    noteColorHexes = ["#a0a071","#809f7b","#71839e","#986d77","#a0a032","#479e2c","#33759c","#921c12","#96551c","#204f2c","#0c266c","#771e14","#a0a0a0","#898989","#717171","#77638a"]
-    themeHtml = `      
-    body{
-      background-color: #121212;
-    }`
-    textColor = `rgb(233, 232, 232)`
-  }
+  let CSS = snipasteUtils.getNoteCSS(focusNote)
+  let audioBase64 = ""
+
   let comments = focusNote.comments.map(comment=>{
     try {
       switch (comment.type) {
@@ -1639,7 +2037,7 @@ snipasteController.prototype.snipasteNote = function (focusNote) {
             let noteid = comment.text.split("note/")[1]
             let note = MNNote.new(noteid)
             if (note) {
-              return `<br><a class="link" href="snipaste://${noteid}"> Snipaste </a> <a class="link" href="marginnote3app://note/${noteid}"> Focus </a>${this.getDataFromNote(note)}`
+              return `<div class="linkToNote"><div class="buttonContainer"><a class="link" href="snipaste://${noteid}"> Snipaste </a> <a class="link" href="${note.noteURL}"> Focus </a></div>${this.getDataFromNote(note)}</div>`
             }else{
               return ""
             }
@@ -1665,6 +2063,9 @@ snipasteController.prototype.snipasteNote = function (focusNote) {
             let imageData = MNUtil.getMediaByHash(comment.q_hpic.paint)
             return `<br><img width="100%" src="data:image/jpeg;base64,${imageData.base64Encoding()}"/>`
           }
+        case "AudioNote":
+          audioBase64 = MNUtil.getMediaByHash(comment.audio).base64Encoding()
+          break;
         default:
           return "";
       }
@@ -1673,7 +2074,9 @@ snipasteController.prototype.snipasteNote = function (focusNote) {
       return ""
     }
   }).join("")
-  let noteid  = focusNote.noteId
+  let audioHTML = audioBase64 ? `<div class="audioContainer">
+      <audio id="audioPlayer" controls></audio>
+    </div>`:""
   let excerptHtml = excerpt?excerpt:""
   let html = `
   <html lang="en">
@@ -1682,53 +2085,14 @@ snipasteController.prototype.snipasteNote = function (focusNote) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="https://vip.123pan.cn/1836303614/dl/cdn/mermaid.js" defer></script>
     <style>
-      ${themeHtml}
-      .body {
-        border: 3px solid ${noteColorHexes[focusNote.colorIndex]};
-        border-radius: 10px 10px 10px 10px;
-        font-size: large;
-      }
-      .link {
-        padding-bottom: 5px;
-        white-space: pre-wrap;
-        border-radius: 5px;
-        background-color: ${noteColorHexes[focusNote.colorIndex]};
-      }
-      .head {
-        background-color: ${noteColorHexes[focusNote.colorIndex]};
-        border-radius: 6px 6px 0px 0px;
-        line-height: 30px;
-      }
-      img {
-        width: 100%;
-      }
-      .tail {
-        height: 10px;
-      }
-      .title {
-        padding-left: 10px;
-        padding-bottom: 5px;
-        cursor: grab;
-        -webkit-text-fill-color: ${textColor};
-      }
-      .excerpt {
-        white-space: pre-line;
-        padding-left: 5px;;
-        padding-right: 5px;
-        cursor: grab;
-        -webkit-text-fill-color: ${textColor};
-      }
-      .comment {
-        padding-left: 10px;
-        padding-right: 10px;
-        cursor: grab;
-        -webkit-text-fill-color: ${textColor};
-      }
+      ${CSS}
     </style>
   </head>
 
   <body>
+    ${audioHTML}
     <div class="body">
       <div class="head">
         <div class="title" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', this.innerText)" onclick="copyText(this.innerText)">${title}</div>
@@ -1740,9 +2104,58 @@ snipasteController.prototype.snipasteNote = function (focusNote) {
   <script>
       MathJax = {
           tex: {
-              inlineMath: [ ['$','$'], ["\\(","\\)"] ]
+              inlineMath: [ ['$','$'] ]
           }
       };
+${snipasteUtils.getSubFuncScript()}
+    function replaceLtInLatexBlocks(markdown) {
+        return markdown.replace(/\\$\\$(.*?)\\$\\$/gs, (match, latexContent) => {
+            return '$$' + latexContent.replace(/</g, '\\\\lt') + '$$';
+        });
+    }
+     async function validateMermaid(content,i=0){
+      try {
+        let res = await mermaid.render('mermaid-graph'+i, content)
+        return {valid:true,svg:res.svg}
+      } catch (error) {
+
+        // notyf.error(error.message)
+        return {valid:false,error:error.message}
+      }
+    }
+    async function renderMermaindOneChart(container,i) {
+      container.id = "mermaid-container-"+i
+      let content = replaceLtInLatexBlocks(container.textContent)
+          // content = content.replace(/</g, "\\lt")
+          let res = await validateMermaid(content,i)
+          if (!res.valid) {
+            if(res.error.includes("KaTeX parse error")) {
+              console.log(res.error)
+            }
+            // document.getElementById('mermaid-container').innerHTML = res.error.message
+            // postMessageToAddon("snipaste", "mermaid",undefined, {action: "endRendering",content:content})
+            return
+          }
+          
+          
+            container.innerHTML = res.svg;
+    }
+      async function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+        
+      }
+        async function renderMermaid(){
+        try {
+          const containers = document.getElementsByClassName("language-mermaid");
+          for (let i = 0; i < containers.length; i++) {
+            await renderMermaindOneChart(containers[i],i)
+          }
+        } catch (error) {
+          console.log(error);
+          
+            // postMessageToAddon("snipaste", "mermaid",undefined, {action: "endRendering",content:content})
+        }
+        }
 function copyText(text) {   
  const textarea = document.createElement('textarea');  
  textarea.value = text;  
@@ -1755,21 +2168,160 @@ function copyText(text) {
  textarea.remove();  
  window.location = "snipasteaction://copy"
 }
+
+function exportToPNG() {
+    // 检查 html2canvas 是否已定义，如果未定义则加载
+  if (typeof html2canvas === 'undefined') {
+      console.log('html2canvas 未加载，正在动态加载...');
+      loadHtml2CanvasScript( () => {
+          // 加载完成后执行截图
+          captureScreenshot();
+      });
+  } else {
+      console.log('html2canvas 已加载，直接执行截图。');
+      // 如果已加载，则直接执行截图
+      captureScreenshot();
+  }
+}
+
+async function exportToPDF() {
+    // 检查 html2canvas 是否已定义，如果未定义则加载
+  if (typeof html2canvas === 'undefined') {
+      console.log('html2canvas 未加载，正在动态加载...');
+      loadHtml2CanvasScript( async () => {
+          // 加载完成后执行截图
+          let image = await screenshotToPNGBase64();
+          const pdfBase64 = await convertPngBase64ToPdfBase64(image,true);
+          postMessageToAddon("snipaste","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+      });
+  } else {
+      console.log('html2canvas 已加载，直接执行截图。');
+      // 如果已加载，则直接执行截图
+      let image = await screenshotToPNGBase64()
+      const pdfBase64 = await convertPngBase64ToPdfBase64(image,true);
+      postMessageToAddon("snipaste","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+  }
+}
+
+      // 监听 DOMContentLoaded 事件
+      document.addEventListener('DOMContentLoaded', async function () {
+        // notyf = new Notyf({position: {x: 'center', y: 'top'}, duration: 1000,ripple:false});
+        mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: 'strict'
+        });
+        renderMermaid()
+      })
+    let audioBase64String = "${audioBase64}"
+    if (audioBase64String) {
+      const audioLoaded = false
+      const audioPlayer = document.getElementById('audioPlayer');
+      audioPlayer.src = \`data:audio/x-caf;base64,\` + audioBase64String;
+      audioPlayer.addEventListener('loadedmetadata', () => {
+        audioLoaded = true
+      });
+    }
   </script>
   <script id="MathJax-script" async src="https://vip.123pan.cn/1836303614/dl/cdn/es5/tex-svg-full.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   </body>
-  </html>
-            `
+  </html>`
   // MNUtil.copy(html)
   this.onSnipaste = true
   this.currentHTMLString = html
-  this.webview.loadHTMLStringBaseURL(html)
+  let data = NSData.dataWithStringEncoding(html,4)
+  this.webview.loadDataMIMETypeTextEncodingNameBaseURL(data,"text/html","UTF-8",MNUtil.genNSURL(this.mainPath+"/"))
+
+  // this.webview.loadHTMLStringBaseURL(html)
   // this.webview.context["hide"] = (message)=>{
   //   Application.sharedInstance().showHUD("123", this.view.window, 2);
   // }
   if (this.view.hidden) {
     this.show()
   }
+  if (audioAutoPlay && audioBase64) {
+    MNUtil.delay(0.1).then(()=>{
+      this.audioControl("playOrPause")
+    })
+  }
+}
+snipasteController.prototype.audioControl = function (action) {
+  switch (action) {
+    case "playOrPause":
+      this.runJavaScript(`
+if (audioPlayer.ended) {
+  audioPlayer.currentTime = 0
+  audioPlayer.play()
+}else if (audioPlayer.paused) {
+  audioPlayer.play()
+}else{
+  audioPlayer.pause()
+}`)
+      break;
+    case "toggleMute":
+      this.runJavaScript(`
+if (audioPlayer.muted) {
+  audioPlayer.muted = false
+}else{
+  audioPlayer.muted = true
+}`)
+      break;
+    case "play0.5x":
+      this.runJavaScript(`
+if (audioPlayer.playbackRate === 0.5) {
+  audioPlayer.playbackRate = 1
+}else{
+  audioPlayer.playbackRate = 0.5
+}
+audioPlayer.play()
+`)
+      break;
+    case "play2x":
+      this.runJavaScript(`
+if (audioPlayer.playbackRate === 2) {
+  audioPlayer.playbackRate = 1
+}else{
+  audioPlayer.playbackRate = 2
+}
+audioPlayer.play()
+`)
+      break;
+    case "play3x":
+      this.runJavaScript(`
+if (audioPlayer.playbackRate === 3) {
+  audioPlayer.playbackRate = 1
+}else{
+  audioPlayer.playbackRate = 3
+}
+audioPlayer.play()
+`)
+      break;
+    case "play4x":
+      this.runJavaScript(`
+if (audioPlayer.playbackRate === 4) {
+  audioPlayer.playbackRate = 1
+}else{
+  audioPlayer.playbackRate = 4
+}
+audioPlayer.play()
+`)
+      break;
+    case "forward15s":
+      this.runJavaScript(`
+audioPlayer.currentTime += 15
+audioPlayer.play()
+`)
+      break;
+    case "backward15s":
+      this.runJavaScript(`
+audioPlayer.currentTime -= 15
+audioPlayer.play()
+`)
+      break;
+    default:
+      break;
+  }
+
 }
 snipasteController.prototype.test = function () {
 try {
@@ -1835,7 +2387,7 @@ snipasteController.prototype.showHUD = function (message,duration = 2,view = thi
   MNUtil.showHUD(message,duration,view)
 }
 snipasteController.prototype.show = async function () {
-  let preFrame = this.view.frame
+  let preFrame = this.currentFrame
   let preOpacity = this.view.layer.opacity
   this.view.layer.opacity = 0.2
   this.view.hidden = false
@@ -1884,6 +2436,7 @@ snipasteController.prototype.hide = function () {
     this.view.layer.opacity = preOpacity      
     this.view.frame = preFrame
     this.currentFrame = preFrame
+    this.runJavaScript(`audioPlayer.pause();`)
   })
 }
 snipasteController.prototype.snipasteFromClipboard = function () {
@@ -2006,6 +2559,7 @@ snipasteController.prototype.getDataFromNote = function (note) {
   return "\nEmpty note"
   }
 snipasteController.prototype.snipasteFromImage = function (imageData) {
+// MNConnection.loadFile(this.webview,this.mainPath+"/pngToPDF.html",this.mainPath+"/")
   let base64 = imageData.base64Encoding()
   let html = `<html lang="en">
 <head>
@@ -2019,30 +2573,47 @@ snipasteController.prototype.snipasteFromImage = function (imageData) {
     }
   </style>
 </head>
-<body><img class="body" width="100%" src="data:image/jpeg;base64,${base64}"/></body>
+<body><img class="body" id="png-input" width="100%" src="data:image/jpeg;base64,${base64}"/>
+
+    <script>
+${snipasteUtils.getSubFuncScript()}
+        async function exportToPDF() {
+          let pngBase64 = document.getElementById('png-input').src;
+          const pdfBase64 = await convertPngBase64ToPdfBase64(pngBase64,true);
+          
+          postMessageToAddon("snipaste","downloadpdf",undefined,{"pdfBase64":pdfBase64})
+        }
+    </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</body>
 </html>`
 this.mode = "image"
 try {
+// MNUtil.copy(html)
 this.webview.loadHTMLStringBaseURL(html)
 this.history.push({type:"image",base64:base64,id:MNUtil.MD5(base64)})
 } catch (error) {
-  MNUtil.showHUD(error)
+  snipasteUtils.addErrorLog(error, "snipasteFromImage")
 }
+
 }
 
 /** @this {snipasteController} */
 snipasteController.prototype.runJavaScript = async function(script) {
+  MNUtil.log(script);
   return new Promise((resolve, reject) => {
     try {
       this.webview.evaluateJavaScript(script,(result) => {
         if (MNUtil.isNSNull(result)) {
           resolve(undefined)
         }else{
+          MNUtil.log("Finish:"+result);
+          
           resolve(result)
         }
       });
     } catch (error) {
-      chatAIUtils.addErrorLog(error, "runJavaScript")
+      snipasteUtils.addErrorLog(error, "runJavaScript")
       resolve(undefined)
     }
   })
@@ -2055,8 +2626,92 @@ snipasteController.prototype.hasDocController = function () {
 
 snipasteController.prototype.pageNoFromIndex = function (index) {
   if (this.hasDocController()) {
-    return this.docController.indexFromPageNo(index)
+    return this.docController.pageNoFromIndex(index)
   }
   return index+1
 }
+snipasteController.prototype.indexFromPageNo = function (no) {
+  if (this.hasDocController()) {
+    return this.docController.indexFromPageNo(no)
+  }
+  return no-1
+}
+/** @this {snipasteController} */
+snipasteController.prototype.toPage = async function (pageNo = this.pageNo) {
+    // MNUtil.log("topage:"+pageNo)
+    /**
+     * @type {UIScrollView}
+     */
+    let scrollview = this.webview.scrollView
+    scrollview.id = "pdfScroll"
+    let height = scrollview.contentSize.height
+    let pages = this.pageCount
+    let pageHeight = height/pages
+    scrollview.setContentOffsetAnimated({x:0,y:pageHeight*(pageNo-1)},false)
+    this.pageNo = pageNo
+    if (this.view.hidden) {
+      await this.show()
+    }
+    // let y = scrollview.contentOffset.y
+    // let realPageNo = Math.floor(y/pageHeight)+1
+    // if (realPageNo !== pageNo) {
+    //   MNUtil.showHUD("realPageNo: "+realPageNo+" pageNo: "+pageNo)
+    // }
+    // MNUtil.copy({height:height,pages:pages,pageHeight:pageHeight,toPage:pageNo})
+}
+snipasteController.prototype.downloadPDF = async function (params) {
+try {
 
+  // MNUtil.copy(params.pdfBase64)
+  let pdfData = snipasteUtils.dataFromBase64(params.pdfBase64,"pdf")
+  if (!pdfData) {
+    MNUtil.showHUD("Invalid PDF")
+    return
+  }
+  let fileSize = pdfData.length()/1000000
+  MNUtil.stopHUD()
+  let defaultName = "imported_"+Date.now()+".pdf"
+  if (this.mode === "note") {
+    let note = MNNote.new(this.focusNoteId)
+    if (note.noteTitle) {
+      defaultName = note.noteTitle+".pdf"
+    }
+  }
+  let option = {}
+  let userInput = await MNUtil.input("MN Snipaste","Please input the name of the document\n\n请输入文档名称\n\nDefault: "+defaultName+"\n\nFile Size: "+fileSize.toFixed(2)+"MB",["Cancel",defaultName,"Confirm"])
+  if (userInput.button === 0) {
+    return
+  }
+  if (userInput.button === 1) {
+    option.fileName = defaultName
+  }
+  let input = userInput.text
+  if (input && input.trim()) {
+    if (input.endsWith(".pdf")) {
+      option.fileName = input
+    }else{
+      option.fileName = input+".pdf"
+    }
+  }
+  let md5 = snipasteUtils.importPDFFromData(pdfData,option)
+  // MNUtil.log(md5)
+  if (md5) {
+    MNUtil.openDoc(md5)
+  }
+  
+} catch (error) {
+  snipasteUtils.addErrorLog(error, "downloadPDF")
+}
+}
+
+/**
+ * 
+ * @param {string} title 
+ * @param {number} duration 
+ * @param {UIView} view 
+ */
+snipasteController.prototype.waitHUD = function (title,view = this.view) {
+  MNUtil.waitHUD(title,view)
+}
+/** @type {UIWebView} */
+snipasteController.prototype.webview

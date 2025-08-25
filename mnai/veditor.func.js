@@ -12,6 +12,31 @@ let parsedPdf
 let pageContents = [];
 let pageStructure = []
 let buttonCodeBlockCache = {}
+let buttonPreContent = ""
+
+function getValidJSON(jsonString,debug = false) {
+  try {
+    if (typeof jsonString === "object") {
+      return jsonString
+    }
+    return JSON.parse(jsonString)
+  } catch (error) {
+    try {
+      return JSON.parse(jsonrepair(jsonString))
+    } catch (error) {
+      let errorString = error.toString()
+      try {
+        if (errorString.startsWith("Unexpected character \"{\" at position")) {
+          return JSON.parse(jsonrepair(jsonString+"}"))
+        }
+        return {}
+      } catch (error) {
+        debug && this.addErrorLog(error, "getValidJSON", jsonString)
+        return {}
+      }
+    }
+  }
+}
 /**
  * 
  * @param {string} md 
@@ -58,31 +83,122 @@ function renderKaTeXFormulas(inputStr, katexOptions = {}) {
     }
   });
 }
-
+  /**
+   * 
+   * @param {string} jsonString 
+   * @returns {boolean}
+   */
+  function isValidJSON(jsonString){
+    // return NSJSONSerialization.isValidJSONObject(result)
+     try{
+         var json = JSON.parse(jsonString);
+         if (json && typeof json === "object") {
+             return true;
+         }
+     }catch(e){
+         return false;
+     }
+     return false;
+  }
 function clearCache() {
   buttonCodeBlockCache = {}
+  buttonPreContent = ""
 }
+/**
+ * 
+ * @param {string} code 
+ * @returns 
+ */
+function getChoiceBlock(code) {
+  let url = `userselect://choice?content=${encodeURIComponent(code)}`
+  let tem = code.split(". ")
+  let backgroundColor = (theme === "dark") ? "rgba(213, 233, 255, 0.8)" : "rgba(194, 232, 255, 0.8)"
+  let borderColor = (theme === "dark") ? "rgb(222, 226, 230)" : "rgb(193, 198, 202)"
+  if (tem.length > 1 && tem[0].trim().length === 1) {
+    
+  return `<div style="margin-top: 5px;">
+    <a href="${url}" style="display: block; padding: 16px 16px; color:rgb(42, 48, 55); border-radius: 12px; text-decoration: none; border: 2px solid ${borderColor}; background:${backgroundColor}; font-size: 16px; cursor: pointer; box-sizing: border-box; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative;">
+      <span style="display: inline-block; width: 26px; height: 26px; background: #2196f3; color: white; border-radius: 50%; text-align: center; line-height: 26px; font-weight: 600; font-size: 13px; margin-right: 12px; vertical-align: middle;">
+      ${tem[0]}
+      </span>
+      <span style="vertical-align: middle;">${tem.slice(1).join(". ")}</span>
+  </a>
+  </div>`
+  }
+  return `<div style="margin-top: 5px;">
+    <a href="${url}" style="display: block; padding: 16px 20px; color:rgb(42, 48, 55); border-radius: 12px; text-decoration: none; border: 2px solid #dee2e6; background: ${backgroundColor}; font-size: 15px; cursor: pointer; box-sizing: border-box; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative;">
+      <span style="vertical-align: middle;">${code}</span>
+  </a>
+  </div>`
+}
+/**
+ * 
+ * @param {string} code 
+ */
+function getQustionBlock(code) {
+  // if (code.endsWith("...")) {
+  //   //去除末尾的...
+  //   code = code.slice(0, -3)
+  // }
+  let config = getValidJSON(code)
+  // console.log(config);
+  let keys = Object.keys(config)
+      if (keys.length === 0) {
+        return undefined
+      }
+      if (keys.length === 1 && keys[0] === "...") {
+        return undefined
+      }
+    let encodedContent = encodeURIComponent(code);
+      let createNoteURL = `userselect://addnote?content=${encodedContent}&type=choiceQuestion`
+      
+      let choices = []
+      if ("choices" in config) {
+        choices = config.choices.map(choice => { 
+          return getChoiceBlock(choice)
+        })
+      }
+      let titleHTML = ""
+      if ("title" in config) {
+        let titleColor = (theme === "dark") ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)"
+        titleHTML = `<h1 style="color: ${titleColor}; margin: 10px 0 10px 0; font-size: 24px; font-weight: 600;">${config.title}</h1>`
+      }
+      let descriptionHTML = ""
+      if ("description" in config) {
+        let descriptionColor = (theme === "dark") ? "rgb(221, 221, 221)" : "rgb(22, 44, 66)"
+        descriptionHTML = `<p style="color: ${descriptionColor}; margin: 10px 0 10px 0; font-size: 16px;">${config.description}</p>`
+      }
+      let backgroundColor = (theme === "dark") ? "rgba(133, 149, 159, 0.4)" : "rgba(233, 246, 255, 0.8)"
+      let borderColor = (theme === "dark") ? "rgba(124, 141, 152, 0.4)" : "rgba(125, 140, 154, 0.8)"
+      let newNoteButtonTextColor = (theme === "dark") ? "rgb(1, 71, 176)" : "rgb(1, 71, 176)"
+      let newNoteButtonBackgroundColor = (theme === "dark") ? "rgba(213, 233, 255, 0.8)" : "rgba(13, 110, 253, 0.08)"
+      let newNoteButtonBorderColor = (theme === "dark") ? "rgba(192, 217, 255, 0.47)" : "rgba(13, 110, 253, 0.15)"
+      let questionHTML = `<div style="background: ${backgroundColor}; box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);  width: calc(100% - 20px);  border-radius: 16px; padding: 5px; margin: 3px; border: 1px solid ${borderColor}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <div style="text-align: right; margin-top: 1px; margin-bottom: 2px;">
+        <div style="display: inline-block; font-weight: 600; width: 105px; font-size: 14px; text-align: center; padding: 8px 5px; background: ${newNoteButtonBackgroundColor}; border-radius: 12px; border: 1px solid ${newNoteButtonBorderColor};">
+            <a href="${createNoteURL}" style="text-decoration: none; color: ${newNoteButtonTextColor}; display: block;">
+               ➕ 点击创建卡片
+            </a>
+        </div>
+    </div>
+      <div style="text-decoration: none; text-align: center; margin-bottom: 15px; margin-top: 15px;">
+          ${titleHTML}
+          ${descriptionHTML}
+      </div>
+      ${choices.join("")}
+  </div>`
+      return questionHTML
+    }
 function codeBlockReplacer(lang,format,code){
+    if (lang === "choiceQuestion") {
+      return getQustionBlock(code)
+    }
     let encodedContent = encodeURIComponent(code);
     if (lang === "userSelect") {
       let url = `userselect://choice?content=${encodedContent}`
       code = renderKaTeXFormulas(code)
       // code = md2html(code)
-      return `<div><a href="${url}" style="
-    display: block;
-    padding: 10px 12px;
-    margin-top: 10px;
-    background: #e3eefc;
-    color: #1565c0;
-    border-radius: 8px;
-    text-decoration: none;
-    border: 2px solid transparent;
-    border-color: #90caf9;
-    font-size: 15px;
-    cursor: pointer;
-    box-sizing: border-box;
-"
->
+      return `<div><a href="${url}" style="display: block; padding: 10px 12px; margin-top: 10px; background: #e3eefc; color: #1565c0; border-radius: 8px; text-decoration: none; border: 2px solid transparent; border-color: #90caf9; font-size: 15px; cursor: pointer; box-sizing: border-box;">
 ${code.trim()}
 </a></div>`
     }
@@ -95,21 +211,7 @@ ${code.trim()}
         url = `userselect://addnote?content=${encodedContent}&format=markdown`
         code = md2html(code)
       }
-      return `<div><a href="${url}" style="
-    display: block;
-    padding: 10px 12px;
-    margin-top: 10px;
-    background:rgb(230, 255, 239);
-    color:#237427;
-    border-radius: 8px;
-    text-decoration: none;
-    border: 2px solid transparent;
-    border-color:#01b76e;
-    font-size: 15px;
-    cursor: pointer;
-    box-sizing: border-box;
-"
->
+      return `<div><a href="${url}" style="display: block; padding: 10px 12px; margin-top: 10px; background:rgb(230, 255, 239); color:#237427; border-radius: 8px; text-decoration: none; border: 2px solid transparent; border-color:#01b76e; font-size: 15px; cursor: pointer; box-sizing: border-box;">
 <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击创建笔记：</div>
 ${code.trim()}
 </a></div>`
@@ -120,21 +222,7 @@ ${code.trim()}
         url = `userselect://addnote?content=${encodedContent}&format=markdown`
         code = md2html(code)
       }
-      return `<div><a href="${url}" style="
-    display: block;
-    padding: 10px 12px;
-    margin-top: 10px;
-    background:rgb(230, 255, 239);
-    color:#237427;
-    border-radius: 8px;
-    text-decoration: none;
-    border: 2px solid transparent;
-    border-color:#01b76e;
-    font-size: 15px;
-    cursor: pointer;
-    box-sizing: border-box;
-"
->
+      return `<div><a href="${url}" style="display: block; padding: 10px 12px; margin-top: 10px; background:rgb(230, 255, 239); color:#237427; border-radius: 8px; text-decoration: none; border: 2px solid transparent; border-color:#01b76e; font-size: 15px; cursor: pointer; box-sizing: border-box;">
 <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击添加卡片评论：</div>
 ${code.trim()}
 </a></div>`
@@ -149,7 +237,7 @@ ${code.trim()}
 function replaceSpecialBlocks(markdown) {
   // const blocks = [];
   // 正则：匹配```userSelect 或 ```addNote 开头，直到下一个```
-const pattern = /```(userSelect|addNote|addComment)\s*(plaintext|markdown|json)?\n([\s\S]*?)```/g;
+const pattern = /```(userSelect|addNote|addComment|choiceQuestion)\s*(plaintext|markdown|json)?\n([\s\S]*?)```/g;
 const newMarkdown = markdown.replace(pattern, (match, lang, format, code) => {
     // blocks.push(code);
     if (match in buttonCodeBlockCache) {
@@ -165,85 +253,42 @@ const newMarkdown = markdown.replace(pattern, (match, lang, format, code) => {
   });
   return newMarkdown;
 }
+/**
+ * 匹配开头为 ``` 的代码块，但结尾不是 ``` 的代码块，并替换成指定内容
+ * 不参与缓存检测
+ * @param {string} markdown - 原始markdown
+ * @returns {string} 
+ */
+function replaceSpecialBlocksNotEndingWithBacktick(markdown) {
+  // const blocks = [];
+  // 正则：匹配```userSelect 或 ```addNote 开头，直到下一个```
+const pattern = /```(userSelect|addNote|addComment|choiceQuestion)\s*(plaintext|markdown|json)?\n([\s\S]*?)$/g;
+const newMarkdown = markdown.replace(pattern, (match, lang, format, code) => {
+    let res = codeBlockReplacer(lang,format,code)
+    if (res) {
+      buttonPreContent = res
+    }else{
+      if (buttonPreContent) {
+        return buttonPreContent
+      }
+      return ""
+    }
+    return res
+  });
+  return newMarkdown;
+}
+/**
+ * 
+ * @param {string} markdown 
+ * @returns 
+ */
 function replaceButtonCodeBlocks(markdown) {
-//   let replacer = (lang,format,code) => {
-//     let encodedContent = encodeURIComponent(code);
-//     if (lang === "userSelect") {
-//       let url = `userselect://choice?content=${encodedContent}`
-//       return `<div><a href="${url}" style="
-//     display: block;
-//     padding: 10px 12px;
-//     margin-top: 10px;
-//     background: #e3eefc;
-//     color: #1565c0;
-//     border-radius: 8px;
-//     text-decoration: none;
-//     border: 2px solid transparent;
-//     border-color: #90caf9;
-//     font-size: 15px;
-//     cursor: pointer;
-//     box-sizing: border-box;
-// "
-// >
-// ${code.trim()}
-// </a></div>`
-//     }
-//     if (lang === "addNote") {
-//       // console.log("addNote");
-//       let url = `userselect://addnote?content=${encodedContent}`
-//       if (format === "markdown") {
-//         // console.log("markdown");
-        
-//         url = `userselect://addnote?content=${encodedContent}&format=markdown`
-//         code = md2html(code)
-//       }
-//       return `<div><a href="${url}" style="
-//     display: block;
-//     padding: 10px 12px;
-//     margin-top: 10px;
-//     background:rgb(230, 255, 239);
-//     color:#237427;
-//     border-radius: 8px;
-//     text-decoration: none;
-//     border: 2px solid transparent;
-//     border-color:#01b76e;
-//     font-size: 15px;
-//     cursor: pointer;
-//     box-sizing: border-box;
-// "
-// >
-// <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击创建笔记：</div>
-// ${code.trim()}
-// </a></div>`
-//   }
-//     if (lang === "addComment") {
-//       let url = `userselect://addcomment?content=${encodedContent}`
-//       if (format === "markdown") {
-//         url = `userselect://addnote?content=${encodedContent}&format=markdown`
-//         code = md2html(code)
-//       }
-//       return `<div><a href="${url}" style="
-//     display: block;
-//     padding: 10px 12px;
-//     margin-top: 10px;
-//     background:rgb(230, 255, 239);
-//     color:#237427;
-//     border-radius: 8px;
-//     text-decoration: none;
-//     border: 2px solid transparent;
-//     border-color:#01b76e;
-//     font-size: 15px;
-//     cursor: pointer;
-//     box-sizing: border-box;
-// "
-// >
-// <div style="font-weight: bold;margin-bottom: 5px;font-size: 18px;">➕点击添加卡片评论：</div>
-// ${code.trim()}
-// </a></div>`
-//   }
-//   return ""
-// }
-  return replaceSpecialBlocks(markdown)
+  let res = replaceSpecialBlocks(markdown)
+  res = replaceSpecialBlocksNotEndingWithBacktick(res)
+  if (!res) {
+    return ""
+  }
+  return res
 }
 
 
@@ -628,7 +673,7 @@ function triggerKey(key,code,keyCode,metaKey=false,shiftKey=false,altKey=false) 
   document.getElementsByClassName("vditor-reset")[0].dispatchEvent(event)
 }
 function copyToClipboard(text) {
-  notyf.success("Text copied")
+  // notyf.success("Text copied")
   window.location.href = "nativeCopy://content="+encodeURIComponent(text);
 }
 function copyReasoningContent(header) {

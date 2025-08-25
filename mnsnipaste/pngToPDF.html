@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PNG 转 PDF (带Base64 API)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: #333; }
+        .container {
+            max-width: 600px;
+            text-align: center;
+        }
+        input[type="file"] { margin: 20px 0; }
+        button {
+            padding: 10px 20px; font-size: 16px; cursor: pointer;
+            background-color: #007BFF; color: white; border: none;
+            border-radius: 5px; transition: background-color 0.3s;
+        }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        #imagePreview {
+            max-width: 300px; max-height: 300px; margin-top: 20px;
+            border: 1px solid #ddd; display: none;
+        }
+        #result { margin-top: 20px; }
+        #result a {
+             display: inline-block; padding: 10px 20px; background-color: #28a745;
+             color: white; text-decoration: none; border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>PNG 转 PDF 工具</h1>
+        <p>此示例演示了如何调用一个Base64转换函数来生成PDF。</p>
+
+        <input type="file" id="png-input" accept="image/png">
+        <button id="convert-btn" disabled>请先选择一个PNG文件</button>
+
+        <img id="imagePreview" src="" alt="Image Preview"/>
+
+        <div id="result"></div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+/**
+ * 根据指定的 scheme、host、path、query 和 fragment 生成一个完整的 URL Scheme 字符串。
+ * URL Scheme 完整格式：scheme://host/path?query#fragment
+ *
+ * @param {string} scheme - URL scheme，例如 'myapp'。必须提供。
+ * @param {string|undefined} [host] - host 部分，例如 'user_profile'。
+ * @param {string|string[]|undefined} [path] - path 部分，例如 'view/123'。
+ * @param {Object<string, string|number|boolean|object>|undefined} [query] - 查询参数对象。
+ * @param {string|undefined} [fragment] - fragment 标识符，即 URL 中 # 后面的部分。
+ * @returns {string} - 生成的完整 URL 字符串。
+ */
+function generateUrlScheme(scheme, host, path, query, fragment) {
+  // 1. 处理必须的 scheme
+  if (!scheme) {
+    console.error("Scheme is a required parameter.");
+    return '';
+  }
+  // 2. 构建基础部分：scheme 和 host
+  //    即使 host 为空，也会生成 'scheme://'，这对于 'file:///' 这类 scheme 是正确的
+  let url = `${scheme}://${host || ''}`;
+
+  // 3. 添加 path
+  if (path) {
+    if (Array.isArray(path)) {
+      let pathStr = path.join('/')
+      url += `/${pathStr.replace(/^\/+/, '')}`;
+    }else{
+      // 确保 host 和 path 之间只有一个斜杠，并处理 path 开头可能存在的斜杠
+      url += `/${path.replace(/^\/+/, '')}`;
+    }
+  }
+
+  // 4. 添加 query 参数
+  if (query && Object.keys(query).length > 0) {
+    const queryParts = [];
+    for (const key in query) {
+      // 确保我们只处理对象自身的属性
+      if (Object.prototype.hasOwnProperty.call(query, key)) {
+        const value = query[key];
+        const encodedKey = encodeURIComponent(key);
+        // 对值进行编码，如果是对象，则先序列化为 JSON 字符串
+        const encodedValue = encodeURIComponent(
+          typeof value === "object" && value !== null ? JSON.stringify(value) : value
+        );
+        queryParts.push(`${encodedKey}=${encodedValue}`);
+      }
+    }
+    if (queryParts.length > 0) {
+      url += `?${queryParts.join('&')}`;
+    }
+  }
+
+  // 5. 添加 fragment
+  if (fragment) {
+    // Fragment 部分不应该被编码
+    url += `#${fragment}`;
+  }
+
+  return url;
+}
+    /**
+     *
+     * @param {string} scheme - URL scheme, 例如 'myapp'。
+     * @param {string} [host] - 可选的路径或操作名。
+     * @param {Object<string, string|number|boolean>} [params] - 查询参数对象。
+     */
+    function postMessageToAddon(scheme, host, params) {
+      let url = generateUrlScheme(scheme,host,undefined,params)
+      window.location.href = url
+    }
+        // ===================================================================
+        // 核心 API 函数
+        // ===================================================================
+        /**
+         * 将 PNG 的 Base64 字符串异步转换为 PDF 的 Base64 字符串。
+         * @param {string} pngBase64 - PNG 图片的 Base64 字符串 (可以包含 "data:image/png;base64," 前缀，也可以不包含)。
+         * @returns {Promise<string>} - 一个解析为 PDF Base64 字符串的 Promise。
+         */
+        async function convertPngBase64ToPdfBase64(pngBase64) {
+            const { jsPDF } = window.jspdf;
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                let imgData = pngBase64;
+                if (!pngBase64.startsWith('data:image/png;base64,')) {
+                    imgData = 'data:image/png;base64,' + pngBase64;
+                }
+                img.src = imgData;
+                img.onload = function() {
+                    try {
+                        const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+                        const a4Width = 595.28, a4Height = 841.89;
+                        const imgWidth = this.width, imgHeight = this.height;
+                        let pdfImgWidth = imgWidth, pdfImgHeight = imgHeight;
+                        const margin = 20;
+                        if (pdfImgWidth > a4Width - margin * 2) {
+                            pdfImgWidth = a4Width - margin * 2;
+                            pdfImgHeight = (imgHeight / imgWidth) * pdfImgWidth;
+                        }
+                        if (pdfImgHeight > a4Height - margin * 2) {
+                            pdfImgHeight = a4Height - margin * 2;
+                            pdfImgWidth = (imgWidth / imgHeight) * pdfImgHeight;
+                        }
+                        const x = (a4Width - pdfImgWidth) / 2;
+                        const y = (a4Height - pdfImgHeight) / 2;
+                        pdf.addImage(imgData, 'PNG', x, y, pdfImgWidth, pdfImgHeight);
+                        const pdfDataUri = pdf.output('datauristring');
+                        const pdfBase64 = pdfDataUri.split(',')[1];
+                        resolve(pdfBase64);
+                    } catch (error) { reject(error); }
+                };
+                img.onerror = (err) => reject(new Error("无法加载Base64图片，请检查格式。"));
+            });
+        }
+        async function pngToPDF(pngBase64Encoded) {
+          let pngBase64 = decodeURIComponent(pngBase64Encoded);
+          const pdfBase64 = await convertPngBase64ToPdfBase64(pngBase64);
+          // postMessageToAddon("snipaste","downloadpdf",{"pdf":pdfBase64})
+          postMessageToAddon("snipaste","downloadpdf",{"pdfBase64":pdfBase64})
+        }
+
+        // ===================================================================
+        // 页面交互逻辑 (API 调用示例)
+        // ===================================================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const pngInput = document.getElementById('png-input');
+            const convertBtn = document.getElementById('convert-btn');
+            const imagePreview = document.getElementById('imagePreview');
+            const resultDiv = document.getElementById('result');
+            let pngDataUrl = null;
+
+            pngInput.addEventListener('change', function(event) {
+                resultDiv.innerHTML = ''; // 清空上次的结果
+                if (event.target.files && event.target.files[0]) {
+                    const file = event.target.files[0];
+                    if (file.type === "image/png") {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            pngDataUrl = e.target.result; // 这是带前缀的 Data URL
+                            imagePreview.src = pngDataUrl;
+                            imagePreview.style.display = 'block';
+                            convertBtn.disabled = false;
+                            convertBtn.textContent = '转换为PDF';
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        alert("请选择一个PNG格式的图片文件！");
+                        // ... (重置UI状态)
+                    }
+                }
+            });
+
+            convertBtn.addEventListener('click', async function () {
+                if (!pngDataUrl) {
+                    alert("没有图片数据！");
+                    return;
+                }
+                
+                try {
+                    console.log("开始转换...");
+                    convertBtn.disabled = true;
+                    convertBtn.textContent = '转换中...';
+
+                    // 调用核心 API 函数
+                    const pdfBase64 = await convertPngBase64ToPdfBase64(pngDataUrl);
+                    postMessageToAddon("snipaste","downloadpdf",{"pdfBase64":pdfBase64})
+                    
+                    // console.log("转换成功！得到的 PDF Base64 编码如下：");
+                    // console.log(pdfBase64);
+
+                    // // 为了演示，我们创建一个下载链接
+                    // const downloadLink = document.createElement('a');
+                    // downloadLink.href = 'data:application/pdf;base64,' + pdfBase64;
+                    // downloadLink.download = 'converted.pdf';
+                    // downloadLink.textContent = '下载生成的PDF';
+
+                    // resultDiv.innerHTML = ''; // 清空
+                    // resultDiv.appendChild(downloadLink);
+
+                } catch (error) {
+                    console.error("转换失败:", error);
+                    alert("转换失败: " + error.message);
+                } finally {
+                    convertBtn.disabled = false;
+                    convertBtn.textContent = '再次转换';
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>

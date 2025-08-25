@@ -18,6 +18,7 @@
   <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script> -->
   <link rel="stylesheet" href="veditor.css" />
   <script src="marked.js"></script>
+  <script src="jsonrepair.js"></script>
   <!-- <script src="https://unpkg.com/vditor/dist/index.min.js"></script> -->
   <!-- <script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" defer></script> -->
   <script src="katex.min.js"></script>
@@ -87,14 +88,19 @@
     <div id="vditor"></div>
 <script>
 
+let selectingText = ""
+let selectingTime = 0
 let editor
+let theme = "light"
+
 let preContent = `I'm thinking...`
 let preHtml = ""
 let preFunc = ""
 let preReasoning = ""
 let reasoningBegin
+
 let option = {
-      theme:"light",
+      theme:theme,
       math:{
         engine:"MathJax",
         mathJaxOptions:{
@@ -122,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
       cache: {
         enable: false,
       },
-      theme:"light",
+      theme:theme,
       preview:{
         math:{
           engine:"MathJax",

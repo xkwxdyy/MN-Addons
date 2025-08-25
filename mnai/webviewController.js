@@ -364,6 +364,7 @@ var chatglmController = JSB.defineClass('chatglmController : UIViewController', 
         return
       }
     let content = await self.getWebviewContent()
+    let customButton = JSON.parse(content)
     chatAIConfig.config.customButton = customButton
     chatAIConfig.save("MNChatglm_config")
     self.showHUD("Save Custom Buttons")
@@ -2618,6 +2619,7 @@ chatglmController.prototype.settingViewLayout = function (){
       this.allowEditButton.frame = MNUtil.genFrame(5,45,350,35)
       this.windowLocationButton.frame = MNUtil.genFrame(5,85,350,35)
       this.autoThemeButton.frame = MNUtil.genFrame(5,125,350,35)
+      this.pdfExtractModeButton.frame = MNUtil.genFrame(5,165,350,35)
       // configView
       this.scrollview.frame = {x:5,y:5,width:350,height:height-75}
       // this.scrollview.contentSize = {width:350,height:height};
@@ -2744,11 +2746,11 @@ chatglmController.prototype.settingViewLayout = function (){
     settingFrame.width = this.customButtonTab.width
     this.customButtonTab.frame = settingFrame
     settingFrame.x = settingFrame.x + settingFrame.width + 5
-    settingFrame.width = this.triggerButton.width
-    this.triggerButton.frame = settingFrame
-    settingFrame.x = settingFrame.x + settingFrame.width + 5
     settingFrame.width = this.syncConfig.width
     this.syncConfig.frame = settingFrame
+    settingFrame.x = settingFrame.x + settingFrame.width + 5
+    settingFrame.width = this.triggerButton.width
+    this.triggerButton.frame = settingFrame
     settingFrame.x = settingFrame.x + settingFrame.width + 5
     settingFrame.width = this.advancedButton.width
     // this.advancedButton.hidden = this.view.bounds.width < 360

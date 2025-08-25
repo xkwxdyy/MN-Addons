@@ -104,7 +104,7 @@ try {
     self.refreshCustomButton()
 
     self.createButton("aiButton")
-    self.aiButton.setImageForState(self.aiImage,0)
+    self.aiButton.setImageForState(chatAIConfig.aiFreeImage,0)
     self.aiButton.backgroundColor = MNUtil.hexColorAlpha("#ffffff",0.8)
 
     self.resizeGesture = new UIPanGestureRecognizer(self,"onResizeGesture:")
@@ -622,6 +622,14 @@ try {
           }
           break;
         case "addnote":
+          // MNUtil.copy(config)
+          let type = ("type" in config.params) ? config.params.type : "plainText"
+          if (type === "choiceQuestion") {
+            // MNUtil.showHUD("Create note")
+            let content = config.params.content
+            self.userSelectAddNote(content,"json")
+            return false
+          }
           if ("content" in config.params) {
             let content = config.params.content
             self.userSelectAddNote(content,config.params.format)
@@ -963,6 +971,13 @@ notificationController.prototype.preCheck = function () {
   return chatAIUtils.preCheck()
 }
 
+notificationController.prototype.updateAIButton = function () {
+  if (this.noteid) {
+    this.aiButton.setImageForState(chatAIConfig.aiBindImage,0)
+  }else{
+    this.aiButton.setImageForState(chatAIConfig.aiFreeImage,0)
+  }
+}
 /**
  * Base method to initiate an AI request.
  * 
@@ -996,6 +1011,7 @@ try {
   }else{
     this.temperature = config.temperature ?? 0.8
   }
+  this.updateAIButton()
   this.source = config.source
   let request
   switch (config.source) {
@@ -1869,16 +1885,17 @@ notificationController.prototype.beginNotification = async function (promptName)
     //   chatAIUtils.forceToRefresh = false
     // }
     await MNUtil.delay(0.01)
-    this.checkTheme()
+    // this.checkTheme()
     this.setNewResponse()
-    MNUtil.delay(0.1).then(()=>{
-      this.changeTheme(this.theme)
-    })
+    // MNUtil.delay(0.1).then(()=>{
+    //   this.changeTheme(this.theme)
+    // })
     await MNUtil.delay(0.01)
     if (!this.view.hidden) {
       this.setNotiLayout(120)
     }
     this.webviewResponse.hidden = false
+
     try {
     if (promptName) {
       this.promptButton.setTitleForState(promptName ,0)
@@ -2108,6 +2125,7 @@ notificationController.prototype.createWebviewResponse = function () {
     NSURL.fileURLWithPath(chatAIConfig.mainPath + '/')
   );
   this.view.addSubview(this.webviewResponse)
+
     } catch (error) {
     chatAIUtils.addErrorLog(error, "createWebviewResponse")
   }
@@ -2831,6 +2849,20 @@ try {
       case "editMode":
         this.showHUD("Edit mode")
         this.runJavaScript(`openEdit(true)`)
+        return
+      case "bindNote":
+        if (this.noteid) {
+          this.noteid = undefined
+          this.showHUD("❌ Bind note")
+        }else{
+          this.noteid = chatAIUtils.getFocusNote()?.noteId
+          if (this.noteid) {
+            this.showHUD("✅ Bind note")
+          }else{
+            this.showHUD("❌ Bind note failed")
+          }
+        }
+        this.updateAIButton()
         return
       case "stopOutput":
         if (this.connection) {
@@ -3589,20 +3621,38 @@ notificationController.prototype.currentNote = async function (allowSelection = 
     note = note?.realGroupNoteForTopicId()
     return note
 }
-/** @this {notificationController} */
+
+/**
+ * @this {notificationController}
+ * @param {string|object} content 
+ * @param {string} format 
+ * @returns 
+ */
 notificationController.prototype.userSelectAddNote = async function (content,format) {
+try {
+    // MNUtil.copy(format)
+    if (format === "json") {
+      this.showHUD("➕ Add Question note")
+      let title = content.title
+      let description = content.description+"\n\n"+chatAIUtils.getChoicesHTML(content.choices)
+      // let choices = content.choices
+      let note = MNNote.new(this.noteid)??chatAIUtils.getFocusNote()
+      let childNote = note.createChildNote({title:title,excerptText:description,excerptTextMarkdown:true})
+      childNote.focusInMindMap(1.5)
+      return
+    }
     content = content.replace(/\\n/g,"\n")
     let selectingText = await this.getWebviewSelection()
     if (!selectingText && (Date.now()-this.selection.time < 5000)) {
       selectingText = this.selection.text
     }
     // let selectingText = await this.getWebviewContent()
-    this.showHUD("➕ Add note: "+content)
     let note = MNNote.new(this.noteid)??chatAIUtils.getFocusNote()
     if (selectingText) {
       content = content+"\n\n"+selectingText
     }
     if (format === "markdown" && /^#/.test(content.trim())) {
+      this.showHUD("➕ Add note: "+content)
         let contents = content.split("\n")
         let newTitle = contents[0].replace(/^#\s?/g,"")
         let contentRemain = contents.slice(1).join("\n").trim()
@@ -3610,8 +3660,13 @@ notificationController.prototype.userSelectAddNote = async function (content,for
         childNote.focusInMindMap(0.5)
         return
     }
+
     let childNote = note.createChildNote({excerptText:content,excerptTextMarkdown:true})
     childNote.focusInMindMap(0.5)
+      
+} catch (error) {
+  chatAIUtils.addErrorLog(error, "notificationController.userSelectAddNote", content,format)
+}
 }
 notificationController.prototype.showErrorMessage = function (errorMessage) {
     if (errorMessage.info.source === "Subscription") {

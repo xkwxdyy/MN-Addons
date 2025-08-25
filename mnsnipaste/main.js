@@ -26,6 +26,11 @@ JSB.newAddon = function (mainPath) {
         MNUtil.addObserver(self, 'OnReceivedSnipasteImage:', 'snipasteImage');
         MNUtil.addObserver(self, 'OnReceivedSnipastePDF:', 'snipastePDF');
         MNUtil.addObserver(self, 'OnReceivedSnipasteHtml:', 'snipasteHtml');
+        MNUtil.addObserver(self, 'OnReceivedSnipasteMermaid:', 'snipasteMermaid');
+        MNUtil.addObserver(self, 'OnReceivedAudioAction:', 'snipasteAudioAction');
+        MNUtil.addObserver(self, 'onPopupMenuOnSelection:', 'PopupMenuOnSelection')
+        MNUtil.addObserver(self, 'onPopupMenuOnNote:', 'PopupMenuOnNote');
+
         // NSNotificationCenter.defaultCenter().addObserverSelectorName(self, 'trst:', 'onReciveTrst');
         // NSNotificationCenter.defaultCenter().addObserverSelectorName(self, 'onClosePopupMenuOnSelection:', 'ClosePopupMenuOnSelection');
       },
@@ -35,6 +40,9 @@ JSB.newAddon = function (mainPath) {
         MNUtil.removeObserver(self, "snipasteImage")
         MNUtil.removeObserver(self, "snipastePDF")
         MNUtil.removeObserver(self, "snipasteHtml")
+        MNUtil.removeObserver(self, "snipasteMermaid")
+        MNUtil.removeObserver(self, "snipasteNote")
+        MNUtil.removeObserver(self, "snipasteImage")
       },
 
       sceneWillResignActive: function () { // Window resign active
@@ -57,9 +65,6 @@ JSB.newAddon = function (mainPath) {
           self.addonController.webview.frame = { x: 50, y: 10, width: 500, height: 500 }
           self.addonController.currentFrame = { x: 50, y: 10, width: 500, height: 500 }
           self.customLayoutAddonController();
-          MNUtil.delay(0.2).then(()=>{
-            MNUtil.studyView.becomeFirstResponder()//For dismiss keyboard on iOS
-          })
         }
         // if (dynamic !== undefined) {
         //   self.addonController.dynamic = dynamic
@@ -68,7 +73,7 @@ JSB.newAddon = function (mainPath) {
           self.addonController.view.hidden = false
         }
         } catch (error) {
-          MNUtil.showHUD(error)
+          snipasteUtils.addErrorLog(error, "notebookWillOpen")
         }
       },
 
@@ -105,7 +110,7 @@ JSB.newAddon = function (mainPath) {
             }
           } else if (self.addonController.custom) {
             let height = studyFrame.height-10;
-            let splitLine = getSplitLine()
+            let splitLine = MNUtil.splitLine
             switch (self.addonController.customMode) {
               case "left":
                 self.addonController.view.frame = { x: 40, y: 10, width: splitLine - 45, height: height }
@@ -128,14 +133,19 @@ JSB.newAddon = function (mainPath) {
             self.addonController.webview.frame = self.addonController.view.bounds
           }else{
             let currentFrame = self.addonController.currentFrame
+            currentFrame.width = MNUtil.constrain(currentFrame.width, 300, studyFrame.width)
+            currentFrame.height = MNUtil.constrain(currentFrame.height, 200, studyFrame.height)
             if (currentFrame.x+currentFrame.width*0.5 >= studyFrame.width) {
               currentFrame.x = studyFrame.width-currentFrame.width*0.5              
             }
             if (currentFrame.y >= studyFrame.height) {
               currentFrame.y = studyFrame.height-20              
             }
+            // MNUtil.copy(currentFrame)
+            MNUtil.log(currentFrame.width)
             self.addonController.view.frame = currentFrame
             self.addonController.currentFrame = currentFrame
+            // MNUtil.copy(currentFrame)
           }
         }
       },
@@ -162,7 +172,7 @@ JSB.newAddon = function (mainPath) {
         }
         let userInfo = sender.userInfo
         self.addonController.pageIndex = 0
-        self.addonController.snipastePDF(userInfo.docMd5,userInfo.currPageNo)
+        self.addonController.snipastePDFDev(userInfo.docMd5,userInfo.currPageNo)
       },
       OnReceivedSnipasteHtml: function (sender) {
         if (typeof MNUtil === 'undefined') return
@@ -171,17 +181,41 @@ JSB.newAddon = function (mainPath) {
         }
         let html = sender.userInfo.html
         let force = sender.userInfo.force
+        // MNUtil.copy(html)
         self.addonController.snipasteHtml(html,force)
+      },
+      OnReceivedSnipasteMermaid: function (sender) {
+        if (typeof MNUtil === 'undefined') return
+        if (self.window!==MNUtil.currentWindow) {
+          return
+        }
+        let content = sender.userInfo.content
+        let force = sender.userInfo.force
+        self.addonController.snipasteMermaid(content,force)
+      },
+      OnReceivedAudioAction: function (sender) {
+        if (typeof MNUtil === 'undefined') return
+        if (self.window!==MNUtil.currentWindow) {
+          return
+        }
+        let action = sender.userInfo.action
+        self.addonController.audioControl(action)
+        // MNUtil.showHUD("OnReceivedAudioAction")
       },
       OnReceivedSnipasteNote: function (sender) {
         if (typeof MNUtil === 'undefined') return
         if (self.window!==MNUtil.currentWindow) {
           return
         }
+        let userInfo = sender.userInfo
         // showHUD("snipaste")
         // Application.sharedInstance().showHUD(sender.userInfo.noteid,self.window,5)
         let focusNote = MNNote.new(sender.userInfo.noteid)
-        self.addonController.snipasteNote(focusNote)
+        if ("audioAutoPlay" in userInfo) {
+          self.addonController.snipasteNote(focusNote,true)
+        }else{
+          self.addonController.snipasteNote(focusNote)
+        }
       },
       OnReceivedSnipasteImage:function (sender) {
         let imageData = sender.userInfo.imageData
@@ -223,7 +257,9 @@ JSB.newAddon = function (mainPath) {
         if (typeof MNUtil === 'undefined') return
         if (!self.appInstance.checkNotifySenderInWindow(sender, self.window)) return; // Don't process message from other window
           //  Application.sharedInstance().showHUD(sender.userInfo.winRect, self.window, 2);
-        
+        if (!self.addonController.view.hidden) {
+          self.addonController.blur(0.01)
+        }
       },
       onProcessNewExcerpt:function (sender) {
         if (typeof MNUtil === 'undefined') return
@@ -232,6 +268,9 @@ JSB.newAddon = function (mainPath) {
       onPopupMenuOnNote: function (sender) { // Clicking note
         if (typeof MNUtil === 'undefined') return
         if (!self.appInstance.checkNotifySenderInWindow(sender, self.window)) return; // Don't process message from other window
+        if (!self.addonController.view.hidden) {
+          self.addonController.blur(0.01)
+        }
         // const frame = self.addonController.view.frame
         // const frameText = `{x:${frame.x},y:${frame.y},width:${frame.width},height:${frame.height}}`
         // Application.sharedInstance().showHUD(frameText,self.window,5
@@ -239,6 +278,8 @@ JSB.newAddon = function (mainPath) {
       },
       toggleAddon:function (sender) {
         if (typeof MNUtil === 'undefined') return
+        // self.addonController.snipasteMermaid("test")
+        // return
         if (!self.addonBar) {
           self.addonBar = sender.superview.superview
           self.addonController.addonBar = self.addonBar
@@ -301,6 +342,7 @@ JSB.newAddon = function (mainPath) {
               imageData = MNUtil.getMediaByHash(focusNote.excerptPic.paint)
               self.addonController.focusNoteId = focusNote.noteId
               self.addonController.snipasteFromImage(imageData)
+              return;
             }else{//摘录中无图片，直接贴卡片
               if (self.isFirst) {
                 let frame = self.addonController.view.frame
@@ -310,7 +352,7 @@ JSB.newAddon = function (mainPath) {
                 self.isFirst = false
               }
               self.addonController.snipasteNote(focusNote)
-              return
+              return;
             }
           }else if (selection.onSelection) {//尝试贴文字
               self.addonController.focusNoteId = undefined
@@ -346,9 +388,11 @@ JSB.newAddon = function (mainPath) {
               if (self.addonController.view.hidden) {
                 self.addonController.show()
               }
+              return
             }
         }
         let menu = new Menu(sender,self)
+        menu.width = 250
         menu.addMenuItem("📋  Clipboard Image", "snipasteFromClipboard:")
         menu.addMenuItem("📄  PDF (Current Page)", "snipasteFromPDF:","Current")
         menu.addMenuItem("📄  PDF (First Page)", "snipasteFromPDF:","First")
@@ -367,15 +411,15 @@ JSB.newAddon = function (mainPath) {
         if (target === "Current") {
           self.addonController.pageIndex = docController.currPageIndex
           // MNUtil.showHUD("PageIndex: "+self.addonController.pageIndex)
-          self.addonController.snipastePDF(docController.docMd5,docController.currPageNo,docController)
+          self.addonController.snipastePDFDev(docController.docMd5,docController.currPageNo,docController)
         }else if (target === "First") {
           self.addonController.pageIndex = 0
           let pageNo = docController.pageNoFromIndex(0)
-          self.addonController.snipastePDF(docController.docMd5,pageNo,docController)
+          self.addonController.snipastePDFDev(docController.docMd5,pageNo,docController)
         }else if (target === "Last") {
           let pageNo = docController.document.pageCount
           self.addonController.pageIndex = docController.indexFromPageNo(pageNo)
-          self.addonController.snipastePDF(docController.docMd5,pageNo,docController)
+          self.addonController.snipastePDFDev(docController.docMd5,pageNo,docController)
         }
       },
       snipasteFromClipboard: function (sender) {

@@ -170,6 +170,7 @@
         let customDarkTime; // 开始，结束时间
         let isFull = false; // 是否全屏
         const darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
+        let theme = darkMedia.matches ? "dark" : "light"
         const justDarkTheme = (is) => {
             if (is) document.documentElement.setAttribute("data-theme", "dark");
             else document.documentElement.removeAttribute("data-theme");
@@ -189,6 +190,7 @@
             }
             const setDarkMode = () => {
                 if (themeMode === 2) {
+
                     if (autoThemeMode) {
                         justDarkTheme(darkMedia.matches);
                     } else {
@@ -208,6 +210,7 @@
             let localCustomDark = localStorage.getItem("customDarkTime");
             customDarkTime = JSON.parse(localCustomDark || '["21:00", "07:00"]');
             setDarkMode();
+            theme = darkMedia.matches ? "dark" : "light"
         }
         checkDark();
     </script>
@@ -1058,7 +1061,8 @@
     <script src="app.js"></script>
     <script src="api.js"></script>
     <script src="katex.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" defer/>
+    <link rel="stylesheet" href="katex.min.css"/>
+    <script src="jsonrepair.js"></script>
     <!-- <link rel="stylesheet" href="katex.min.css"/> -->
     <!-- <link crossorigin="anonymous" href="https://cdn.staticfile.org/KaTeX/0.16.9/katex.min.css" rel="stylesheet"> -->
 </body>

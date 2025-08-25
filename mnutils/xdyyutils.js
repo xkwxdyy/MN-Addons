@@ -431,21 +431,6 @@ class MNMath {
       // MNUtil.showHUD(`没有新内容需要移动到 ${defaultField} 字段！`);
       return;
     }
-    
-    // 特殊处理：检查要移动的内容是否全部是手写评论
-    if (moveIndexArr.length > 0) {
-      let allHandwriting = moveIndexArr.every(index => {
-        let commentType = note.MNComments[index].type;
-        return commentType === "drawingComment" || 
-               commentType === "imageCommentWithDrawing" || 
-               commentType === "mergedImageCommentWithDrawing";
-      });
-      
-      if (allHandwriting) {
-        MNUtil.log("🖊️ 要移动的内容只有手写评论，跳过自动移动");
-        return;
-      }
-    }
 
     // 在移动之前先提取 markdown 链接
     let marginNoteLinks = this.extractMarginNoteLinksFromComments(note, moveIndexArr);

@@ -375,6 +375,10 @@ function registerAllMenuTemplates() {
       menuItems: [
         "⬇️ 卡片处理",
         {
+          action: "sendNotesToRoughReadingArea",
+          menuTitle: "    ⇨ 粗读区",
+        },
+        {
           action: "toBeIndependent",
           menuTitle: "    ⇨ 独立",
         },

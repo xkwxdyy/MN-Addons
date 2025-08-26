@@ -3854,6 +3854,20 @@ function registerAllCustomActions() {
     });
   });
 
+  global.registerCustomAction("sendNotesToRoughReadingArea", async function (context) {
+    const { focusNotes } = context;
+    MNUtil.undoGrouping(() => {
+      try {
+        let rootNote = MNNote.new(MNMath.roughReadingRootNoteIds["命题"]);
+        focusNotes.forEach((note) => {
+          rootNote.addChild(note);
+        })
+      } catch (error) {
+        MNUtil.showHUD(error);
+      }
+    })
+  })
+
   // replaceFieldContentByPopup
   global.registerCustomAction(
     "replaceFieldContentByPopup",

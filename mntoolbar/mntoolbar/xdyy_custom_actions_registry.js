@@ -3822,7 +3822,6 @@ function registerAllCustomActions() {
     );
   });
 
-  // makeCard
   // makeNote
   global.registerCustomAction("makeNote", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
@@ -3911,6 +3910,35 @@ function registerAllCustomActions() {
         MNMath.makeCard(focusNote, true, true, false);
       } catch (error) {
         MNUtil.showHUD(error);
+      }
+    });
+  });
+
+  // 强制按旧卡片制卡
+  global.registerCustomAction("forceOldCardMakeNote", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    MNUtil.undoGrouping(() => {
+      try {
+        // 1. 强制执行旧卡片处理
+        MNMath.processOldTemplateCard(focusNote);
+        
+        // 2. 执行制卡的后续流程（不包括 renewNote，因为已经处理过了）
+        MNMath.mergeTemplateAndAutoMoveNoteContent(focusNote); // 合并模板并自动移动内容
+        MNMath.changeTitle(focusNote); // 修改卡片标题  
+        MNMath.changeNoteColor(focusNote); // 修改卡片颜色
+        MNMath.linkParentNote(focusNote); // 链接广义的父卡片
+        MNMath.autoMoveNewContent(focusNote); // 自动移动新内容到对应字段
+        MNMath.moveTaskCardLinksToRelatedField(focusNote); // 移动任务卡片链接到"相关链接"字段
+        MNMath.moveSummaryLinksToTop(focusNote); // 移动总结链接到卡片最上方
+        MNMath.refreshNotes(focusNote); // 刷新卡片
+        
+        // 3. 加入复习并聚焦
+        MNMath.addToReview(focusNote, true);
+        focusNote.focusInMindMap(0.3);
+        
+        MNUtil.showHUD("✅ 已按旧卡片模式处理");
+      } catch (error) {
+        MNUtil.showHUD(`❌ 处理失败: ${error.message || error}`);
       }
     });
   });

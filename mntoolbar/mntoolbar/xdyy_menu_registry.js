@@ -390,6 +390,10 @@ function registerAllMenuTemplates() {
           action: "splitMarkdownTextInFocusNote",
           menuTitle: "    基于 Markdown 拆卡",
         },
+        {
+          action: "forceOldCardMakeNote",
+          menuTitle: "    📋 强制按旧卡片制卡",
+        },
         "⬇️ 合并到父卡片",
         {
           action: "mergeInParentNote",

@@ -2535,6 +2535,16 @@ function extendToolbarConfigInit() {
       const hasClassInName = className.includes("Class") || pureClassName.includes("Class");
       
       switch (type) {
+        case "jsbLifecycle":  // JSB 类: 生命周期
+          const lifecycleMethods = [`${methodName}`, `${pureClassName}.${methodName}`];
+          
+          // 只有在有文件路径时才添加 this 版本
+          if (hasFilePath) {
+            lifecycleMethods.push(`this.${methodName}`);
+          }
+          
+          return lifecycleMethods;
+        
         case "staticProperty":  // 类的静态变量
         case "staticMethod":  // 类的静态方法
           const methods = [`${pureClassName}.${methodName}`];
@@ -2599,7 +2609,7 @@ function extendToolbarConfigInit() {
           ];
         
         case "prototype":  // 原型链方法
-          const prototypeMethods = [`${pureClassName}.${methodName}`];
+          const prototypeMethods = [`${methodName}`, `${pureClassName}.${methodName}`];
           
           // 如果有文件路径，添加 this 版本
           if (hasFilePath) {
@@ -2648,8 +2658,11 @@ function extendToolbarConfigInit() {
 
         // 根据类型生成前缀
         const typePrefix = {
+          "jsbLifecycle": "JSB 类: 生命周期",
           "staticProperty": "类：静态属性",
           "staticMethod": "类：静态方法",
+          "staticGetter": "类：静态 Getter",
+          "staticSetter": "类：静态 Setter",
           "instanceMethod": "实例方法",
           "getter": "实例：Getter 方法",
           "setter": "实例：Setter 方法",

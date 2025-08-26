@@ -4596,8 +4596,16 @@ function registerAllCustomActions() {
   global.registerCustomAction("codeMergeTemplate", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;
     try {
+      let processedFocusNote
+      if (focusNote.originNoteId) {
+        let parentNote = focusNote.parentNote
+        processedFocusNote = focusNote.createDuplicatedNoteAndDelete()
+        parentNote.addChild(processedFocusNote)
+      } else {
+        processedFocusNote = focusNote
+      }
       let ifTemplateMerged = false
-      focusNote.MNComments.forEach((comment) => {
+      processedFocusNote.MNComments.forEach((comment) => {
         if (comment.type == "HtmlComment" && comment.text.includes("思考")) {
           ifTemplateMerged = true
         }
@@ -4605,11 +4613,11 @@ function registerAllCustomActions() {
       if (!ifTemplateMerged) {
         let clonedNote = MNNote.clone("9C4F3120-9A82-440A-97FF-F08D5B53B972")
         MNUtil.undoGrouping(()=>{
-          focusNote.merge(clonedNote.note)
+          processedFocusNote.merge(clonedNote.note)
         })
       }
     } catch (error) {
-
+      MNUtil.showHUD("代码合并模板失败: " + error.message);
     }
   })
 
@@ -4623,8 +4631,19 @@ function registerAllCustomActions() {
       return;
     }
 
+    let processedFocusNote
+    if (focusNote.originNoteId) {
+      let parentNote = focusNote.parentNote
+      processedFocusNote = focusNote.createDuplicatedNoteAndDelete()
+      parentNote.addChild(processedFocusNote)
+      processedFocusNote.focusInMindMap(0.3)
+    } else {
+      processedFocusNote = focusNote
+    }
+
     // 代码元素类型选项
     const codeTypes = [
+      "JSB 类: 生命周期",
       "类：静态属性",
       "类：静态方法",
       "类：静态 Getter",
@@ -4639,7 +4658,7 @@ function registerAllCustomActions() {
     // 显示选择对话框
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "选择代码类型",
-      `当前卡片：${focusNote.noteTitle}`,
+      `当前卡片：${processedFocusNote.noteTitle}`,
       0,
       "取消",
       codeTypes,
@@ -4648,15 +4667,16 @@ function registerAllCustomActions() {
         
         // 映射到对应的类型
         const typeMap = {
-          1: "staticProperty",
-          2: "staticMethod",
-          3: "staticGetter",
-          4: "staticSetter",
-          5: "prototype",
-          6: "instanceMethod",
-          7: "getter",
-          8: "setter",
-          9: "instanceProperty"
+          1: "jsbLifecycle",
+          2: "staticProperty",
+          3: "staticMethod",
+          4: "staticGetter",
+          5: "staticSetter",
+          6: "prototype",
+          7: "instanceMethod",
+          8: "getter",
+          9: "setter",
+          10: "instanceProperty"
         };
         
         const selectedType = typeMap[buttonIndex];
@@ -4664,7 +4684,7 @@ function registerAllCustomActions() {
         try {
           MNUtil.undoGrouping(() => {
             // 调用已实现的处理函数
-            toolbarUtils.processCodeLearningCard(focusNote, selectedType);
+            toolbarUtils.processCodeLearningCard(processedFocusNote, selectedType);
             // MNUtil.showHUD(`✅ 已处理为${codeTypes[buttonIndex - 1]}卡片`);
           });
         } catch (error) {

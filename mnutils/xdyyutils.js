@@ -7160,6 +7160,61 @@ class MNMath {
   }
   
   /**
+   * 获取上次使用的根目录ID数组（支持多选）
+   */
+  static getLastUsedRootIds() {
+    this.initSearchConfig();
+    
+    // 优先使用新的多选字段
+    if (this.searchRootConfigs.lastUsedRoots && this.searchRootConfigs.lastUsedRoots.length > 0) {
+      const rootIds = [];
+      for (const key of this.searchRootConfigs.lastUsedRoots) {
+        const root = this.searchRootConfigs.roots[key];
+        if (root) {
+          rootIds.push(root.id);
+        }
+      }
+      if (rootIds.length > 0) {
+        return rootIds;
+      }
+    }
+    
+    // 兼容旧版单选配置
+    const singleRoot = this.getCurrentSearchRoot();
+    return [singleRoot];
+  }
+  
+  /**
+   * 获取当前根目录名称（支持多个）
+   * @param {Array} rootIds - 根目录ID数组
+   * @param {Object} allRoots - 所有根目录配置
+   * @returns {string} 根目录名称的字符串表示
+   */
+  static getCurrentRootNames(rootIds, allRoots) {
+    if (!rootIds || rootIds.length === 0) {
+      return "未选择";
+    }
+    
+    const names = [];
+    for (const rootId of rootIds) {
+      // 检查临时根目录
+      if (this.tempRootInfo && this.tempRootInfo.id === rootId) {
+        names.push(`📍 ${this.tempRootInfo.name}`);
+      } else {
+        // 查找配置中的根目录
+        for (const key in allRoots) {
+          if (allRoots[key].id === rootId) {
+            names.push(allRoots[key].name);
+            break;
+          }
+        }
+      }
+    }
+    
+    return names.length > 0 ? names.join(", ") : "未知";
+  }
+  
+  /**
    * 获取所有搜索根目录
    */
   static getAllSearchRoots() {
@@ -8841,13 +8896,23 @@ class MNMath {
   }
 
   /**
-   * 搜索笔记主函数
+   * 搜索笔记主函数（支持多根目录）
    * @param {Array<string>} keywords - 关键词数组
-   * @param {string} rootNoteId - 根目录 ID
+   * @param {string|Array<string>} rootNoteIds - 根目录 ID（单个或多个）
    * @param {Set|null} selectedTypes - 选中的类型集合，null 表示全选
    */
-  static async searchNotesInDescendants(keywords, rootNoteId, selectedTypes = null) {
+  static async searchNotesInDescendants(keywords, rootNoteIds, selectedTypes = null) {
     try {
+      // 确保 rootNoteIds 是数组
+      if (!Array.isArray(rootNoteIds)) {
+        rootNoteIds = rootNoteIds ? [rootNoteIds] : [];
+      }
+      
+      if (rootNoteIds.length === 0) {
+        MNUtil.showHUD("请选择至少一个根目录");
+        return [];
+      }
+      
       // 获取分组的扩展关键词（用于"与"逻辑搜索）
       const expandedKeywordGroups = this.expandKeywordsWithSynonymsGrouped(keywords);
       
@@ -8865,19 +8930,40 @@ class MNMath {
         await MNUtil.delay(0.5);
       }
       
-      // 获取根卡片
-      const rootNote = MNNote.new(rootNoteId);
-      if (!rootNote) {
-        MNUtil.showHUD("根目录卡片不存在");
-        return [];
+      // 显示获取卡片列表的进度
+      MNUtil.showHUD(`⛳ 正在从 ${rootNoteIds.length} 个根目录获取卡片列表...`);
+      
+      // 获取所有根目录的子孙卡片，使用 Set 去重
+      const allDescendantsSet = new Set();
+      const rootNoteInfos = [];  // 存储根目录信息，用于后续显示
+      
+      for (const rootNoteId of rootNoteIds) {
+        const rootNote = MNNote.new(rootNoteId);
+        if (!rootNote) {
+          MNUtil.log(`根目录卡片不存在: ${rootNoteId}`);
+          continue;
+        }
+        
+        // 保存根目录信息
+        rootNoteInfos.push({
+          id: rootNoteId,
+          name: rootNote.noteTitle || "无标题"
+        });
+        
+        // 获取该根目录的所有子孙卡片
+        const descendants = this.getAllDescendantNotes(rootNote);
+        
+        // 添加到 Set 中去重（基于 noteId）
+        for (const note of descendants) {
+          allDescendantsSet.add(note);
+        }
+        
+        MNUtil.log(`根目录 "${rootNote.noteTitle}": ${descendants.length} 个卡片`);
       }
       
-      // 显示获取卡片列表的进度
-      MNUtil.showHUD("⛳ 正在获取卡片列表...");
-      
-      // 获取所有子孙卡片
-      const allDescendants = this.getAllDescendantNotes(rootNote);
-      MNUtil.log(`在 ${allDescendants.length} 个卡片中搜索`);
+      // 转换为数组
+      const allDescendants = Array.from(allDescendantsSet);
+      MNUtil.log(`总共在 ${allDescendants.length} 个卡片中搜索（已去重）`);
       
       // 显示搜索进度
       MNUtil.showHUD(`🔍 正在搜索 ${allDescendants.length} 个卡片...`);
@@ -9041,17 +9127,24 @@ class MNMath {
   static async showSearchDialog() {
     try {
       let keywords = [];
-      let currentRootId = this.getCurrentSearchRoot();
+      // 获取上次使用的根目录（支持多个）
+      let currentRootIds = this.getLastUsedRootIds();
       let allRoots = this.getAllSearchRoots();
       let selectedTypes = null;  // null 表示全选，Set 表示选中的类型
       
       // 主循环：处理用户输入
       while (true) {
-        // 获取当前根目录名称
-        const currentRootName = this.getCurrentRootName(currentRootId, allRoots);
+        // 获取当前根目录名称（支持多个）
+        const currentRootNames = this.getCurrentRootNames(currentRootIds, allRoots);
         
         // 构建提示信息
-        let message = `🔍 搜索笔记\n📁 当前根目录：${currentRootName}`;
+        let rootDisplay = currentRootNames;
+        if (currentRootIds.length > 3) {
+          // 如果选择了太多根目录，只显示前3个和数量
+          const firstThree = currentRootNames.split(", ").slice(0, 3).join(", ");
+          rootDisplay = `${firstThree} 等 ${currentRootIds.length} 个`;
+        }
+        let message = `🔍 搜索笔记\n📁 根目录(${currentRootIds.length}个)：${rootDisplay}`;
         if (keywords.length > 0) {
           message += `\n🔑 已输入关键词：${keywords.join(" // ")}`;
         }
@@ -9184,7 +9277,7 @@ class MNMath {
           case "search":
             // 执行搜索
             MNUtil.showHUD("⏳ 搜索中...");
-            const results = await this.searchNotesInDescendants(keywords, currentRootId, selectedTypes);
+            const results = await this.searchNotesInDescendants(keywords, currentRootIds, selectedTypes);
             
             if (results.length === 0) {
               MNUtil.showHUD(`未找到包含 "${keywords.join(' AND ')}" 的卡片`);
@@ -9194,7 +9287,7 @@ class MNMath {
               MNUtil.showHUD(`✅ 找到唯一结果，已定位`);
             } else {
               // 多个结果时，创建搜索结果卡片
-              this.createSearchResultCard(results, keywords, currentRootName);
+              this.createSearchResultCard(results, keywords, currentRootNames);
               MNUtil.showHUD(`✅ 找到 ${results.length} 个结果`);
             }
             return;
@@ -9205,10 +9298,10 @@ class MNMath {
             break;
             
           case "switchRoot":
-            // 选择根目录
-            const newRootId = await this.showRootSelection(currentRootId, allRoots);
-            if (newRootId) {
-              currentRootId = newRootId;
+            // 选择根目录（支持多选）
+            const newRootIds = await this.showRootSelection(currentRootIds, allRoots);
+            if (newRootIds && newRootIds.length > 0) {
+              currentRootIds = newRootIds;
             }
             break;
             
@@ -9216,14 +9309,30 @@ class MNMath {
             // 添加根目录
             const newRoot = await this.handleAddRoot(result.input);
             if (newRoot) {
-              // 设置新添加的根目录为当前根目录
-              currentRootId = newRoot.id;
-              // 更新最后使用的根目录
-              this.searchRootConfigs.lastUsedRoot = newRoot.key;
+              // 将新添加的根目录加入到当前选中的根目录列表
+              if (!currentRootIds.includes(newRoot.id)) {
+                currentRootIds.push(newRoot.id);
+              }
+              // 更新最后使用的根目录列表
+              const rootKeys = [];
+              for (const rootId of currentRootIds) {
+                // 查找每个根目录对应的key
+                for (const key in allRoots) {
+                  if (allRoots[key].id === rootId) {
+                    rootKeys.push(key);
+                    break;
+                  }
+                }
+              }
+              // 如果新根目录的key不在列表中，添加它
+              if (!rootKeys.includes(newRoot.key)) {
+                rootKeys.push(newRoot.key);
+              }
+              this.searchRootConfigs.lastUsedRoots = rootKeys;
               this.saveSearchConfig();
               // 刷新 allRoots 以包含新添加的根目录
               allRoots = this.getAllSearchRoots();
-              MNUtil.showHUD(`✅ 已切换到新根目录：${newRoot.name}`);
+              MNUtil.showHUD(`✅ 已添加根目录：${newRoot.name}`);
             }
             break;
             
@@ -9404,64 +9513,188 @@ class MNMath {
   }
   
   /**
-   * 显示根目录选择对话框
+   * 显示根目录选择对话框（支持多选）
+   * @param {string|Array} currentRootIds - 当前选中的根目录ID（单个或多个）
+   * @param {Object} allRoots - 所有根目录
+   * @returns {Promise<Array>} 返回选中的根目录ID数组
    */
-  static async showRootSelection(currentRootId, allRoots) {
-    return new Promise((resolve) => {
-      const rootOptions = ["📍 当前选中的卡片（临时）"];
-      const rootKeys = ["__current__"];
-      
-      // 使用 rootsOrder 数组的顺序，如果没有则使用 Object.keys
-      this.initSearchConfig();
-      const rootsOrder = this.searchRootConfigs.rootsOrder || Object.keys(allRoots);
-      
-      for (const key of rootsOrder) {
-        const root = allRoots[key];
-        if (root) {
-          const marker = root.id === currentRootId ? " ✅" : "";
-          rootOptions.push(root.name + marker);
-          rootKeys.push(key);
+  static async showRootSelection(currentRootIds, allRoots) {
+    // 确保 currentRootIds 是数组
+    if (!Array.isArray(currentRootIds)) {
+      currentRootIds = currentRootIds ? [currentRootIds] : [];
+    }
+    
+    // 使用 rootsOrder 数组的顺序，如果没有则使用 Object.keys
+    this.initSearchConfig();
+    const rootsOrder = this.searchRootConfigs.rootsOrder || Object.keys(allRoots);
+    
+    // 构建根目录选项数组
+    const rootOptions = [];
+    const rootKeys = [];
+    
+    // 添加临时根目录选项
+    rootOptions.push({
+      key: "__current__",
+      name: "📍 当前选中的卡片（临时）",
+      id: null
+    });
+    
+    // 添加配置中的根目录
+    for (const key of rootsOrder) {
+      const root = allRoots[key];
+      if (root) {
+        rootOptions.push({
+          key: key,
+          name: root.name,
+          id: root.id
+        });
+      }
+    }
+    
+    // 初始化选中状态
+    const selectedIndices = new Set();
+    for (let i = 0; i < rootOptions.length; i++) {
+      const option = rootOptions[i];
+      if (option.key === "__current__") {
+        // 检查临时根目录是否被选中
+        if (this.tempRootInfo && currentRootIds.includes(this.tempRootInfo.id)) {
+          selectedIndices.add(i);
+        }
+      } else {
+        // 检查配置中的根目录是否被选中
+        if (currentRootIds.includes(option.id)) {
+          selectedIndices.add(i);
         }
       }
-      
-      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-        "选择搜索根目录",
-        "选择要搜索的根目录",
-        0,
-        "取消",
-        rootOptions,
-        (alert, buttonIndex) => {
-          if (buttonIndex > 0) {
-            const selectedKey = rootKeys[buttonIndex - 1];
+    }
+    
+    // 使用Promise包装异步操作
+    return new Promise((resolve) => {
+      this.showRootMultiSelectDialog(rootOptions, selectedIndices, resolve);
+    });
+  }
+  
+  /**
+   * 显示根目录多选对话框（递归实现）
+   * @param {Array} rootOptions - 根目录选项数组
+   * @param {Set} selectedIndices - 已选中的索引集合
+   * @param {Function} finalCallback - 最终回调函数
+   */
+  static showRootMultiSelectDialog(rootOptions, selectedIndices, finalCallback) {
+    // 构建显示选项
+    const displayOptions = [];
+    
+    // 添加全选/取消全选选项
+    const allSelected = selectedIndices.size === rootOptions.length;
+    displayOptions.push(allSelected ? "⬜ 取消全选" : "☑️ 全选所有根目录");
+    
+    // 添加分隔线
+    displayOptions.push("──────────────");
+    
+    // 添加各个根目录选项
+    for (let i = 0; i < rootOptions.length; i++) {
+      const option = rootOptions[i];
+      const isSelected = selectedIndices.has(i);
+      const prefix = isSelected ? "✅ " : "";
+      displayOptions.push(prefix + option.name);
+    }
+    
+    // 添加分隔线和操作按钮
+    displayOptions.push("──────────────");
+    displayOptions.push("✔️ 确定选择");
+    
+    // 构建提示信息
+    const message = `已选中 ${selectedIndices.size}/${rootOptions.length} 个根目录\n\n💡 提示：点击根目录切换选中状态`;
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择搜索根目录",
+      message,
+      0,  // 样式
+      "取消",
+      displayOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          // 用户点击取消
+          finalCallback([]);
+          return;
+        }
+        
+        const selectedOptionIndex = buttonIndex - 1;
+        
+        if (selectedOptionIndex === 0) {
+          // 全选/取消全选
+          if (allSelected) {
+            selectedIndices.clear();
+          } else {
+            for (let i = 0; i < rootOptions.length; i++) {
+              selectedIndices.add(i);
+            }
+          }
+          // 递归显示更新后的对话框
+          this.showRootMultiSelectDialog(rootOptions, selectedIndices, finalCallback);
+          
+        } else if (selectedOptionIndex === 1 || selectedOptionIndex === displayOptions.length - 2) {
+          // 分隔线，忽略并重新显示
+          this.showRootMultiSelectDialog(rootOptions, selectedIndices, finalCallback);
+          
+        } else if (selectedOptionIndex === displayOptions.length - 1) {
+          // 确定选择
+          const selectedRootIds = [];
+          const selectedRootKeys = [];
+          
+          for (const index of selectedIndices) {
+            const option = rootOptions[index];
             
-            if (selectedKey === "__current__") {
-              // 使用当前选中的卡片作为临时根目录
+            if (option.key === "__current__") {
+              // 处理临时根目录
               const currentNote = MNNote.getFocusNote();
               if (currentNote) {
-                // 保存临时根目录信息到类级别
+                // 保存临时根目录信息
                 this.tempRootInfo = {
                   id: currentNote.noteId,
                   name: currentNote.noteTitle || "无标题"
                 };
-                resolve(currentNote.noteId);
+                selectedRootIds.push(currentNote.noteId);
               } else {
-                MNUtil.showHUD("请先选中一个卡片");
-                resolve(null);
+                MNUtil.showHUD("请先选中一个卡片作为临时根目录");
+                // 重新显示对话框
+                this.showRootMultiSelectDialog(rootOptions, selectedIndices, finalCallback);
+                return;
               }
             } else {
               // 使用配置中的根目录
-              this.tempRootInfo = null; // 清除临时根目录信息
-              // 更新最后使用的根目录
-              this.searchRootConfigs.lastUsedRoot = selectedKey;
-              this.saveSearchConfig();
-              resolve(allRoots[selectedKey].id);
+              selectedRootIds.push(option.id);
+              selectedRootKeys.push(option.key);
             }
-          } else {
-            resolve(null);
           }
+          
+          // 保存最后使用的根目录（多个）
+          if (selectedRootKeys.length > 0) {
+            this.searchRootConfigs.lastUsedRoots = selectedRootKeys;
+            this.saveSearchConfig();
+          }
+          
+          // 返回结果
+          finalCallback(selectedRootIds);
+          
+        } else {
+          // 用户点击了某个根目录选项
+          const rootIndex = selectedOptionIndex - 2;  // 减去全选和分隔线
+          
+          if (rootIndex >= 0 && rootIndex < rootOptions.length) {
+            // 切换选中状态
+            if (selectedIndices.has(rootIndex)) {
+              selectedIndices.delete(rootIndex);
+            } else {
+              selectedIndices.add(rootIndex);
+            }
+          }
+          
+          // 递归显示更新后的对话框
+          this.showRootMultiSelectDialog(rootOptions, selectedIndices, finalCallback);
         }
-      );
-    });
+      }
+    );
   }
   
   /**

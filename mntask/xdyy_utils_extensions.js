@@ -6709,14 +6709,14 @@ ${content.trim()}`
    */
   static async launchPageLink(pageLink, taskNote) {
     try {
-      // 解析 URL 参数
-      const url = new URL(pageLink);
-      const params = new URLSearchParams(url.search);
+      // 解析 URL 参数（使用 MNUtil.parseURL 替代 new URL）
+      const config = MNUtil.parseURL(pageLink);
+      const params = config.params || {};
       
-      const docMd5 = params.get('doc');
-      const pageIndex = parseInt(params.get('index') || '0');
-      const pageNo = parseInt(params.get('page') || '1');
-      const docTitle = decodeURIComponent(params.get('title') || '');
+      const docMd5 = params.doc;
+      const pageIndex = parseInt(params.index || '0');
+      const pageNo = parseInt(params.page || '1');
+      const docTitle = params.title || '';  // MNUtil.parseURL 已自动解码
       
       if (!docMd5) {
         MNUtil.showHUD("❌ 页面链接无效");

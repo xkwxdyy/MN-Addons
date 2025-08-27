@@ -48,6 +48,13 @@ JSB.newAddon = () => {
 }
 ```
 
+### 如何打包插件
+
+在插件目录下使用 `mnaddon4 build` 打包，比如：
+```bash
+mnaddon4 build plugin_0827
+```
+
 ## 3. MNUtils 框架 - 插件开发的基础设施 ⭐⭐⭐⭐⭐
 
 ### 为什么 MNUtils 是必需的
@@ -104,45 +111,137 @@ MNUtil.showHUD("Hello MarginNote!");
    - 深入了解内部实现
    - 查看注意事项和已知问题
 
-### 最常用的 10 个 API
+### 综合类型的功能参考
 
+下面会列出一些基于 MNUtils 实现的较为综合和复杂的功能，供你开发类似的功能的时候进行参考。
+
+#### 弹窗类型
+
+如果你要开发「输入框」+「选择」类型的弹窗，可以参考：
+
+##### 1. manageCommentsByPopup（多层级弹窗管理系统）
+- **位置**：`mnutils/xdyyutils.js:4419-4508`
+- **功能**：评论的移动、删除、提取等操作
+- **特点**：
+  - 多层级弹窗架构（主菜单 → 选择方式 → 操作确认）
+  - 递归导航模式，支持返回上一层
+  - 策略模式处理不同的选择方式
+  - 通过回调函数链管理复杂流程
+
+##### 2. searchNotesInDescendants（复杂搜索交互系统）
+- **位置**：`mnutils/xdyyutils.js:8904-9121`
+- **功能**：在多个根目录的子孙卡片中进行高级搜索
+- **特点**：
+  - 循环式交互界面，无需重复打开对话框
+  - 动态按钮状态（根据配置实时更新按钮文字）
+  - 支持多种搜索配置（类型筛选、关键词扩展、排除词等）
+  - 进度显示和错误处理机制
+
+#### 弹窗开发模式详解
+
+##### 多层级弹窗架构
+
+**核心设计模式**：
 ```javascript
-// 1. 获取笔记
-let note = MNNote.getFocusNote();              // 当前焦点笔记
-let notes = MNNote.getFocusNotes();              // 当前焦点笔记
+// 1. 使用对象映射管理选项和处理函数
+const optionHandlers = {
+  "选项1": () => { /* 处理逻辑 */ },
+  "选项2": () => { /* 处理逻辑 */ }
+};
 
-// 2. 显示提示
-MNUtil.showHUD("操作成功", 2);                 // 2秒后消失
-
-// 3. 笔记操作
-note.title = "新标题";                         // 修改标题
-note.colorIndex = 5;                           // 设置颜色
-note.appendTextComment("评论内容");            // 添加评论
-
-// 4. 复制到剪贴板
-MNUtil.copy(note.noteId);                      // 复制笔记ID
-
-// 5. 延迟执行
-await MNUtil.delay(0.5);                       // 延迟0.5秒
-
-// 6. 撤销分组
-MNUtil.undoGrouping(() => {
-  // 多个操作作为一个撤销单元
-});
-
-// 7. 版本检测
-if (MNUtil.isMN4()) {
-  // MarginNote 4 特有功能
+// 2. 递归调用实现返回功能
+function showMainDialog() {
+  UIAlertView.show(..., (alert, buttonIndex) => {
+    if (buttonIndex === 0) return; // 取消
+    
+    // 进入下一层
+    showSubDialog(() => {
+      // 返回回调：重新显示主对话框
+      showMainDialog();
+    });
+  });
 }
 
-// 8. 错误处理
-MNUtil.addErrorLog(error, "functionName", {noteId: noteId});
+// 3. 通过参数传递实现状态保持
+function showSubDialog(previousDialog) {
+  UIAlertView.show(..., (alert, buttonIndex) => {
+    if (buttonIndex === 0) {
+      previousDialog(); // 返回上一层
+      return;
+    }
+    // 处理逻辑
+  });
+}
+```
 
-// 9. 用户确认
-let result = await MNUtil.confirm("确认", "是否继续？", ["取消", "确定"]);
+##### 状态管理模式
 
-// 10. 获取笔记本
-let notebook = MNNotebook.currentNotebook;
+**使用闭包和 Set 管理选择状态**：
+```javascript
+// 使用 Set 存储选中项
+const selectedItems = new Set();
+
+// 在弹窗间传递状态
+function showMultiSelectDialog(allOptions, selectedItems, callback) {
+  // 根据 selectedItems 显示选中状态
+  const displayOptions = allOptions.map((opt, idx) => 
+    selectedItems.has(idx) ? `✅ ${opt}` : `☐ ${opt}`
+  );
+  
+  UIAlertView.show(...displayOptions...);
+}
+```
+
+##### 动态选项生成
+
+**根据数据动态构建选项列表**：
+```javascript
+// 根据笔记内容生成选项
+function getAllCommentOptions(note) {
+  return note.comments.map((comment, index) => {
+    const preview = comment.text.substring(0, 30);
+    return `${index}: ${preview}...`;
+  });
+}
+
+// 动态更新按钮文字
+const buttonText = isEnabled ? "☑️ 已启用" : "☐ 未启用";
+```
+
+#### 技术要点提醒
+
+##### UIAlertView 使用注意事项
+1. **alertViewStyle 类型**：
+   - 0：默认（无输入框）
+   - 1：密码输入
+   - 2：普通文本输入
+   - 3：用户名和密码输入
+
+2. **按钮索引**：
+   - 0：取消按钮
+   - 1+：其他按钮（从1开始）
+
+3. **文本获取**：
+   ```javascript
+   const inputText = alert.textFieldAtIndex(0).text;
+   ```
+
+##### 性能优化建议
+1. **避免深层递归**：使用循环替代过深的递归调用
+2. **批量操作**：使用 `MNUtil.undoGrouping()` 包装批量修改
+3. **异步处理**：长时间操作使用 `MNUtil.delay()` 避免阻塞
+4. **进度提示**：操作超过1秒应显示进度 HUD
+
+##### 错误处理模式
+```javascript
+try {
+  // 主要逻辑
+} catch (error) {
+  MNUtil.copyJSON(error);
+  MNUtil.showHUD("操作失败: " + error.message);
+  // 可选：返回到安全状态
+  this.reset();
+}
 ```
 
 ## 5. 重要提醒
@@ -178,7 +277,7 @@ let notebook = MNNotebook.currentNotebook;
 
 # MN-Addon 开发经验与常见问题
 
-## note.MNComments 与 note.comments 的关键区别（2025-01-12）
+## note.MNComments 与 note.comments 的关键区别
 
 ### 问题背景
 在优化 MNMath.makeNote 手写评论处理时，发现了一个容易混淆的 API 使用问题，导致类型判断失效。
@@ -257,51 +356,11 @@ function isHandwritingCommentAlt(note, index) {
 - 所有涉及评论类型判断的功能
 - 特别是手写、图片、合并内容的识别
 
-## 时间轴任务状态更新不刷新问题（2025-01-17）
+# Git 工作流规范
 
-### 问题描述
-用户反复反馈时间轴任务状态更新后不刷新的严重问题：
-- 点击暂停/完成按钮后显示成功通知
-- 但时间轴中的任务状态和按钮没有变化
-- 必须手动 cmd+R 刷新页面才能看到更新
+原则上不允许在未经我允许的情况下自己进行 git commit 和 push。
 
-### 根本原因
-`filteredTasks` 数组包含过时的任务对象副本：
-```javascript
-// filteredTasks 是通过 filter 创建的副本
-filteredTasks = tasks.filter(task => { ... });
-
-// 状态更新只影响 tasks 数组中的原始对象
-task.status = newStatus;  // task 是 tasks 数组中的对象
-
-// renderTodayTimeline 使用 filteredTasks 渲染
-const baseTasks = filteredTasks;  // 使用了包含旧状态的副本
-```
-
-### 解决方案
-让 `renderTodayTimeline` 始终使用最新的 `tasks` 数组：
-```javascript
-// 修改前
-const baseTasks = (filteredTasks && filteredTasks.length >= 0) ? filteredTasks : tasks;
-
-// 修改后
-const baseTasks = tasks;  // 始终使用原始数组，确保数据最新
-```
-
-### 关键要点
-1. **避免使用缓存的数组副本**：在需要实时更新的场景中，应直接使用原始数据源
-2. **理解 JavaScript 对象引用**：`filter()` 创建新数组但包含原对象的引用，修改对象属性会影响所有引用，但如果使用了旧的数组副本，仍会渲染旧数据
-3. **调试技巧**：添加对象引用比较（`isSameObject: task === originalTask`）可以快速定位是否使用了过时的对象副本
-
-### 相关修复
-- Commit: b1a9d28
-- Issue: #9
-
----
-
-# 开发工作流规范
-
-## GitHub Issue 工作流规范（2025-01-17）
+## GitHub Issue 工作流规范
 
 ### 概述
 标准化的 GitHub 问题管理流程，确保问题追踪的专业性和可追溯性。

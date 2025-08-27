@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>按钮行为配置 (紧凑版)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --primary-color: #4a90e2;
+        --secondary-color: #6c757d;
+        --background-color: #f7f9fc;
+        --card-background-color: #ffffff;
+        --text-color: #333;
+        --label-color: #555;
+        --border-color: #e0e6ed;
+        --shadow-color: rgba(0, 0, 0, 0.08);
+        --switch-on-bg: #34c759;
+    }
+
+    body {
+        font-family: 'Noto Sans SC', sans-serif;
+        line-height: 1.5; /* 减小行高 */
+        color: var(--text-color);
+        background-color: var(--background-color);
+        margin: 0;
+        padding: 1rem; /* 减小页面边距 */
+        padding-left: 10px;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        -o-user-select: none;
+    }
+
+    .container {
+        max-width: 900px;
+        margin: auto;
+    }
+
+    header {
+        text-align: center;
+        margin-bottom: 2rem; /* 减小头部下边距 */
+    }
+
+    h1 {
+        font-size: 2rem; /* 减小主标题字体 */
+        font-weight: 700;
+        color: var(--text-color);
+        margin-bottom: 0.25rem;
+    }
+
+    header p {
+        font-size: 1rem; /* 减小副标题字体 */
+        color: var(--label-color);
+    }
+
+    .config-grid {
+        display: grid;
+        /* 减小最小列宽和间距 */
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 0.5rem;
+        margin-top: 0px;
+    }
+
+    .config-card {
+        background: var(--card-background-color);
+        border-radius: 10px; /* 减小圆角 */
+        padding: 1rem; /* 减小卡片内边距 */
+        padding-top: 0;
+        padding-bottom: 0.5rem;
+        box-shadow: 0 2px 7px var(--shadow-color);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .config-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 15px var(--shadow-color);
+        background-color: #f0faff;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem; /* 减小header下边距 */
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.1rem; /* 减小header下内边距 */
+    }
+    
+    .title-block {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem; /* 减小图标和标题间距 */
+    }
+
+    .button-number {
+        /* 减小圆形尺寸和字体 */
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 1rem;
+        background: var(--primary-color);
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .button-title {
+        font-size: 1rem; /* 减小卡片标题字体 */
+        font-weight: 500;
+    }
+    
+    .switch-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem; /* 减小文字和开关间距 */
+    }
+    
+    .switch-label {
+        font-size: 0.9rem; /* 减小开关文字字体 */
+        color: var(--label-color);
+        font-weight: 400;
+        white-space: nowrap;
+    }
+
+    .action-row {
+        display: block;
+        gap: 0.75rem; /* 减小下拉菜单间距 */
+    }
+
+    .form-group {
+        flex: 1; 
+        margin-bottom: 0.5rem; /* 减小标签下边距 */
+    }
+
+    .form-group label {
+        font-size: 0.9rem; /* 减小标签字体 */
+        font-weight: 500;
+        color: var(--label-color);
+        margin-bottom: 0.25rem; /* 减小标签下边距 */
+        margin-right: 10px;
+    }
+    
+    .form-group select {
+        width: calc(100% - 5rem); /* 减小下拉菜单宽度 */
+        padding: 0.5rem; /* 减小下拉菜单内边距 */
+        border: 1px solid var(--border-color);
+        border-radius: 10px; /* 减小圆角 */
+        background-color: #fff;
+        font-size: 0.85rem; /* 减小下拉菜单字体 */
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+    }
+
+    /* 减小开关尺寸 */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+    }
+
+    .switch input { 
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: var(--switch-on-bg);
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
+    
+    .button-container {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 2.5rem; /* 减小按钮区上边距 */
+    }
+
+    .btn {
+        padding: 0.6rem 2rem; /* 减小按钮内边距 */
+        border: none;
+        color: white;
+        border-radius: 50px;
+        cursor: pointer;
+        font-size: 1rem; /* 减小按钮字体 */
+        font-weight: 500;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    
+    .save-btn {
+         background-image: linear-gradient(to right, #4a90e2 0%, #50e3c2 100%);
+    }
+
+    .secondary-btn {
+        background-color: var(--secondary-color);
+    }
+
+    @media (max-width: 480px) {
+        .action-row {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+    }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <form id="configForm">
+        <div class="config-grid" id="configGrid">
+        </div>
+    </form>
+</div>
+
+<script>
+  let actionNames = ['none','menu','bigbang','addChildNote','addBrotherNote','addComment','addBlankComment','setTitle','addTitle','copy','setExcerpt','appendExcerpt','markdown2Mindmap','editMode','bindNote','openInEditor','snipaste','snipasteText','snipasteHTML','searchInBrowser','reAsk','reAskWithMenu','openChat'];
+  // let actionMap = {
+  //   'none': '无操作',
+  //   'menu': '打开菜单',
+  //   'addChildNote': '添加子卡片/节点',
+  //   'addBrotherNote': '添加兄弟卡片/节点',
+  //   'addComment': '添加评论',
+  //   'addBlankComment': '添加文字留白',
+  //   'setTitle': '设置标题',
+  //   'addTitle': '添加标题',
+  //   'copy': '复制内容',
+  //   'setExcerpt': '设置摘录文本/笔记正文',
+  //   'appendExcerpt': '追加到摘录文本/笔记正文',
+  //   'markdown2Mindmap': 'Markdown转脑图',
+  //   'openInEditor': '调用 MN Editor',
+  //   'bigbang': '调用 MN Bigbang',
+  //   'snipaste': '调用 MN Snipaste',
+  //   'snipasteText': '调用 MN Snipaste',
+  //   'snipasteHTML': '调用 MN Snipaste 预览 HTML',
+  //   'searchInBrowser': '调用 MN Browser 搜索',
+  //   'reAsk': '重新生成',
+  //   'reAskWithMenu': '选择模型并重新生成',
+  //   'openChat': '打开聊天模式',
+  //   'reply':'回复'
+  // }
+  let action = [
+    { value: 'none', text: '无操作' },
+    { value: 'menu', text: '打开菜单' },
+    { value: 'addChildNote', text: '添加子卡片/节点' },
+    { value: 'addBrotherNote', text: '添加兄弟卡片/节点' },
+    { value: 'addComment', text: '添加评论' },
+    { value: 'addBlankComment', text: '添加文字留白' },
+    { value: 'setTitle', text: '设置标题' },
+    { value: 'addTitle', text: '追加标题' },
+    { value: 'copy', text: '复制内容' },
+    { value: 'setExcerpt', text: '设置为摘录' },
+    { value: 'appendExcerpt', text: '追加到摘录' },
+    { value: 'markdown2Mindmap', text: 'Markdown转脑图' },
+    { value: 'editMode', text: '编辑模式' },
+    { value: 'bindNote', text: '绑定/解绑笔记' },
+    { value: 'openInEditor', text: '调用 MN Editor' },
+    { value: 'bigbang', text: '调用 MN Bigbang' },
+    { value: 'snipasteText', text: '调用 MN Snipaste' },
+    { value: 'snipasteHTML', text: '调用 MN Snipaste 预览 HTML' },
+    { value: 'searchInBrowser', text: '调用 MN Browser 搜索' },
+    { value: 'reAsk', text: '重新生成' },
+    { value: 'reAskWithMenu', text: '选择模型并重新生成' },
+    { value: 'openChat', text: '打开聊天模式' },
+    { value: 'stopOutput', text: '停止输出' },
+    { value: 'switchLocation', text: '切换窗口位置' },
+    { value: 'reply', text: '回复' }
+  ]
+    let singleClickActions = action
+
+    let longPressActions = action
+
+    const configGrid = document.getElementById('configGrid');
+    const numberOfButtons = 8;
+    function generateOptions(actions) {
+      return actions.map(action => `<option value="${action.value}">${action.text}</option>`).join('');
+    }
+    function updateAction(encodedConfig) {
+      let additionalActions = JSON.parse(decodeURIComponent(encodedConfig))
+      let newAction = action.concat(additionalActions)
+      singleClickActions = newAction
+      longPressActions = newAction
+
+        const singleClickOptionsHTML = generateOptions(singleClickActions);
+        const longPressOptionsHTML = generateOptions(longPressActions);
+        const actionRows = document.getElementsByClassName('action-row');
+
+        for (let i = 1; i <= numberOfButtons; i++) {
+            const actionRow = actionRows[i-1];
+            const singleClickSelect = actionRow.getElementsByTagName('select')[0];
+            const longPressSelect = actionRow.getElementsByTagName('select')[1];
+            singleClickSelect.innerHTML = singleClickOptionsHTML;
+            longPressSelect.innerHTML = longPressOptionsHTML;
+        }
+    }
+            
+    // 页面初始化时动态创建所有卡片
+    function initializeUI() {
+        const singleClickOptionsHTML = generateOptions(singleClickActions);
+        const longPressOptionsHTML = generateOptions(longPressActions);
+
+        for (let i = 1; i <= numberOfButtons; i++) {
+            const card = document.createElement('div');
+            card.className = 'config-card';
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="title-block">
+                        <span class="button-number">${i}</span>
+                        <h2 class="button-title">按钮 ${i}</h2>
+                    </div>
+                    <div class="switch-container">
+                        <span class="switch-label">是否自动关闭</span>
+                        <label class="switch">
+                            <input type="checkbox" id="autoClose_${i}" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="action-row">
+                    <div class="form-group">
+                        <label for="singleClick_${i}">单击行为</label>
+                        <select id="singleClick_${i}">
+                            ${singleClickOptionsHTML}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="longPress_${i}">长按行为</label>
+                        <select id="longPress_${i}">
+                            ${longPressOptionsHTML}
+                        </select>
+                    </div>
+                </div>
+            `;
+            
+            configGrid.appendChild(card);
+        }
+    }
+
+    /**
+     * API 1: 获取当前页面的所有配置
+     * @returns {Array<Object>} 包含所有按钮配置的数组
+     */
+    function getCurrentConfig() {
+        const configuration = {};
+        for (let i = 1; i <= numberOfButtons; i++) {
+            const singleClick = document.getElementById(`singleClick_${i}`).value;
+            const longPress = document.getElementById(`longPress_${i}`).value;
+            const autoClose = document.getElementById(`autoClose_${i}`).checked;
+            configuration["button"+i] = {
+                click: singleClick,
+                longPress: longPress,
+                autoClose: autoClose
+            }
+        }
+        return configuration;
+    }
+    function getContent() {
+      let config = getCurrentConfig();
+      return encodeURIComponent(JSON.stringify(config));
+    }
+    function setContent(encodedConfig) {
+      let config = JSON.parse(decodeURIComponent(encodedConfig));
+      setConfig(config);
+    }
+
+    /**
+     * API 2: 根据传入的数据刷新页面配置
+     * @param {Array<Object>} configData - 符合格式的配置数组
+     */
+    function setConfig(configData) {
+        // if (!Array.isArray(configData)) {
+        //     console.error("设置失败：提供的数据格式不是一个数组。");
+        //     return;
+        // }
+        let buttonIndices = [1,2,3,4,5,6,7,8]
+        buttonIndices.forEach(index => {
+            let config = configData["button"+index]
+            if (config) {
+                try {
+                    if (config.click == 'snipaste') {
+                      config.click = 'snipasteText'
+                    }
+                    if (config.longPress == 'snipaste') {
+                      config.longPress = 'snipasteText'
+                    }
+                    document.getElementById(`singleClick_${index}`).value = config.click;
+                    document.getElementById(`longPress_${index}`).value = config.longPress;
+                    document.getElementById(`autoClose_${index}`).checked = config.autoClose;
+                } catch (error) {
+                    console.warn(`设置按钮 ${index} 的配置时出现问题，请检查数据。`, error);
+                }
+            }
+        });
+
+        // configData.forEach(config => {
+        //     try {
+        //         const i = config.button;
+        //         document.getElementById(`singleClick_${i}`).value = config.singleClick;
+        //         document.getElementById(`longPress_${i}`).value = config.longPress;
+        //         document.getElementById(`autoClose_${i}`).checked = config.autoClose;
+        //     } catch (error) {
+        //         console.warn(`设置按钮 ${config.button} 的配置时出现问题，请检查数据。`, error);
+        //     }
+        // });
+    }
+
+    // “保存所有配置”按钮的点击事件
+    function saveConfiguration() {
+        const currentConfig = getCurrentConfig();
+        console.log("配置已保存 (模拟发送到服务器):", currentConfig);
+        alert("配置已成功保存！");
+    }
+
+    // “获取配置”测试按钮的点击事件
+    function logCurrentConfig() {
+        const currentConfig = getCurrentConfig();
+        console.log("获取到的当前配置:", currentConfig);
+        alert("当前配置已打印到浏览器控制台。");
+    }
+
+    // “加载示例”测试按钮的点击事件
+    function loadSampleConfig() {
+        const sampleData = {
+  "button1": {
+    "click": "openInEditor",
+    "longPress": "menu",
+    "autoClose": false
+  },
+  "button2": {
+    "click": "addComment",
+    "longPress": "addBlankComment",
+    "autoClose": false
+  },
+  "button3": {
+    "click": "setTitle",
+    "longPress": "addTitle",
+    "autoClose": false
+  },
+  "button4": {
+    "click": "copy",
+    "longPress": "none",
+    "autoClose": false
+  },
+  "button5": {
+    "click": "setExcerpt",
+    "longPress": "appendExcerpt",
+    "autoClose": false
+  },
+  "button6": {
+    "click": "addChildNote",
+    "longPress": "markdown2Mindmap",
+    "autoClose": false
+  },
+  "button7": {
+    "click": "snipaste",
+    "longPress": "reAskWithMenu",
+    "autoClose": false
+  },
+  "button8": {
+    "click": "openChat",
+    "longPress": "none",
+    "autoClose": true
+  }
+}
+        
+        console.log("正在加载示例配置...", sampleData);
+        setConfig(sampleData);
+        alert("示例配置已成功加载！");
+    }
+
+    // 页面加载完成后执行的逻辑
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. 初始化UI界面
+        initializeUI();
+
+        // 2. 新增：使用事件委托来监听所有菜单的 'change' 事件
+        configGrid.addEventListener('change', function(event) {
+            // 确保事件源是一个 <select> 元素
+            console.log(event);
+            
+            if (event.target && event.target.tagName === 'SELECT') {
+                const selectElement = event.target;
+                const selectedValue = selectElement.value;
+                
+                // 从 select 元素的 id (例如 'singleClick_3') 中解析出类型和按钮编号
+                const idParts = selectElement.id.split('_');
+                const actionType = idParts[0]; // 'singleClick' 或 'longPress'
+                const buttonNumber = idParts[1]; // '1', '2', '3' 等
+                
+
+                // 在控制台输出一条清晰的消息
+                console.log(`按钮 ${buttonNumber} 的 ${actionType} 行为已更改为：${selectedValue}`);
+                event.srcElement.blur()
+                
+                // 在这里，您可以添加其他需要立即执行的逻辑，
+                // 例如：自动将当前配置发送到服务器保存
+                // saveConfiguration(); 
+            }
+            
+        });
+    });
+</script>
+
+</body>
+</html>

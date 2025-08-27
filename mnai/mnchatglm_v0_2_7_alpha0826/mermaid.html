@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>纯 HTML 中的 Mermaid 示例</title>
+</head>
+<body>
+    <div id="chart-container">
+    </div>
+
+    <div class="mermaid">
+        graph LR
+            A[网页请求] --> B(服务器处理);
+            B --> C{数据验证};
+            C -->|通过| D[返回成功页面];
+            C -->|失败| E[返回错误提示];
+    </div>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.9.0/mermaid.min.js"></script>
+
+    <script>
+        // /**
+        //  * 动态生成并渲染一个 Mermaid 图表。
+        //  * (这里是上面提供的 generateMermaidChart 函数代码)
+        //  */
+        // async function generateMermaidChart(chartType, chartContent) {
+        //     const container = document.getElementById("chart-container");
+        //     const fullChartDefinition = `${chartType}\n${chartContent}`;
+        //     const uniqueId = `mermaid-render-${Date.now()}`;
+        //     const { svg, bindFunctions } = await mermaid.render(uniqueId, fullChartDefinition);
+        //     container.innerHTML = svg;
+        //     if (bindFunctions) {
+        //         bindFunctions(container);
+        //     }
+        // }
+
+        // generateMermaidChart("graph LR", "A[网页请求] --> B(服务器处理); B --> C{数据验证}; C -->|通过| D[返回成功页面]; C -->|失败| E[返回错误提示];");
+    // </script>
+
+</body>
+</html>

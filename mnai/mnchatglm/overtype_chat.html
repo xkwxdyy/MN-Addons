@@ -1,0 +1,308 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Document</title>
+  <script src="overtype.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background-color: transparent;
+      /* 禁止滚动回弹效果 */
+      -webkit-overflow-scrolling: auto;
+      overscroll-behavior: none;
+      overflow: hidden;
+      background-color: #c6dbff;
+    }
+    .overtype-input {
+      margin: 0 !important;
+      padding: 0 !important;
+      /* 禁止输入框滚动回弹 */
+      -webkit-overflow-scrolling: auto;
+      overscroll-behavior: none;
+    }
+    .overtype-wrapper {
+      background-color: #c6dbff;
+      /* 禁止包装器滚动回弹 */
+      -webkit-overflow-scrolling: auto;
+      overscroll-behavior: none;
+    }
+    #editor {
+      transition: height 0.2s ease;
+      min-height: 20px !important;
+      /* 禁止编辑器滚动回弹 */
+      -webkit-overflow-scrolling: auto;
+      overscroll-behavior: none;
+      overflow: hidden;
+    }
+    /* 全局禁止滚动回弹 */
+    * {
+      -webkit-overflow-scrolling: auto;
+      overscroll-behavior: none;
+    }
+    /* 针对textarea特别处理 */
+    textarea {
+      -webkit-overflow-scrolling: auto;
+      overscroll-behavior: none;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="editor"></div>
+
+<script>
+/**
+ * 根据指定的 scheme、host、path、query 和 fragment 生成一个完整的 URL Scheme 字符串。
+ * URL Scheme 完整格式：scheme://host/path?query#fragment
+ *
+ * @param {string} scheme - URL scheme，例如 'myapp'。必须提供。
+ * @param {string|undefined} [host] - host 部分，例如 'user_profile'。
+ * @param {string|string[]|undefined} [path] - path 部分，例如 'view/123'。
+ * @param {Object<string, string|number|boolean|object>|undefined} [query] - 查询参数对象。
+ * @param {string|undefined} [fragment] - fragment 标识符，即 URL 中 # 后面的部分。
+ * @returns {string} - 生成的完整 URL 字符串。
+ */
+function generateUrlScheme(scheme, host, path, query, fragment) {
+  // 1. 处理必须的 scheme
+  if (!scheme) {
+    console.error("Scheme is a required parameter.");
+    return '';
+  }
+  // 2. 构建基础部分：scheme 和 host
+  //    即使 host 为空，也会生成 'scheme://'，这对于 'file:///' 这类 scheme 是正确的
+  let url = `${scheme}://${host || ''}`;
+
+  // 3. 添加 path
+  if (path) {
+    if (Array.isArray(path)) {
+      let pathStr = path.join('/')
+      url += `/${pathStr.replace(/^\/+/, '')}`;
+    }else{
+      // 确保 host 和 path 之间只有一个斜杠，并处理 path 开头可能存在的斜杠
+      url += `/${path.replace(/^\/+/, '')}`;
+    }
+  }
+
+  // 4. 添加 query 参数
+  if (query && Object.keys(query).length > 0) {
+    const queryParts = [];
+    for (const key in query) {
+      // 确保我们只处理对象自身的属性
+      if (Object.prototype.hasOwnProperty.call(query, key)) {
+        const value = query[key];
+        const encodedKey = encodeURIComponent(key);
+        // 对值进行编码，如果是对象，则先序列化为 JSON 字符串
+        const encodedValue = encodeURIComponent(
+          typeof value === "object" && value !== null ? JSON.stringify(value) : value
+        );
+        queryParts.push(`${encodedKey}=${encodedValue}`);
+      }
+    }
+    if (queryParts.length > 0) {
+      url += `?${queryParts.join('&')}`;
+    }
+  }
+
+  // 5. 添加 fragment
+  if (fragment) {
+    // Fragment 部分不应该被编码
+    url += `#${fragment}`;
+  }
+
+  return url;
+}
+    /**
+     * 根据指定的 scheme、路径和参数生成一个 URL Scheme 字符串。
+     * URL Scheme协议完整格式：scheme://host/path?query_parameters#fragment_identifier
+     *
+     * @param {string} scheme - URL scheme, 例如 'myapp'。
+     * @param {string} [host] - 可选的路径或操作名。
+     * @param {Object<string, string|number|boolean>} [params] - 查询参数对象。
+     * @returns {string} - 生成的完整 URL 字符串。
+     */
+    function generateUrlScheme(scheme, host, params) {
+      let url = `${scheme}://${host || ''}`;
+      if (params && Object.keys(params).length > 0) {
+        const queryParts = [];
+        for (const key in params) {
+          // 确保我们只处理对象自身的属性
+          if (Object.prototype.hasOwnProperty.call(params, key)) {
+            const value = params[key];
+            const type = typeof value
+            // 对键和值都进行编码，这是至关重要的！
+            const encodedKey = encodeURIComponent(key);
+            const encodedValue = encodeURIComponent(type === "object"? JSON.stringify(value):value);
+            queryParts.push(`${encodedKey}=${encodedValue}`);
+          }
+        }
+        if (queryParts.length > 0) {
+          url += `?${queryParts.join('&')}`;
+        }
+      }
+      return url;
+    }
+    /**
+     *
+     * @param {string} scheme - URL scheme, 例如 'myapp'。
+     * @param {string} [host] - 可选的路径或操作名。
+     * @param {Object<string, string|number|boolean>} [params] - 查询参数对象。
+     */
+    function postMessageToAddon(scheme, host, params) {
+      let url = generateUrlScheme(scheme,host,params)
+      window.location.href = url
+    }
+  function strCode(str) {  //获取字符串的字节数
+    var count = 0;  //初始化字节数递加变量并获取字符串参数的字符个数
+    var cn = [8211, 8212, 8216, 8217, 8220, 8221, 8230, 12289, 12290, 12296, 12297, 12298, 12299, 12300, 12301, 12302, 12303, 12304, 12305, 12308, 12309, 65281, 65288, 65289, 65292, 65294, 65306, 65307, 65311]
+    var half = [32, 33, 34, 35, 36, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 58, 59, 60, 61, 62, 63, 64, 91, 92, 93, 94, 95, 96, 123, 124, 125, 126,105,108,8211]
+    if (str) {  //如果存在字符串，则执行
+      let len = str.length;
+        for (var i = 0; i < len; i++) {  //遍历字符串，枚举每个字符
+        let charCode = str.charCodeAt(i)
+            if (charCode>=65 && charCode<=90) {
+              count += 1.5;  //大写
+        } else if (half.includes(charCode)) {
+              count +=0.45
+        } else if (cn.includes(charCode)) {
+              count +=0.8
+            }else if (charCode > 255) {  //字符编码大于255，说明是双字节字符(即是中文)
+                count += 2;  //则累加2个
+            }else{
+                count++;  //否则递加一次
+            }
+        }
+        return count;  //返回字节数
+    } else {
+        return 0;  //如果参数为空，则返回0个
+    }
+  }
+  function resetPagePosition() {
+    console.log('重置页面位置');
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    
+    // 滚动到顶部
+    window.scrollTo(0, 0);
+  }
+  let preHeight = 35
+  const [editor] = new OverType('#editor', {
+    placeholder: 'Send message...',
+    autoResize: true,
+    minHeight: 20,
+    maxHeight: 800,
+    onChange: (value, instance) => {
+      // console.log('Content changed:', value);
+      // let height = instance.textarea.scrollHeight
+      // if (value.split("\n").length  === 1) {
+      //   if (strCode(value)*8 < 210) {
+      //     height = 35
+      //   }
+
+      // }
+      // if (height !== preHeight) {
+      //   preHeight = height
+      //   // console.log(height);
+      //   postMessageToAddon("editoraction","setHeight",{height:height})
+      // }
+    },
+    onKeydown: (event, instance) => {
+      // 检测escape键取消焦点
+      if (event.key === 'Escape') {
+        event.preventDefault(); // 阻止默认行为
+        instance.blur(); // 取消编辑器焦点
+        console.log('Escape 键触发，取消焦点');
+        return;
+      }
+      
+      // 检测cmd+enter (Mac) 或 ctrl+enter (Windows/Linux)
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault(); // 阻止默认行为
+        
+        // 获取当前编辑器内容
+        const currentValue = instance.getValue();
+        
+        // 调用postMessageToAddon发送消息
+        postMessageToAddon("editoraction", "sendMessage", {
+          content: currentValue,
+          timestamp: Date.now()
+        });
+        
+        console.log('Cmd+Enter 快捷键触发，发送消息:', currentValue);
+      }
+    },
+    theme: {
+      name: 'my-theme',
+      colors: {
+        bgPrimary: '#c6dbff',
+        bgSecondary: '#c6dbff',
+        text: '#0d3b66',
+        h1: '#f95738',
+        h2: '#ee964b',
+        h3: '#3d8a51',
+        strong: '#ee964b',
+        em: '#f95738',
+        link: '#0d3b66',
+        code: '#0d3b66',
+        codeBg: 'rgba(244, 211, 94, 0.2)',
+        blockquote: '#5a7a9b',
+        hr: '#5a7a9b',
+        syntaxMarker: 'rgba(13, 59, 102, 0.52)',
+        cursor: '#f95738',
+        selection: 'rgba(244, 211, 94, 0.4)'
+      }
+    }
+  });
+
+// 添加移动端键盘高度变化检测
+let initialViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+let currentViewportHeight = initialViewportHeight;
+
+// 检测视口高度变化（键盘弹出/收起）
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => {
+    const newHeight = window.visualViewport.height;
+    const heightDifference = initialViewportHeight - newHeight;
+    if (heightDifference === 0) {
+      return;
+    }
+    if (heightDifference < -100) {
+      return;
+    }
+
+    
+    // if (heightDifference > 0) {
+      // 键盘弹出，视口高度减少
+      console.log('键盘弹出，视口高度减少:', heightDifference + 'px');
+      
+      // 检测输入框是否被键盘遮挡
+      const editorRect = editor.textarea.getBoundingClientRect();
+      const isObscured = editorRect.bottom > newHeight;
+      
+      if (isObscured) {
+        console.log('输入框被键盘遮挡，需要上抬');
+        // 这里可以触发自定义事件或回调
+        postMessageToAddon("editoraction", "keyboardShown", {
+          keyboardHeight: heightDifference,
+          viewportHeight: newHeight
+        });
+      }
+    // } else {
+      // 键盘收起，视口高度恢复
+      // console.log('键盘收起，视口高度恢复');
+      // postMessageToAddon("editoraction", "keyboardHidden", {
+      //   viewportHeight: newHeight
+      // });
+    // }
+    
+    currentViewportHeight = newHeight;
+  });
+}
+function setInput(encodedPrompt) {
+  let prompt = decodeURIComponent(encodedPrompt)
+  editor.setValue(prompt)
+}
+</script>
+</body>
+</html>

@@ -32,7 +32,7 @@ JSB.newAddon = function(mainPath) {
     documentDidOpen: function(docmd5) {
       currentDocmd5 = docmd5
     },
-    docmentWillClose: function(docmd5) {
+    documentWillClose: function(docmd5) {
       currentDocmd5 = ''
     },
     controllerWillLayoutSubviews: function(controller) {

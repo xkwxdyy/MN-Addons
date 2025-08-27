@@ -424,6 +424,10 @@ function registerAllMenuTemplates() {
           action: "renewKnowledgeNoteIntoParentNote",
           menuTitle: "    更新知识点卡片到父卡片中",
         },
+        {
+          action: "keepOnlyExcerpt",
+          menuTitle: "    只保留摘录",
+        },
         "⬇️ 修改标题",
         {
           action: "removeTitlePrefix",

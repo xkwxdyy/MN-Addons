@@ -3320,6 +3320,68 @@ function registerAllCustomActions() {
   // changeChildNotesTitles
   // changeDescendantNotesTitles
   // changeTitlePrefix
+  
+  // keepOnlyExcerpt - 只保留摘录
+  global.registerCustomAction("keepOnlyExcerpt", async function (context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    
+    if (!focusNote) {
+      MNUtil.showHUD("❌ 请先选择要处理的卡片");
+      return;
+    }
+    
+    MNUtil.undoGrouping(() => {
+      try {
+        // 1. 清空标题
+        focusNote.noteTitle = "";
+        
+        // 2. 获取所有评论的详细类型
+        const comments = focusNote.MNComments;
+        const indicesToRemove = [];
+        
+        // 3. 识别需要删除的评论（手写和文本类型）
+        for (let i = 0; i < comments.length; i++) {
+          const commentType = comments[i].type;
+          
+          // 手写相关类型
+          if (commentType === "drawingComment" || 
+              commentType === "imageCommentWithDrawing" || 
+              commentType === "mergedImageCommentWithDrawing") {
+            indicesToRemove.push(i);
+            continue;
+          }
+          
+          // 文本相关类型（包括 HTML、链接等）
+          if (commentType === "textComment" || 
+              commentType === "markdownComment" || 
+              commentType === "tagComment" ||
+              commentType === "HtmlComment" ||
+              commentType === "linkComment" ||
+              commentType === "summaryComment" ||
+              commentType === "mergedTextComment" ||
+              commentType === "blankTextComment") {
+            indicesToRemove.push(i);
+          }
+        }
+        
+        // 4. 从后往前删除评论（避免索引变化问题）
+        indicesToRemove.sort((a, b) => b - a);
+        for (const index of indicesToRemove) {
+          focusNote.removeCommentByIndex(index);
+        }
+        
+        // 5. 刷新卡片显示
+        focusNote.refresh();
+        
+        MNUtil.showHUD(`✅ 已处理：清除标题和 ${indicesToRemove.length} 条评论`);
+        
+      } catch (error) {
+        MNUtil.showHUD(`❌ 处理失败: ${error.message}`);
+        toolbarUtils.addErrorLog(error, "keepOnlyExcerpt", { noteId: focusNote?.noteId });
+      }
+    });
+  });
+
   // ========== OTHER 相关 (77 个) ==========
 
   // getNewClassificationInformation

@@ -2830,26 +2830,8 @@ function registerAllCustomActions() {
       const { button, des, focusNote, focusNotes, self } = context;
       MNUtil.undoGrouping(() => {
         try {
-          UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
-            "复制 Markdown 类型链接",
-            "输入引用词",
-            2,
-            "取消",
-            ["确定"],
-            (alert, buttonIndex) => {
-              MNUtil.undoGrouping(() => {
-                if (buttonIndex == 1) {
-                  let refContent = alert.textFieldAtIndex(0).text
-                    ? alert.textFieldAtIndex(0).text
-                    : MNMath.getFirstTitleLinkWord(focusNote);
-                  let mdLink =
-                    "[" + refContent + "](" + focusNote.noteURL + ")";
-                  MNUtil.copy(mdLink);
-                  MNUtil.showHUD(mdLink);
-                }
-              });
-            },
-          );
+          // 调用封装在 MNMath 中的新方法
+          MNMath.copyMarkdownLinkWithQuickPhrases(focusNote);
         } catch (error) {
           MNUtil.showHUD(error);
         }

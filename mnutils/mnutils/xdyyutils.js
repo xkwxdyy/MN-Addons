@@ -6040,6 +6040,392 @@ class MNMath {
   }
 
   /**
+   * 加载链接词快捷短语配置
+   * @returns {string[]} 快捷短语数组
+   */
+  static loadLinkPhrasesConfig() {
+    try {
+      const configKey = "MNMath_LinkPhrases";
+      const defaultPhrases = [
+        "作为特例", 
+        "因此", 
+        "参见", 
+        "根据", 
+        "证明", 
+        "应用于", 
+        "等价于", 
+        "推广到",
+        "由此可得",
+        "进一步",
+        "类比",
+        "对比"
+      ];
+      
+      // 从 NSUserDefaults 加载
+      const savedConfig = NSUserDefaults.standardUserDefaults().objectForKey(configKey);
+      if (savedConfig) {
+        try {
+          const parsed = JSON.parse(savedConfig);
+          // 确保返回的是数组
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        } catch (e) {
+          // 解析失败，返回默认值
+          MNUtil.log("Failed to parse saved link phrases config");
+        }
+      }
+      
+      // 如果没有保存的配置或解析失败，返回默认值并保存
+      this.saveLinkPhrasesConfig(defaultPhrases);
+      return defaultPhrases;
+    } catch (error) {
+      MNUtil.log("Error loading link phrases config: " + error.toString());
+      return ["作为特例", "因此", "参见", "根据"];
+    }
+  }
+
+  /**
+   * 保存链接词快捷短语配置
+   * @param {string[]} phrases - 快捷短语数组
+   * @returns {boolean} 是否保存成功
+   */
+  static saveLinkPhrasesConfig(phrases) {
+    try {
+      const configKey = "MNMath_LinkPhrases";
+      // 过滤空字符串并去重
+      const cleanPhrases = [...new Set(phrases.filter(p => p && p.trim()))];
+      NSUserDefaults.standardUserDefaults().setObjectForKey(
+        JSON.stringify(cleanPhrases), 
+        configKey
+      );
+      return true;
+    } catch (error) {
+      MNUtil.log("Error saving link phrases config: " + error.toString());
+      return false;
+    }
+  }
+
+  /**
+   * 复制 Markdown 格式的卡片链接（带快捷短语功能）
+   * @param {MNNote} note - 要生成链接的卡片
+   */
+  static copyMarkdownLinkWithQuickPhrases(note) {
+    if (!note) {
+      MNUtil.showHUD("❌ 请先选择一个卡片");
+      return;
+    }
+
+    // 加载快捷短语
+    let phrases = this.loadLinkPhrasesConfig();
+    
+    // 构建选项列表
+    let menuOptions = [];
+    
+    // 添加快捷短语选项
+    phrases.forEach(phrase => {
+      menuOptions.push(`📝 ${phrase}`);
+    });
+    
+    // 添加分隔线和功能选项
+    menuOptions.push("────────────────");
+    menuOptions.push("✏️ 手动输入链接词");
+    menuOptions.push("⚙️ 管理快捷短语");
+    
+    // 显示主菜单
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "复制 Markdown 链接",
+      "选择快捷短语或手动输入链接词",
+      0,
+      "取消",
+      menuOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) return; // 取消
+        
+        const selectedIndex = buttonIndex - 1;
+        
+        // 判断选择的是什么
+        if (selectedIndex < phrases.length) {
+          // 选择了快捷短语
+          const linkWord = phrases[selectedIndex];
+          const mdLink = `[${linkWord}](${note.noteURL})`;
+          MNUtil.copy(mdLink);
+          MNUtil.showHUD(`✅ 已复制: ${mdLink}`);
+          
+        } else if (menuOptions[selectedIndex] === "✏️ 手动输入链接词") {
+          // 手动输入
+          this.showManualInputDialog(note);
+          
+        } else if (menuOptions[selectedIndex] === "⚙️ 管理快捷短语") {
+          // 管理快捷短语
+          this.manageLinkPhrases(() => {
+            // 管理完成后重新显示主菜单
+            this.copyMarkdownLinkWithQuickPhrases(note);
+          });
+        }
+      }
+    );
+  }
+
+  /**
+   * 显示手动输入对话框
+   * @private
+   */
+  static showManualInputDialog(note) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "输入链接词",
+      "请输入自定义的链接词",
+      2, // 输入框样式
+      "取消",
+      ["确定"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          let linkWord = alert.textFieldAtIndex(0).text;
+          // 如果没有输入，使用第一个标题链接词
+          if (!linkWord || !linkWord.trim()) {
+            linkWord = this.getFirstTitleLinkWord(note);
+          }
+          
+          if (linkWord) {
+            const mdLink = `[${linkWord}](${note.noteURL})`;
+            MNUtil.copy(mdLink);
+            MNUtil.showHUD(`✅ 已复制: ${mdLink}`);
+            
+            // 询问是否添加到快捷短语
+            this.askToAddPhrase(linkWord);
+          }
+        }
+      }
+    );
+  }
+
+  /**
+   * 询问是否添加到快捷短语
+   * @private
+   */
+  static askToAddPhrase(phrase) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "添加到快捷短语？",
+      `是否将 "${phrase}" 添加到快捷短语列表？`,
+      0,
+      "否",
+      ["是"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          let phrases = this.loadLinkPhrasesConfig();
+          if (!phrases.includes(phrase)) {
+            phrases.unshift(phrase); // 添加到开头
+            if (phrases.length > 20) {
+              phrases.pop(); // 限制最多20个
+            }
+            if (this.saveLinkPhrasesConfig(phrases)) {
+              MNUtil.showHUD("✅ 已添加到快捷短语");
+            }
+          }
+        }
+      }
+    );
+  }
+
+  /**
+   * 管理链接词快捷短语
+   * @param {Function} callback - 完成后的回调函数
+   */
+  static manageLinkPhrases(callback) {
+    let phrases = this.loadLinkPhrasesConfig();
+    
+    let menuOptions = [
+      "➕ 添加新短语",
+      "➖ 删除短语",
+      "🔄 恢复默认短语",
+      "📋 查看所有短语"
+    ];
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "管理快捷短语",
+      `当前有 ${phrases.length} 个快捷短语`,
+      0,
+      "返回",
+      menuOptions,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          // 返回
+          if (callback) callback();
+          return;
+        }
+        
+        const selectedOption = menuOptions[buttonIndex - 1];
+        
+        switch (selectedOption) {
+          case "➕ 添加新短语":
+            this.addNewPhrase(callback);
+            break;
+            
+          case "➖ 删除短语":
+            this.deletePhrase(callback);
+            break;
+            
+          case "🔄 恢复默认短语":
+            this.restoreDefaultPhrases(callback);
+            break;
+            
+          case "📋 查看所有短语":
+            this.viewAllPhrases(callback);
+            break;
+        }
+      }
+    );
+  }
+
+  /**
+   * 添加新的快捷短语
+   * @private
+   */
+  static addNewPhrase(callback) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "添加新短语",
+      "请输入新的快捷短语",
+      2, // 输入框样式
+      "取消",
+      ["添加"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          const newPhrase = alert.textFieldAtIndex(0).text;
+          if (newPhrase && newPhrase.trim()) {
+            let phrases = this.loadLinkPhrasesConfig();
+            if (!phrases.includes(newPhrase.trim())) {
+              phrases.unshift(newPhrase.trim());
+              if (phrases.length > 20) {
+                phrases.pop(); // 限制最多20个
+              }
+              if (this.saveLinkPhrasesConfig(phrases)) {
+                MNUtil.showHUD(`✅ 已添加: ${newPhrase}`);
+              }
+            } else {
+              MNUtil.showHUD("⚠️ 该短语已存在");
+            }
+          }
+        }
+        // 返回管理界面
+        this.manageLinkPhrases(callback);
+      }
+    );
+  }
+
+  /**
+   * 删除快捷短语
+   * @private
+   */
+  static deletePhrase(callback) {
+    let phrases = this.loadLinkPhrasesConfig();
+    
+    if (phrases.length === 0) {
+      MNUtil.showHUD("没有可删除的短语");
+      this.manageLinkPhrases(callback);
+      return;
+    }
+    
+    // 为每个短语添加序号
+    const numberedPhrases = phrases.map((phrase, index) => `${index + 1}. ${phrase}`);
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择要删除的短语",
+      "点击短语将其删除",
+      0,
+      "返回",
+      numberedPhrases,
+      (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          // 返回
+          this.manageLinkPhrases(callback);
+          return;
+        }
+        
+        const indexToDelete = buttonIndex - 1;
+        const deletedPhrase = phrases[indexToDelete];
+        
+        phrases.splice(indexToDelete, 1);
+        if (this.saveLinkPhrasesConfig(phrases)) {
+          MNUtil.showHUD(`✅ 已删除: ${deletedPhrase}`);
+        }
+        
+        // 继续显示删除界面
+        this.deletePhrase(callback);
+      }
+    );
+  }
+
+  /**
+   * 恢复默认短语列表
+   * @private
+   */
+  static restoreDefaultPhrases(callback) {
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "恢复默认短语？",
+      "这将替换当前的所有快捷短语",
+      0,
+      "取消",
+      ["确认恢复"],
+      (alert, buttonIndex) => {
+        if (buttonIndex === 1) {
+          const defaultPhrases = [
+            "作为特例", 
+            "因此", 
+            "参见", 
+            "根据", 
+            "证明", 
+            "应用于", 
+            "等价于", 
+            "推广到",
+            "由此可得",
+            "进一步",
+            "类比",
+            "对比"
+          ];
+          
+          if (this.saveLinkPhrasesConfig(defaultPhrases)) {
+            MNUtil.showHUD("✅ 已恢复默认短语列表");
+          }
+        }
+        
+        // 返回管理界面
+        this.manageLinkPhrases(callback);
+      }
+    );
+  }
+
+  /**
+   * 查看所有短语
+   * @private
+   */
+  static viewAllPhrases(callback) {
+    let phrases = this.loadLinkPhrasesConfig();
+    
+    if (phrases.length === 0) {
+      MNUtil.showHUD("短语列表为空");
+      this.manageLinkPhrases(callback);
+      return;
+    }
+    
+    // 将短语列表转换为带序号的字符串
+    const phraseList = phrases.map((phrase, index) => 
+      `${index + 1}. ${phrase}`
+    ).join("\n");
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "所有快捷短语",
+      phraseList,
+      0,
+      "返回",
+      [],
+      (alert, buttonIndex) => {
+        // 返回管理界面
+        this.manageLinkPhrases(callback);
+      }
+    );
+  }
+
+  /**
    * 根据卡片类型转换需要，替换第一个 HtmlComment 字段
    * 当卡片被移动到不同的归类卡片下方时，需要更新第一个字段以匹配新类型
    * 

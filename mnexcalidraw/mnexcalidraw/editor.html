@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Excalidraw in browser</title>
+    <meta charset="UTF-8" />
+  <meta name="viewport" 
+	content="
+		width=device-width,
+		initial-scale=1.0,
+    maximum-scale=1.0,
+		user-scalable=no">
+    <script src="react.development.js"></script>
+    <script src="react-dom.development.js"></script>
+    <script
+      type="text/javascript"
+      src="excalidraw.development.js"
+    ></script>
+    <style>
+    body{
+      margin: 0;
+        -webkit-user-select: none; /* Safari */
+        -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none; /* Standard */
+    }
+    .no-select {
+        -webkit-user-select: none; /* Safari */
+        -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none; /* Standard */
+    }
+    #app {
+      height: 100vh; /* 或者任何其他具体的高度值，如像素或百分比 */
+    }
+
+    #app > div {
+      height: 100%;
+    }
+    .dropdown-menu-group {
+      display: none;
+    }
+    .sidebar-trigger default-sidebar-trigger{
+      display: none;
+    }
+    .App-bottom-bar{
+      margin-bottom: 32px !important;
+    }
+    .App-menu_bottom{
+      margin-bottom: 15px !important;
+    }
+    label[title="Library"] {
+        display: none;
+    }
+
+    </style>
+    
+  </head>
+
+  <body>
+    <div class="container">
+      <div id="app"></div>
+    </div>
+    <script type="text/javascript" src="index.js"></script>
+    <script>
+    function switchToPencil() {
+      var event = new KeyboardEvent('keydown', {
+        key: '7',
+        code: 'Digit7',
+        keyCode: 55, // '7' 的键码
+        which: 55, // '7' 的键码
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+        altKey: false,
+        bubbles: true,
+        cancelable: true
+      });
+      document.getElementsByClassName("excalidraw__canvas interactive")[0].dispatchEvent(event);
+    }
+
+    function toggleTheme() {
+      var event = new KeyboardEvent('keydown', {
+        key: "d",
+        code: 'KeyD',
+        keyCode: 68,
+        which: 68,
+        ctrlKey: false, // 在Windows上是true，在macOS上是metaKey: true
+        metaKey: false, // 在macOS上使用metaKey来表示Cmd键
+        shiftKey: true,
+        altKey: true,
+        bubbles: true,
+        cancelable: true
+      });
+      document.getElementsByClassName("excalidraw__canvas interactive")[0].dispatchEvent(event)
+    }
+    function resetZoom() {
+      var event = new KeyboardEvent('keydown', {
+        key: "0",
+        code: 'Digit0',
+        keyCode: 48,
+        which: 48,
+        ctrlKey: false, // 在Windows上是true，在macOS上是metaKey: true
+        metaKey: true, // 在macOS上使用metaKey来表示Cmd键
+        shiftKey: false,
+        altKey: false,
+        bubbles: true,
+        cancelable: true
+      });
+      document.getElementsByClassName("excalidraw__canvas interactive")[0].dispatchEvent(event)
+    }
+    function zoomIn() {
+      var event = new KeyboardEvent('keydown', {
+        key: '+',
+        code: 'Equal',
+        keyCode: 187,
+        which: 187,
+        ctrlKey: false, // 在Windows上是true，在macOS上是metaKey: true
+        metaKey: true, // 在macOS上使用metaKey来表示Cmd键
+        shiftKey: false,
+        altKey: false,
+        bubbles: true,
+        cancelable: true
+      });
+      document.getElementsByClassName("excalidraw__canvas interactive")[0].dispatchEvent(event)
+    }
+    function zoomOut() {
+      var event = new KeyboardEvent('keydown', {
+        key: "-",
+        code: 'Minus',
+        keyCode: 189,
+        which: 189,
+        ctrlKey: false, // 在Windows上是true，在macOS上是metaKey: true
+        metaKey: true, // 在macOS上使用metaKey来表示Cmd键
+        shiftKey: false,
+        altKey: false,
+        bubbles: true,
+        cancelable: true
+      });
+      document.getElementsByClassName("excalidraw__canvas interactive")[0].dispatchEvent(event)
+    }
+
+
+// var base64Img = "data:image/png;base64,iVBORw0KGg...."; // your base64 string
+// var blobData = dataURItoBlob(base64Img);
+
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(() => {
+        switchToPencil()
+      }, 500);
+    })
+    </script>
+  </body>
+</html>

@@ -1,3 +1,5 @@
+> 如果你没听懂我的需求或者有任何觉得我没说清楚的地方，请不要随便猜测，直接问我。
+
 # MarginNote 4 插件开发指南
 
 ## 1. 什么是 MarginNote 4
@@ -54,6 +56,7 @@ JSB.newAddon = () => {
 ```bash
 mnaddon4 build plugin_0827
 ```
+打包的话，优先使用 mnaddon-package 这个 agent 来打包。
 
 ## 3. MNUtils 框架 - 插件开发的基础设施 ⭐⭐⭐⭐⭐
 

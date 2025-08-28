@@ -37,8 +37,8 @@ JSB.newAddon = function (mainPath) {
           ocrUtils.ocrController.view.hidden = true;
           ocrUtils.ocrController.notebookid = notebookid
           self.notebookid = notebookid
-          ocrUtils.ocrController.view.frame = { x: 50, y: 100, width: 260, height: 305 }
-          ocrUtils.ocrController.currentFrame = { x: 50, y: 100, width: 260, height: 305 }
+          ocrUtils.ocrController.view.frame = { x: 50, y: 100, width: 260, height: 345 }
+          ocrUtils.ocrController.currentFrame = { x: 50, y: 100, width: 260, height: 345 }
           MNUtil.delay(0.2).then(()=>{
             MNUtil.studyView.becomeFirstResponder(); //For dismiss keyboard on iOS
           })
@@ -78,7 +78,7 @@ JSB.newAddon = function (mainPath) {
           if (currentFrame.y >= studyFrame.height) {
             currentFrame.y = studyFrame.height-20              
           }
-          currentFrame.height = 305
+          currentFrame.height = 345
           ocrUtils.setFrame(ocrUtils.ocrController, currentFrame)
         }
       },
@@ -112,7 +112,7 @@ JSB.newAddon = function (mainPath) {
         }
         if (self.isFirst) {
           let buttonFrame = self.addonBar.frame
-          let frame = buttonFrame.x < 100 ? {x:40,y:buttonFrame.y,width:260,height:305} : {x:buttonFrame.x-260,y:buttonFrame.y,width:260,height:305}
+          let frame = buttonFrame.x < 100 ? {x:40,y:buttonFrame.y,width:260,height:345} : {x:buttonFrame.x-260,y:buttonFrame.y,width:260,height:345}
           ocrUtils.setFrame(ocrUtils.ocrController, frame)
           self.isFirst = false;
         }

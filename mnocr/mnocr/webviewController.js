@@ -123,7 +123,11 @@ var ocrController = JSB.defineClass('ocrController : UIViewController <NSURLConn
     MNButton.setColor(self.OCREditorButton, "#457bd3",0.8)
     MNButton.setRadius(self.OCREditorButton, 10)
 
-    
+    self.OCRTitleButton = self.createButton("beginOCR:","ocrView")
+    self.OCRTitleButton.action = "toTitle"
+    MNButton.setTitle(self.OCRTitleButton, "OCR → Title",fontSize,true)
+    MNButton.setColor(self.OCRTitleButton, "#457bd3",0.8)
+    MNButton.setRadius(self.OCRTitleButton, 10)
 
 
 
@@ -236,6 +240,7 @@ viewWillLayoutSubviews: function() {
     self.OCRExcerptButton.frame = {x: xLeft+15 ,y: 130,width: 230,height: buttonHeight};
     self.OCRChildButton.frame = {x: xLeft+15 ,y: 170,width: 230,height: buttonHeight};
     self.OCREditorButton.frame = {x: xLeft+15 ,y: 210,width: 230,height: buttonHeight};
+    self.OCRTitleButton.frame = {x: xLeft+15 ,y: 250,width: 230,height: buttonHeight};
 
     self.OCRClearButton.frame = MNUtil.genFrame(xRight-45, yBottom-85, 35, 35);
     self.PDFOCRFileButton.frame = {x: xLeft+15 ,y: 10,width: 230,height: buttonHeight};
@@ -783,6 +788,17 @@ $\\phi_{n} = \\frac{f_{0}^{2}h_{n}}{gH\\left(K^{2} - K_{s}^{2} - irK^{2}/k\\bar{
             MNUtil.copy(res)
           }
           break;
+        case "toTitle":
+          if (foucsNote) {
+            MNUtil.undoGrouping(()=>{
+              foucsNote.noteTitle = res
+              MNUtil.waitHUD("✅ Set to title")
+            })
+            MNUtil.postNotification("OCRFinished", {action:"toTitle",noteId:foucsNote.noteId,result:res})
+          }else{
+            MNUtil.showHUD("Please select a note first")
+          }
+          break;
         default:
           break;
       }
@@ -1117,6 +1133,7 @@ ocrController.prototype.refreshView = function (source){
       this.OCRCopyButton.hidden = false
       this.OCRChildButton.hidden = false
       this.OCREditorButton.hidden = false
+      this.OCRTitleButton.hidden = false
       this.PDFOCREditorButton.hidden = true
       this.PDFTranslateButton.hidden = true
       this.clearButton.hidden = false
@@ -1143,6 +1160,7 @@ ocrController.prototype.refreshView = function (source){
       this.OCRExcerptButton.hidden = true
       this.OCRChildButton.hidden = true
       this.OCREditorButton.hidden = true
+      this.OCRTitleButton.hidden = true
       this.PDFOCREditorButton.hidden = false
       this.PDFTranslateButton.hidden = true
       this.apikeyInput.hidden = false
@@ -1167,6 +1185,7 @@ ocrController.prototype.refreshView = function (source){
       this.equationButton.backgroundColor = ocrUtils.hexColorAlpha(ocrConfig.getConfig("simpleTexGeneral")?"#9bb2d6":"#457bd3",0.8)
       this.OCRChildButton.hidden = false
       this.OCREditorButton.hidden = false
+      this.OCRTitleButton.hidden = false
       this.OCRClearButton.hidden = false
       this.PDFOCREditorButton.hidden = true
       this.PDFTranslateButton.hidden = true
@@ -1234,6 +1253,7 @@ ocrController.prototype.refreshView = function (source){
       this.OCRClearButton.hidden = false
       this.OCRChildButton.hidden = false
       this.OCREditorButton.hidden = false
+      this.OCRTitleButton.hidden = false
       this.PDFOCREditorButton.hidden = true
       this.PDFTranslateButton.hidden = true
       this.PDFOCRExportButton.hidden = true

@@ -3,7 +3,6 @@
  * 
  * 功能：为 MarginNote 的 PDF 文档添加页码偏移功能，解决 PDF 显示页码与实际页码不匹配的问题
  * 作者：BigGrayVVolf (原始版本)
- * 注释：由 Claude 添加，用于学习 MarginNote 插件开发
  * 
  * 使用示例：
  * - 输入 "10" - 跳转到第 10 页

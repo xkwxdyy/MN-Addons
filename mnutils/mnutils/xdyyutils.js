@@ -6047,18 +6047,7 @@ class MNMath {
     try {
       const configKey = "MNMath_LinkPhrases";
       const defaultPhrases = [
-        "作为特例", 
-        "因此", 
-        "参见", 
-        "根据", 
-        "证明", 
-        "应用于", 
-        "等价于", 
-        "推广到",
-        "由此可得",
-        "进一步",
-        "类比",
-        "对比"
+        "作为特例"
       ];
       
       // 从 NSUserDefaults 加载

@@ -48,9 +48,9 @@ JSB.newAddon = () => {
 }
 ```
 
-### 如何打包插件
+### 如何打包和解包插件
 
-在插件目录下使用 `mnaddon4 build` 打包，比如：
+在插件目录下使用 `mnaddon4 build` 打包、 `mnaddon4 unpack`解包，比如：
 ```bash
 mnaddon4 build plugin_0827
 ```

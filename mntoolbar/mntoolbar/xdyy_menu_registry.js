@@ -673,25 +673,35 @@ function registerAllMenuTemplates() {
           action: "searchDefinition",
           menuTitle: "    📚 搜索上层定义卡片的目录",
         },
-        "⚙️ 基础配置",
+        
+        "📁 根目录管理",
         {
           action: "manageSearchRoots",
-          menuTitle: "    📁 管理搜索根目录",
+          menuTitle: "    📝 管理根目录列表",
         },
+        {
+          action: "adjustRootOrder",
+          menuTitle: "    ↕️ 调整根目录顺序",
+        },
+        {
+          action: "manageRootGroups",
+          menuTitle: "    ⚡ 管理根目录群组",
+        },
+        
+        "⚙️ 搜索配置",
         {
           action: "showSearchSettings",
-          menuTitle: "    🎯 搜索设置",
+          menuTitle: "    🎯 基础搜索设置",
         },
-        "📝 同义词管理",
         {
           action: "manageSynonymGroups",
-          menuTitle: "    （包含导入导出功能）",
+          menuTitle: "    📝 同义词组管理",
         },
-        "🚫 排除词管理",
         {
           action: "manageExclusionGroups",
-          menuTitle: "    （智能过滤搜索结果）",
+          menuTitle: "    🚫 排除词组管理",
         },
+        
         "📊 配置同步",
         {
           action: "exportSearchConfig",

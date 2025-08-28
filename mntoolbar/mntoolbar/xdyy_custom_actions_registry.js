@@ -4678,6 +4678,40 @@ function registerAllCustomActions() {
       }
     }
   });
+  
+  // adjustRootOrder - 调整根目录顺序
+  global.registerCustomAction("adjustRootOrder", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      if (typeof MNMath !== "undefined" && MNMath.showRootOrderDialog) {
+        await MNMath.showRootOrderDialog();
+      } else {
+        MNUtil.showHUD("❌ 该功能需要 MNUtils 支持");
+      }
+    } catch (error) {
+      MNUtil.showHUD("调整顺序失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined") {
+        toolbarUtils.addErrorLog(error, "adjustRootOrder");
+      }
+    }
+  });
+
+  // manageRootGroups - 管理根目录群组
+  global.registerCustomAction("manageRootGroups", async function(context) {
+    const { button, des, focusNote, focusNotes, self } = context;
+    try {
+      if (typeof MNMath !== "undefined" && MNMath.manageRootGroups) {
+        await MNMath.manageRootGroups();
+      } else {
+        MNUtil.showHUD("❌ 该功能需要 MNUtils 支持");
+      }
+    } catch (error) {
+      MNUtil.showHUD("群组管理失败: " + error.message);
+      if (typeof toolbarUtils !== "undefined") {
+        toolbarUtils.addErrorLog(error, "manageRootGroups");
+      }
+    }
+  });
 
   global.registerCustomAction("codeMergeTemplate", async function (context) {
     const { button, des, focusNote, focusNotes, self } = context;

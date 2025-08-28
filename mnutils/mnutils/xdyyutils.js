@@ -6099,61 +6099,80 @@ class MNMath {
    * 复制 Markdown 格式的卡片链接（带快捷短语功能）
    * @param {MNNote} note - 要生成链接的卡片
    */
-  static copyMarkdownLinkWithQuickPhrases(note) {
+  static copyMarkdownLinkWithQuickPhrases(note, prefilledText = null) {
     if (!note) {
       MNUtil.showHUD("❌ 请先选择一个卡片");
       return;
     }
-
+    
+    // 获取默认链接词（如果没有预填充文本）
+    const defaultLinkWord = prefilledText|| "";
+    
     // 加载快捷短语
     let phrases = this.loadLinkPhrasesConfig();
     
     // 构建选项列表
     let menuOptions = [];
     
-    // 添加快捷短语选项
+    // 第一个按钮：确定（使用输入框内容）
+    menuOptions.push("✅ 确定");
+    
+    // 添加所有快捷短语选项
     phrases.forEach(phrase => {
       menuOptions.push(`📝 ${phrase}`);
     });
     
-    // 添加分隔线和功能选项
+    // 添加分隔线和管理选项
     menuOptions.push("────────────────");
-    menuOptions.push("✏️ 手动输入链接词");
     menuOptions.push("⚙️ 管理快捷短语");
     
-    // 显示主菜单
+    // 显示带输入框的对话框
     UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
       "复制 Markdown 链接",
-      "选择快捷短语或手动输入链接词",
-      0,
+      "输入链接词或选择快捷短语",
+      2, // 输入框模式
       "取消",
       menuOptions,
       (alert, buttonIndex) => {
         if (buttonIndex === 0) return; // 取消
         
         const selectedIndex = buttonIndex - 1;
+        const inputText = alert.textFieldAtIndex(0).text;
         
-        // 判断选择的是什么
-        if (selectedIndex < phrases.length) {
-          // 选择了快捷短语
-          const linkWord = phrases[selectedIndex];
-          const mdLink = `[${linkWord}](${note.noteURL})`;
+        if (selectedIndex === 0) {
+          // 点击"确定"按钮
+          const linkWord = inputText && inputText.trim() ? inputText : defaultLinkWord;
+          if (linkWord) {
+            const mdLink = `[${linkWord}](${note.noteURL})`;
+            MNUtil.copy(mdLink);
+            MNUtil.showHUD(`✅ 已复制: ${mdLink}`);
+          } else {
+            MNUtil.showHUD("❌ 请输入链接词");
+          }
+          
+        } else if (selectedIndex <= phrases.length) {
+          // 选择了快捷短语，直接使用并复制
+          const selectedPhrase = phrases[selectedIndex - 1];
+          const mdLink = `[${selectedPhrase}](${note.noteURL})`;
           MNUtil.copy(mdLink);
           MNUtil.showHUD(`✅ 已复制: ${mdLink}`);
-          
-        } else if (menuOptions[selectedIndex] === "✏️ 手动输入链接词") {
-          // 手动输入
-          this.showManualInputDialog(note);
           
         } else if (menuOptions[selectedIndex] === "⚙️ 管理快捷短语") {
           // 管理快捷短语
           this.manageLinkPhrases(() => {
-            // 管理完成后重新显示主菜单
-            this.copyMarkdownLinkWithQuickPhrases(note);
+            // 管理完成后重新显示主菜单，保持之前的输入
+            this.copyMarkdownLinkWithQuickPhrases(note, inputText);
           });
         }
       }
     );
+    
+    // 设置输入框的默认值
+    MNUtil.delay(0.1).then(() => {
+      if (UIAlertView.currentAlert) {
+        UIAlertView.currentAlert.textFieldAtIndex(0).text = defaultLinkWord;
+      }
+    });
   }
 
   /**
@@ -6180,8 +6199,7 @@ class MNMath {
             MNUtil.copy(mdLink);
             MNUtil.showHUD(`✅ 已复制: ${mdLink}`);
             
-            // 询问是否添加到快捷短语
-            this.askToAddPhrase(linkWord);
+            // 不再自动询问是否添加到快捷短语
           }
         }
       }
@@ -9501,11 +9519,36 @@ class MNMath {
    */
   static async showSearchDialog() {
     try {
-      let keywords = [];
+      // 初始化配置
+      this.initSearchConfig();
+      
       // 获取上次使用的根目录（支持多个）
       let currentRootIds = this.getLastUsedRootIds();
       let allRoots = this.getAllSearchRoots();
       let selectedTypes = null;  // null 表示全选，Set 表示选中的类型
+      
+      // 第一步：确认/选择根目录
+      const rootSelectionResult = await this.showRootSelectionStep(currentRootIds, allRoots);
+      if (!rootSelectionResult) {
+        return; // 用户取消
+      }
+      currentRootIds = rootSelectionResult;
+      
+      // 保存最后使用的根目录
+      const rootKeys = [];
+      for (const rootId of currentRootIds) {
+        for (const key in allRoots) {
+          if (allRoots[key].id === rootId) {
+            rootKeys.push(key);
+            break;
+          }
+        }
+      }
+      this.searchRootConfigs.lastUsedRoots = rootKeys;
+      this.saveSearchConfig();
+      
+      // 第二步：输入关键词并搜索
+      let keywords = [];
       
       // 主循环：处理用户输入
       while (true) {
@@ -9888,7 +9931,98 @@ class MNMath {
   }
   
   /**
-   * 显示根目录选择对话框（支持多选）
+   * 显示根目录选择步骤（搜索的第一步）
+   * @param {Array} currentRootIds - 当前选中的根目录ID数组
+   * @param {Object} allRoots - 所有根目录
+   * @returns {Promise<Array|null>} 返回选中的根目录ID数组，取消返回null
+   */
+  static async showRootSelectionStep(currentRootIds, allRoots) {
+    const currentRootNames = this.getCurrentRootNames(currentRootIds, allRoots);
+    let rootDisplay = currentRootNames;
+    if (currentRootIds.length > 3) {
+      const firstThree = currentRootNames.split(", ").slice(0, 3).join(", ");
+      rootDisplay = `${firstThree} 等 ${currentRootIds.length} 个`;
+    }
+    
+    const message = `📁 当前根目录(${currentRootIds.length}个):\n${rootDisplay}\n\n是否使用当前根目录进行搜索？`;
+    
+    return new Promise((resolve) => {
+      UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+        "搜索笔记 - 选择根目录",
+        message,
+        0,
+        "取消",
+        ["✅ 确定使用", "🔄 切换根目录", "➕ 添加根目录"],
+        async (alert, buttonIndex) => {
+          if (buttonIndex === 0) {
+            resolve(null); // 取消
+            return;
+          }
+          
+          switch (buttonIndex) {
+            case 1: // 确定使用
+              resolve(currentRootIds);
+              break;
+              
+            case 2: // 切换根目录
+              const newRootIds = await this.showRootSelectionWithGroups([], allRoots); // 清空选择
+              if (newRootIds && newRootIds.length > 0) {
+                resolve(newRootIds);
+              } else {
+                // 如果用户在切换界面取消，重新显示当前步骤
+                const result = await this.showRootSelectionStep(currentRootIds, allRoots);
+                resolve(result);
+              }
+              break;
+              
+            case 3: // 添加根目录
+              const focusNote = MNNote.getFocusNote();
+              if (!focusNote) {
+                MNUtil.showHUD("请先选择一个卡片作为根目录");
+                const result = await this.showRootSelectionStep(currentRootIds, allRoots);
+                resolve(result);
+                return;
+              }
+              
+              const newRoot = await this.addCurrentNoteAsRoot(focusNote);
+              if (newRoot) {
+                if (!currentRootIds.includes(newRoot.id)) {
+                  currentRootIds.push(newRoot.id);
+                }
+                allRoots[newRoot.key] = newRoot;
+                MNUtil.showHUD(`✅ 已添加根目录：${newRoot.name}`);
+              }
+              
+              // 重新显示当前步骤
+              const result = await this.showRootSelectionStep(currentRootIds, allRoots);
+              resolve(result);
+              break;
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * 显示根目录选择对话框（支持多选和群组）
+   * @param {Array} currentRootIds - 当前选中的根目录ID数组
+   * @param {Object} allRoots - 所有根目录
+   * @returns {Promise<Array>} 返回选中的根目录ID数组
+   */
+  static async showRootSelectionWithGroups(currentRootIds, allRoots) {
+    // 确保有群组配置
+    if (!this.searchRootConfigs.rootGroups) {
+      this.searchRootConfigs.rootGroups = {};
+    }
+    
+    // 使用增强的选择对话框（带群组功能）
+    return new Promise((resolve) => {
+      this.showEnhancedRootMultiSelectDialog(currentRootIds, allRoots, resolve);
+    });
+  }
+  
+  /**
+   * 显示根目录选择对话框（支持多选）- 保留原有函数以兼容
    * @param {string|Array} currentRootIds - 当前选中的根目录ID（单个或多个）
    * @param {Object} allRoots - 所有根目录
    * @returns {Promise<Array>} 返回选中的根目录ID数组
@@ -9950,7 +10084,253 @@ class MNMath {
   }
   
   /**
-   * 显示根目录多选对话框（递归实现）
+   * 显示增强的根目录多选对话框（带群组功能）
+   * @param {Array} currentRootIds - 当前选中的根目录ID数组
+   * @param {Object} allRoots - 所有根目录
+   * @param {Function} finalCallback - 最终回调函数
+   */
+  static showEnhancedRootMultiSelectDialog(currentRootIds, allRoots, finalCallback) {
+    // 构建显示选项
+    const displayOptions = [];
+    
+    // 1. 确定按钮放在最前面
+    displayOptions.push("✅ 确定选择");
+    displayOptions.push("──────────────");
+    
+    // 2. 快速群组区域
+    const groups = this.searchRootConfigs.rootGroups || {};
+    const groupNames = Object.keys(groups).sort((a, b) => {
+      const orderA = groups[a].order || 999;
+      const orderB = groups[b].order || 999;
+      return orderA - orderB;
+    });
+    
+    if (groupNames.length > 0) {
+      displayOptions.push("━━━ 快速群组 ━━━");
+      for (const groupName of groupNames) {
+        const group = groups[groupName];
+        const icon = group.icon || "⚡";
+        displayOptions.push(`${icon} ${groupName}`);
+      }
+      displayOptions.push("──────────────");
+    }
+    
+    // 3. 群组管理按钮
+    displayOptions.push("💾 保存当前选择为群组");
+    displayOptions.push("⚙️ 管理群组");
+    displayOptions.push("──────────────");
+    
+    // 4. 单独选择区域
+    displayOptions.push("━━━ 单独选择 ━━━");
+    
+    // 构建根目录选项数组
+    const rootsOrder = this.searchRootConfigs.rootsOrder || Object.keys(allRoots);
+    const rootOptions = [];
+    
+    for (const key of rootsOrder) {
+      const root = allRoots[key];
+      if (root) {
+        rootOptions.push({
+          key: key,
+          name: root.name,
+          id: root.id
+        });
+      }
+    }
+    
+    // 检查当前选中状态
+    const selectedIndices = new Set();
+    for (let i = 0; i < rootOptions.length; i++) {
+      if (currentRootIds.includes(rootOptions[i].id)) {
+        selectedIndices.add(i);
+      }
+    }
+    
+    // 添加全选/取消全选
+    const allSelected = selectedIndices.size === rootOptions.length;
+    displayOptions.push(allSelected ? "⬜ 取消全选" : "☑️ 全选");
+    
+    // 添加各个根目录选项
+    for (let i = 0; i < rootOptions.length; i++) {
+      const option = rootOptions[i];
+      const isSelected = selectedIndices.has(i);
+      const prefix = isSelected ? "✅ " : "";
+      displayOptions.push(prefix + option.name);
+    }
+    
+    // 构建提示信息
+    const currentRootNames = this.getCurrentRootNames(currentRootIds, allRoots);
+    let message = `已选中 ${currentRootIds.length} 个根目录`;
+    if (currentRootIds.length > 0 && currentRootIds.length <= 3) {
+      message += `:\n${currentRootNames}`;
+    } else if (currentRootIds.length > 3) {
+      const firstThree = currentRootNames.split(", ").slice(0, 3).join(", ");
+      message += `:\n${firstThree} 等`;
+    }
+    
+    UIAlertView.showWithTitleMessageStyleCancelButtonTitleOtherButtonTitlesTapBlock(
+      "选择搜索根目录",
+      message,
+      0,
+      "取消",
+      displayOptions,
+      async (alert, buttonIndex) => {
+        if (buttonIndex === 0) {
+          finalCallback([]); // 取消
+          return;
+        }
+        
+        const selection = buttonIndex - 1;
+        
+        // 处理确定选择
+        if (selection === 0) {
+          // 返回当前选中的根目录ID
+          const selectedRootIds = [];
+          for (let i = 0; i < rootOptions.length; i++) {
+            if (selectedIndices.has(i)) {
+              selectedRootIds.push(rootOptions[i].id);
+            }
+          }
+          finalCallback(selectedRootIds);
+          return;
+        }
+        
+        let currentIndex = 1; // 跳过确定按钮
+        currentIndex++; // 跳过分隔线
+        
+        // 处理群组选择
+        if (groupNames.length > 0) {
+          currentIndex++; // 跳过"快速群组"标题
+          
+          for (const groupName of groupNames) {
+            if (selection === currentIndex) {
+              // 切换群组选择状态
+              const group = groups[groupName];
+              const groupRootIds = [];
+              
+              // 1. 获取群组内的所有根目录ID
+              for (const rootKey of group.roots) {
+                const root = allRoots[rootKey];
+                if (root) {
+                  groupRootIds.push(root.id);
+                }
+              }
+              
+              // 2. 检查群组内根目录的选中状态
+              let allSelected = true;
+              let anySelected = false;
+              
+              for (const rootId of groupRootIds) {
+                if (currentRootIds.includes(rootId)) {
+                  anySelected = true;
+                } else {
+                  allSelected = false;
+                }
+              }
+              
+              // 3. 根据状态决定操作
+              let newRootIds = [...currentRootIds]; // 复制当前选择
+              
+              if (allSelected && anySelected) {
+                // 情况1：全部已选中 → 取消选中群组内的根目录
+                newRootIds = currentRootIds.filter(id => !groupRootIds.includes(id));
+                MNUtil.showHUD(`❌ 已取消群组：${groupName}`);
+              } else {
+                // 情况2：部分或都未选中 → 选中群组内所有根目录
+                for (const rootId of groupRootIds) {
+                  if (!newRootIds.includes(rootId)) {
+                    newRootIds.push(rootId);
+                  }
+                }
+                MNUtil.showHUD(`✅ 已应用群组：${groupName}`);
+              }
+              
+              // 4. 更新最后使用的群组和配置
+              this.searchRootConfigs.lastUsedGroup = groupName;
+              groups[groupName].lastUsed = new Date().toISOString();
+              this.saveSearchConfig();
+              
+              // 递归调用，显示更新后的状态
+              this.showEnhancedRootMultiSelectDialog(newRootIds, allRoots, finalCallback);
+              return;
+            }
+            currentIndex++;
+          }
+          currentIndex++; // 跳过分隔线
+        }
+        
+        // 处理保存群组
+        if (selection === currentIndex) {
+          if (currentRootIds.length === 0) {
+            MNUtil.showHUD("请先选择至少一个根目录");
+            this.showEnhancedRootMultiSelectDialog(currentRootIds, allRoots, finalCallback);
+            return;
+          }
+          
+          // 保存当前选择为群组
+          await this.saveCurrentSelectionAsGroup(currentRootIds, allRoots);
+          
+          // 重新显示对话框
+          this.showEnhancedRootMultiSelectDialog(currentRootIds, allRoots, finalCallback);
+          return;
+        }
+        currentIndex++;
+        
+        // 处理管理群组
+        if (selection === currentIndex) {
+          await this.manageRootGroups();
+          // 重新显示对话框
+          this.showEnhancedRootMultiSelectDialog(currentRootIds, allRoots, finalCallback);
+          return;
+        }
+        currentIndex++;
+        currentIndex++; // 跳过分隔线
+        currentIndex++; // 跳过"单独选择"标题
+        
+        // 处理全选/取消全选
+        if (selection === currentIndex) {
+          if (allSelected) {
+            selectedIndices.clear();
+            currentRootIds = [];
+          } else {
+            selectedIndices.clear();
+            currentRootIds = [];
+            for (let i = 0; i < rootOptions.length; i++) {
+              selectedIndices.add(i);
+              currentRootIds.push(rootOptions[i].id);
+            }
+          }
+          // 递归调用
+          this.showEnhancedRootMultiSelectDialog(currentRootIds, allRoots, finalCallback);
+          return;
+        }
+        currentIndex++;
+        
+        // 处理单个根目录选择
+        const rootIndex = selection - currentIndex;
+        if (rootIndex >= 0 && rootIndex < rootOptions.length) {
+          const rootId = rootOptions[rootIndex].id;
+          const idx = currentRootIds.indexOf(rootId);
+          
+          if (idx >= 0) {
+            // 取消选中
+            currentRootIds.splice(idx, 1);
+            selectedIndices.delete(rootIndex);
+          } else {
+            // 选中
+            currentRootIds.push(rootId);
+            selectedIndices.add(rootIndex);
+          }
+          
+          // 递归调用
+          this.showEnhancedRootMultiSelectDialog(currentRootIds, allRoots, finalCallback);
+        }
+      }
+    );
+  }
+
+  /**
+   * 显示根目录多选对话框（递归实现）- 保留原有函数
    * @param {Array} rootOptions - 根目录选项数组
    * @param {Set} selectedIndices - 已选中的索引集合
    * @param {Function} finalCallback - 最终回调函数
@@ -10072,6 +10452,409 @@ class MNMath {
     );
   }
   
+  /**
+   * 保存当前选择为群组
+   * @param {Array} currentRootIds - 当前选中的根目录ID数组
+   * @param {Object} allRoots - 所有根目录配置
+   */
+  static async saveCurrentSelectionAsGroup(currentRootIds, allRoots) {
+    // 获取群组名称
+    const result = await MNUtil.input(
+      "保存群组",
+      "请输入群组名称：",
+      ["取消", "确定"],
+      { placeholder: "例如：内积空间相关" }
+    );
+    
+    if (!result || result.button !== 1 || !result.input || result.input.trim() === "") {
+      return;
+    }
+    
+    const groupName = result.input.trim();
+    
+    // 检查群组是否已存在
+    if (!this.searchRootConfigs.rootGroups) {
+      this.searchRootConfigs.rootGroups = {};
+    }
+    
+    if (this.searchRootConfigs.rootGroups[groupName]) {
+      const confirm = await MNUtil.confirm(
+        "群组已存在",
+        `群组"${groupName}"已存在，是否替换？`,
+        ["取消", "替换"]
+      );
+      if (confirm !== 1) {
+        return;
+      }
+    }
+    
+    // 将根目录ID转换为key
+    const rootKeys = [];
+    for (const rootId of currentRootIds) {
+      for (const key in allRoots) {
+        if (allRoots[key].id === rootId) {
+          rootKeys.push(key);
+          break;
+        }
+      }
+    }
+    
+    // 创建群组
+    const nextOrder = Object.values(this.searchRootConfigs.rootGroups).length + 1;
+    this.searchRootConfigs.rootGroups[groupName] = {
+      name: groupName,
+      roots: rootKeys,
+      icon: "⚡",
+      order: nextOrder,
+      createTime: new Date().toISOString(),
+      lastUsed: null
+    };
+    
+    this.saveSearchConfig();
+    MNUtil.showHUD(`✅ 已保存群组：${groupName}`);
+  }
+  
+  /**
+   * 管理根目录群组
+   */
+  static async manageRootGroups() {
+    const groups = this.searchRootConfigs.rootGroups || {};
+    const groupNames = Object.keys(groups).sort((a, b) => {
+      const orderA = groups[a].order || 999;
+      const orderB = groups[b].order || 999;
+      return orderA - orderB;
+    });
+    
+    if (groupNames.length === 0) {
+      MNUtil.showHUD("暂无保存的群组");
+      return;
+    }
+    
+    const options = ["➕ 新建群组"];
+    for (const groupName of groupNames) {
+      const group = groups[groupName];
+      const icon = group.icon || "⚡";
+      const rootCount = group.roots.length;
+      options.push(`${icon} ${groupName} (${rootCount}个根目录)`);
+    }
+    
+    const result = await MNUtil.userSelect(
+      "管理根目录群组",
+      "选择要管理的群组：",
+      options
+    );
+    
+    if (result === null || result === 0) {
+      return;
+    }
+    
+    if (result === 1) {
+      // 新建群组
+      await this.createNewRootGroup();
+    } else {
+      // 管理已有群组
+      const groupName = groupNames[result - 2];
+      await this.editRootGroup(groupName);
+    }
+  }
+  
+  /**
+   * 编辑根目录群组
+   * @param {string} groupName - 群组名称
+   */
+  static async editRootGroup(groupName) {
+    const group = this.searchRootConfigs.rootGroups[groupName];
+    if (!group) {
+      MNUtil.showHUD("群组不存在");
+      return;
+    }
+    
+    const options = [
+      "📝 重命名群组",
+      "🔧 编辑包含的根目录",
+      "🎨 更改图标",
+      "🗑 删除群组"
+    ];
+    
+    const result = await MNUtil.userSelect(
+      `管理群组：${groupName}`,
+      `包含 ${group.roots.length} 个根目录`,
+      options
+    );
+    
+    if (result === null || result === 0) {
+      return;
+    }
+    
+    switch (result) {
+      case 1: // 重命名
+        await this.renameRootGroup(groupName);
+        break;
+      case 2: // 编辑包含的根目录
+        await this.editGroupRoots(groupName);
+        break;
+      case 3: // 更改图标
+        await this.changeGroupIcon(groupName);
+        break;
+      case 4: // 删除
+        await this.deleteRootGroup(groupName);
+        break;
+    }
+  }
+  
+  /**
+   * 重命名群组
+   */
+  static async renameRootGroup(oldName) {
+    const result = await MNUtil.input(
+      "重命名群组",
+      `当前名称：${oldName}`,
+      [{
+        key: "name",
+        hint: "新的群组名称",
+        value: oldName
+      }]
+    );
+    
+    if (!result || !result.name || result.name.trim() === "" || result.name === oldName) {
+      return;
+    }
+    
+    const newName = result.name.trim();
+    
+    if (this.searchRootConfigs.rootGroups[newName]) {
+      MNUtil.showHUD("新名称已被使用");
+      return;
+    }
+    
+    // 重命名
+    const group = this.searchRootConfigs.rootGroups[oldName];
+    group.name = newName;
+    this.searchRootConfigs.rootGroups[newName] = group;
+    delete this.searchRootConfigs.rootGroups[oldName];
+    
+    // 如果是最后使用的群组，更新引用
+    if (this.searchRootConfigs.lastUsedGroup === oldName) {
+      this.searchRootConfigs.lastUsedGroup = newName;
+    }
+    
+    this.saveSearchConfig();
+    MNUtil.showHUD(`✅ 已重命名为：${newName}`);
+  }
+  
+  /**
+   * 更改群组图标
+   */
+  static async changeGroupIcon(groupName) {
+    const group = this.searchRootConfigs.rootGroups[groupName];
+    const result = await MNUtil.input(
+      "更改图标",
+      `群组：${groupName}`,
+      [{
+        key: "icon",
+        hint: "输入图标（如：⚡、📚、🔬、🎯）",
+        value: group.icon || "⚡"
+      }]
+    );
+    
+    if (!result || !result.icon) {
+      return;
+    }
+    
+    group.icon = result.icon;
+    this.saveSearchConfig();
+    MNUtil.showHUD(`✅ 图标已更新`);
+  }
+  
+  /**
+   * 编辑群组包含的根目录
+   * @param {string} groupName - 群组名称
+   */
+  static async editGroupRoots(groupName) {
+    const group = this.searchRootConfigs.rootGroups[groupName];
+    if (!group) {
+      MNUtil.showHUD("群组不存在");
+      return;
+    }
+    
+    const allRoots = this.getAllSearchRoots();
+    const rootsOrder = this.searchRootConfigs.rootsOrder || Object.keys(allRoots);
+    
+    // 循环显示编辑界面
+    while (true) {
+      // 构建显示选项
+      const displayOptions = [];
+      
+      // 1. 确定按钮在顶部
+      displayOptions.push("✅ 保存并返回");
+      displayOptions.push("──────────────");
+      
+      // 2. 显示所有根目录，标记已在群组中的
+      const groupRootKeys = new Set(group.roots);
+      
+      for (const key of rootsOrder) {
+        const root = allRoots[key];
+        if (root) {
+          const isInGroup = groupRootKeys.has(key);
+          const prefix = isInGroup ? "✅ " : "";
+          displayOptions.push(prefix + root.name);
+        }
+      }
+      
+      // 构建提示信息
+      const message = `当前包含 ${group.roots.length} 个根目录\n\n💡 点击根目录可添加/移除`;
+      
+      const result = await MNUtil.userSelect(
+        `编辑群组：${groupName}`,
+        message,
+        displayOptions
+      );
+      
+      // 处理用户选择
+      if (result === null || result === 0 || result === 1) {
+        // 保存并返回
+        this.saveSearchConfig();
+        MNUtil.showHUD(`✅ 群组"${groupName}"已更新`);
+        return;
+      }
+      
+      // 切换根目录的选中状态
+      const rootIndex = result - 2; // 减去前面的按钮和分隔线
+      if (rootIndex >= 0 && rootIndex < rootsOrder.length) {
+        const rootKey = rootsOrder[rootIndex];
+        
+        if (groupRootKeys.has(rootKey)) {
+          // 从群组中移除
+          group.roots = group.roots.filter(k => k !== rootKey);
+          groupRootKeys.delete(rootKey);
+          
+          const rootName = allRoots[rootKey]?.name || rootKey;
+          MNUtil.showHUD(`➖ 已移除：${rootName}`);
+        } else {
+          // 添加到群组
+          group.roots.push(rootKey);
+          groupRootKeys.add(rootKey);
+          
+          const rootName = allRoots[rootKey]?.name || rootKey;
+          MNUtil.showHUD(`➕ 已添加：${rootName}`);
+        }
+      }
+    }
+  }
+  
+  /**
+   * 删除群组
+   */
+  static async deleteRootGroup(groupName) {
+    const confirm = await MNUtil.confirm(
+      "删除群组",
+      `确定要删除群组"${groupName}"吗？`,
+      ["取消", "删除"]
+    );
+    
+    if (confirm !== 1) {
+      return;
+    }
+    
+    delete this.searchRootConfigs.rootGroups[groupName];
+    
+    // 如果是最后使用的群组，清除引用
+    if (this.searchRootConfigs.lastUsedGroup === groupName) {
+      this.searchRootConfigs.lastUsedGroup = null;
+    }
+    
+    this.saveSearchConfig();
+    MNUtil.showHUD(`✅ 已删除群组：${groupName}`);
+  }
+  
+  /**
+   * 创建新群组
+   */
+  static async createNewRootGroup() {
+    const result = await MNUtil.input(
+      "新建群组",
+      "请输入群组信息：",
+      [
+        {
+          key: "name",
+          hint: "群组名称",
+          value: ""
+        },
+        {
+          key: "icon",
+          hint: "图标（可选，如：⚡、📚、🔬）",
+          value: "⚡"
+        }
+      ]
+    );
+    
+    if (!result || !result.name || result.name.trim() === "") {
+      return;
+    }
+    
+    const groupName = result.name.trim();
+    const icon = result.icon || "⚡";
+    
+    if (!this.searchRootConfigs.rootGroups) {
+      this.searchRootConfigs.rootGroups = {};
+    }
+    
+    if (this.searchRootConfigs.rootGroups[groupName]) {
+      MNUtil.showHUD("群组已存在");
+      return;
+    }
+    
+    const nextOrder = Object.values(this.searchRootConfigs.rootGroups).length + 1;
+    this.searchRootConfigs.rootGroups[groupName] = {
+      name: groupName,
+      roots: [],
+      icon: icon,
+      order: nextOrder,
+      createTime: new Date().toISOString(),
+      lastUsed: null
+    };
+    
+    this.saveSearchConfig();
+    MNUtil.showHUD(`✅ 已创建群组：${groupName}`);
+  }
+  
+  /**
+   * 添加当前卡片作为根目录
+   * @param {MNNote} note - 要添加的卡片
+   */
+  static async addCurrentNoteAsRoot(note) {
+    const noteId = note.noteId;
+    const noteTitle = note.noteTitle || "无标题";
+    
+    // 生成唯一的key
+    let key = noteTitle.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "_");
+    let counter = 1;
+    while (this.searchRootConfigs.roots[key]) {
+      key = `${noteTitle}_${counter}`;
+      counter++;
+    }
+    
+    // 添加到配置
+    this.searchRootConfigs.roots[key] = {
+      name: noteTitle,
+      id: noteId
+    };
+    
+    // 添加到顺序数组
+    if (!this.searchRootConfigs.rootsOrder) {
+      this.searchRootConfigs.rootsOrder = [];
+    }
+    this.searchRootConfigs.rootsOrder.push(key);
+    
+    this.saveSearchConfig();
+    
+    return {
+      key: key,
+      name: noteTitle,
+      id: noteId
+    };
+  }
+
   /**
    * 处理添加根目录
    */
@@ -10882,13 +11665,19 @@ class MNMath {
     try {
       this.initSearchConfig();
       const config = {
-        version: "2.0",
+        version: "3.0",  // 升级版本以支持群组
         type: "fullSearchConfig",
         exportDate: new Date().toISOString(),
         searchConfig: {
           roots: this.searchRootConfigs.roots,
           rootsOrder: this.searchRootConfigs.rootsOrder,
           lastUsedRoot: this.searchRootConfigs.lastUsedRoot,
+          lastUsedRoots: this.searchRootConfigs.lastUsedRoots || [],  // 支持多选
+          
+          // 新增：根目录群组
+          rootGroups: this.searchRootConfigs.rootGroups || {},
+          lastUsedGroup: this.searchRootConfigs.lastUsedGroup || null,
+          
           includeClassification: this.searchRootConfigs.includeClassification,
           ignorePrefix: this.searchRootConfigs.ignorePrefix,
           searchInKeywords: this.searchRootConfigs.searchInKeywords,
@@ -10984,6 +11773,15 @@ class MNMath {
         throw new Error("无效的配置格式");
       }
       
+      // 版本兼容性处理
+      if (!config.version || config.version === "2.0") {
+        // 旧版本配置，自动升级
+        config.searchConfig.rootGroups = config.searchConfig.rootGroups || {};
+        config.searchConfig.lastUsedGroup = config.searchConfig.lastUsedGroup || null;
+        config.searchConfig.lastUsedRoots = config.searchConfig.lastUsedRoots || 
+          (config.searchConfig.lastUsedRoot ? [config.searchConfig.lastUsedRoot] : []);
+      }
+      
       const importMode = await MNUtil.userSelect(
         "导入方式",
         "选择导入方式：",
@@ -11005,6 +11803,29 @@ class MNMath {
         if (config.searchConfig.roots) {
           Object.assign(this.searchRootConfigs.roots, config.searchConfig.roots);
         }
+        
+        // 合并群组
+        if (config.searchConfig.rootGroups) {
+          if (!this.searchRootConfigs.rootGroups) {
+            this.searchRootConfigs.rootGroups = {};
+          }
+          // 合并群组，如果同名则询问用户
+          for (const groupName in config.searchConfig.rootGroups) {
+            if (this.searchRootConfigs.rootGroups[groupName]) {
+              const overwrite = await MNUtil.confirm(
+                "群组冲突",
+                `群组"${groupName}"已存在，是否覆盖？`,
+                ["跳过", "覆盖"]
+              );
+              if (overwrite === 1) {
+                this.searchRootConfigs.rootGroups[groupName] = config.searchConfig.rootGroups[groupName];
+              }
+            } else {
+              this.searchRootConfigs.rootGroups[groupName] = config.searchConfig.rootGroups[groupName];
+            }
+          }
+        }
+        
         // 合并同义词组
         if (config.synonymGroups && config.synonymGroups.length > 0) {
           if (!this.searchRootConfigs.synonymGroups) {
@@ -11027,6 +11848,30 @@ class MNMath {
             if (!existingIds.has(group.id)) {
               this.searchRootConfigs.exclusionGroups.push(group);
             }
+          }
+        }
+      }
+      
+      // 验证导入的群组
+      if (this.searchRootConfigs.rootGroups) {
+        for (const groupName in this.searchRootConfigs.rootGroups) {
+          const group = this.searchRootConfigs.rootGroups[groupName];
+          const validRoots = [];
+          
+          for (const rootKey of group.roots || []) {
+            if (this.searchRootConfigs.roots[rootKey]) {
+              validRoots.push(rootKey);
+            } else {
+              MNUtil.log(`警告：群组"${groupName}"中的根目录"${rootKey}"不存在`);
+            }
+          }
+          
+          group.roots = validRoots;
+          
+          // 如果群组为空，删除该群组
+          if (validRoots.length === 0) {
+            delete this.searchRootConfigs.rootGroups[groupName];
+            MNUtil.log(`已移除空群组：${groupName}`);
           }
         }
       }

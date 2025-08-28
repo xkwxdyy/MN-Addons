@@ -281,11 +281,12 @@ viewWillLayoutSubviews: function() {
       self.tableItem('🆓 [Free] GPT-5 Nano', selector,"GPT-5-nano",source === "GPT-5-nano"),
       self.tableItem('🆓 [Free] Doubao 1.6 Flash No Thinking', selector,"doubao-seed-1.6-flash-nothinking",source === "doubao-seed-1.6-flash-nothinking"),
       self.tableItem('🆓 [Free] GLM-4.5V No Thinking', selector,"glm-4.5v-nothinking",source === "glm-4.5v-nothinking"),
+      self.tableItem('🏞️ SimpleTex', selector,"SimpleTex",source === "SimpleTex"),
       self.tableItem('📝 Doc2X PDF', selector,"Doc2XPDF",source === "Doc2XPDF"),
       self.tableItem('🏞️ Doc2X Image', selector,"Doc2X",source === "Doc2X"),
-      self.tableItem('🏞️ SimpleTex', selector,"SimpleTex",source === "SimpleTex"),
     ];
     if (ocrNetwork.isActivated()) {
+      commandTable.push({title:'🤖 Doubao 1.6 No Thinking',object:self,selector:selector,param:"doubao-seed-1-6-nothinking",checked:source === "doubao-seed-1-6-nothinking"})
       commandTable.push(self.tableItem('🤖 GPT-5', selector,"GPT-5",source === "GPT-5"))
       commandTable.push(self.tableItem('🤖 GPT-5 Mini', selector,"GPT-5-mini",source === "GPT-5-mini"))
       commandTable.push(self.tableItem('🤖 GPT-4o', selector,"GPT-4o",source === "GPT-4o"))
@@ -295,7 +296,6 @@ viewWillLayoutSubviews: function() {
       // commandTable.push({title:'🤖 Abab6.5s',object:self,selector:selector,param:"abab6.5s-chat",checked:source === "abab6.5s-chat"})
       commandTable.push({title:'🤖 MiniMax-Text-01',object:self,selector:selector,param:"MiniMax-Text-01",checked:source === "MiniMax-Text-01"})
       commandTable.push({title:'🤖 Doubao 1.6',object:self,selector:selector,param:"doubao-seed-1-6",checked:source === "doubao-seed-1-6"})
-      commandTable.push({title:'🤖 Doubao 1.6 No Thinking',object:self,selector:selector,param:"doubao-seed-1-6-nothinking",checked:source === "doubao-seed-1-6-nothinking"})
       commandTable.push({title:'🤖 GLM-4.5V',object:self,selector:selector,param:"glm-4.5v",checked:source === "glm-4.5v"})
       commandTable.push({title:'🤖 GLM-4V Plus',object:self,selector:selector,param:"glm-4v-plus",checked:source === "glm-4v-plus"})
       commandTable.push({title:'🤖 Moonshot-v1',object:self,selector:selector,param:"Moonshot-v1",checked:source === "Moonshot-v1"})

@@ -295,6 +295,7 @@ try {
   },
   customActionByMenu: async function (param) {
     let des = param.des
+    MNUtil.log({message:"customActionByMenu",des:des})
     if (typeof des === "string" || !("action" in des)) {
       return
     }
@@ -1846,6 +1847,95 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
           }
 
           break;
+        case "addTags":
+          commandTable = []
+          // MNUtil.log({message:"addTags",des:des})
+          if ("tags" in des) {
+            des.tags.map(tag=>{
+              commandTable.push(tableItem(tag,{action:"addTags",tag:tag}))
+            })
+            break;
+          }
+          // MNUtil.log("123")
+          let currentNotebook = MNUtil.currentNotebook
+          let tem = currentNotebook.hashtags
+          // MNUtil.log(tem)
+          let currentNotebookHashtags = []
+          if (tem) {
+            currentNotebookHashtags = tem.split(" ")
+          }
+          if (currentNotebookHashtags.length) {
+            commandTable.push(tableItem("👇  Tags in current notebook",{action:"none"}))
+            let tagInfo = toolbarUtils.parseTagComponents(currentNotebookHashtags)
+            // MNUtil.log({message:"tagInfo",tagInfo:tagInfo})
+            if (tagInfo.tagWithComponents.length) {
+              let componentsInfo = tagInfo.componentsInfo
+              tagInfo.tagWithComponents.map(tag=>{
+                let subTags = componentsInfo[tag].map(k=>tag+"/"+k)
+                if ("onFinish" in des) {
+                  commandTable.push(tableItem("➡️  "+tag,{action:"addTags",target:"menu",tags:subTags,onFinish:des.onFinish}))
+                }else{
+                  commandTable.push(tableItem("➡️  "+tag,{action:"addTags",target:"menu",tags:subTags}))
+                }
+              })
+            }
+            tagInfo.tagWithoutComponents.map(tag=>{
+              if ("onFinish" in des) {
+                commandTable.push(tableItem("   "+tag,{action:"addTags",tag:tag,onFinish:des.onFinish}))
+              }else{
+                commandTable.push(tableItem("   "+tag,{action:"addTags",tag:tag}))
+              }
+            })
+          }
+          let tagNumbers = commandTable.length-1
+          if ("numberOfTags" in des && des.numberOfTags < tagNumbers) {
+            commandTable = commandTable.slice(0,des.numberOfTags+1)
+          }
+          let ortherHashtags = []
+
+          
+          MNUtil.allStudySets().map(notebook=>{
+            if (notebook.topicId === currentNotebook.topicId) {
+              return
+            }
+            if (notebook.hashtags) {
+              let tags = notebook.hashtags.split(" ")
+              ortherHashtags = ortherHashtags.concat(tags)
+            }
+          })
+          ortherHashtags = MNUtil.unique(ortherHashtags)
+          if (ortherHashtags.length) {
+            commandTable.push(tableItem("👇  Tags in other notebooks",{action:"none"}))
+            let tagInfo = toolbarUtils.parseTagComponents(ortherHashtags)
+            // MNUtil.log({message:"tagInfo",tagInfo:tagInfo})
+            if (tagInfo.tagWithComponents.length) {
+              let componentsInfo = tagInfo.componentsInfo
+              tagInfo.tagWithComponents.map(tag=>{
+                let subTags = componentsInfo[tag].map(k=>tag+"/"+k)
+                if ("onFinish" in des) {
+                  commandTable.push(tableItem("➡️  "+tag,{action:"addTags",target:"menu",tags:subTags,onFinish:des.onFinish}))
+                }else{
+                  commandTable.push(tableItem("➡️  "+tag,{action:"addTags",target:"menu",tags:subTags}))
+                }
+              })
+            }
+            tagInfo.tagWithoutComponents.map(tag=>{
+              if ("onFinish" in des) {
+                commandTable.push(tableItem("   "+tag,{action:"addTags",tag:tag,onFinish:des.onFinish}))
+              }else{
+                commandTable.push(tableItem("   "+tag,{action:"addTags",tag:tag}))
+              }
+            })
+            tagNumbers = commandTable.length-2
+            if ("numberOfTags" in des && des.numberOfTags < tagNumbers) {
+              commandTable = commandTable.slice(0,des.numberOfTags+2)
+            }
+            // ortherHashtags.map(tag=>{
+            //   commandTable.push(tableItem("   "+tag,{action:"addTags",tag:tag}))
+            // })
+          }
+          // MNUtil.log({message:"commandTable",commandTable:commandTable})
+          break;
         case "ocr":
           if ('onFinish' in des) {
             commandTable = [
@@ -2006,161 +2096,6 @@ toolbarController.prototype.customActionMenu =  function (button,des) {
       }
       return true
     }
-    // if (des.action === "insertSnippet" && des.target && des.target === "menu") {
-    //   this.onClick = true
-    //   var commandTable = des.menuItems.map(item => {
-    //     item.action = "insertSnippet"
-    //     return {title:item.menuTitle,object:this,selector:'customActionByMenu:',param:{des:item,button:button}}
-    //   })
-    //   let width = 250
-    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-    //   }else{
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-    //   }
-    //   return true
-    // }
-    // if (des.action === "paste" && des.target && des.target === "menu") {
-    //   this.onClick = true
-    //   var commandTable = [
-    //     {title:"default",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"default"},button:button}},
-    //     {title:"title",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"title"},button:button}},
-    //     {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"excerpt"},button:button}},
-    //     {title:"appendTitle",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"appendTitle"},button:button}},
-    //     {title:"appendExcerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"paste",target:"appendExcerpt"},button:button}}
-    //   ]
-    //   let width = 250
-    //   if ((MNUtil.studyView.bounds.width - buttonX) < (width+40)) {
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-    //   }else{
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-    //   }
-    //   return true
-    // }
-
-    // if (des.action === "ocr" && des.target && des.target === "menu") {
-    //   this.onClick = true
-    //   var commandTable = [
-    //     {title:"clipboard",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"clipboard"},button:button}},
-    //     {title:"comment",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"comment"},button:button}},
-    //     {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"excerpt"},button:button}},
-    //     {title:"editor",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"editor"},button:button}},
-    //     {title:"chatModeReference",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"chatModeReference"},button:button}}
-    //   ]
-    //   let width = 250
-    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-    //   }else{
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-    //   }
-    //   return true
-    // }
-
-    // if (des.action === "setTimer" && des.target && des.target === "menu") {
-    //   this.onClick = true
-    //   var commandTable = [
-    //     // {title:'📝  Annotation',object:self,selector:'inputAnnotation:',param:'left'},
-    //     // {title:'⚙️  Setting',object:self,selector:'openSetting:',param:'left'},
-    //     {title:'⏰  Clock Mode',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"clock"},button:button}},
-    //     {title:'⏱️  Count Up',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countUp"},button:button}},
-    //     {title:'⌛  Countdown: 5mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:5},button:button}},
-    //     {title:'⌛  Countdown: 10mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:10},button:button}},
-    //     {title:'⌛  Countdown: 15mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:15},button:button}},
-    //     {title:'🍅  Countdown: 25mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:25},button:button}},
-    //     {title:'⌛  Countdown: 40mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:40},button:button}},
-    //     {title:'⌛  Countdown: 60mins',object:self,selector:'customActionByMenu:',param:{des:{action:"setTimer",timerMode:"countdown",minutes:60},button:button}},
-    //   ];
-    //   // var commandTable = [
-    //   //   {title:"clipboard",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"clipboard"},button:button}},
-    //   //   {title:"comment",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"comment"},button:button}},
-    //   //   {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"excerpt"},button:button}},
-    //   //   {title:"editor",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"editor"},button:button}},
-    //   //   {title:"chatModeReference",object:this,selector:'customActionByMenu:',param:{des:{action:"ocr",target:"chatModeReference"},button:button}}
-    //   // ]
-    //   let width = 250
-    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-    //   }else{
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-    //   }
-    //   return true
-    // }
-
-    // if (des.action === "search" && des.target && des.target === "menu") {
-    //   this.onClick = true
-    //   let names = browserConfig.entrieNames
-    //   let entries = browserConfig.entries
-    //   var commandTable = names.map(name=>{
-    //     let title = entries[name].title
-    //     let engine = entries[name].engine
-    //     return {title:title,object:this,selector:'customActionByMenu:',param:{des:{action:"search",engine:engine},button:button}}
-    //   })
-    //   let width = 250
-    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-    //   }else{
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-    //   }
-    //   return true
-    // }
-    // if (des.action === "copy" && des.target && des.target === "menu") {
-    //   this.onClick = true
-    //   var commandTable = [
-    //     {title:"selectionText",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"selectionText"},button:button}},
-    //     {title:"selectionImage",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"selectionImage"},button:button}},
-    //     {title:"title",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"title"},button:button}},
-    //     {title:"excerpt",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"excerpt"},button:button}},
-    //     {title:"excerpt (OCR)",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"excerptOCR"},button:button}},
-    //     {title:"notesText",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"notesText"},button:button}},
-    //     {title:"comment",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"comment"},button:button}},
-    //     {title:"noteId",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteId"},button:button}},
-    //     {title:"noteURL",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteURL"},button:button}},
-    //     {title:"noteMarkdown",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteMarkdown"},button:button}},
-    //     {title:"noteMarkdown (OCR)",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteMarkdownOCR"},button:button}},
-    //     {title:"noteWithDecendentsMarkdown",object:this,selector:'customActionByMenu:',param:{des:{action:"copy",target:"noteWithDecendentsMarkdown"},button:button}},
-    //   ]
-    //   let width = 250
-    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-    //   }else{
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-    //   }
-    //   return true
-    // }
-    // if (des.action === "showInFloatWindow" && des.target && des.target === "menu") {
-    //   this.onClick = true
-    //   // MNUtil.showHUD("showInFloatWindow")
-    //   var commandTable = [
-    //     {title:"noteInClipboard",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"noteInClipboard"},button:button}},
-    //     {title:"currentNote",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"currentNote"},button:button}},
-    //     {title:"currentChildMap",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"currentChildMap"},button:button}},
-    //     {title:"parentNote",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"parentNote"},button:button}},
-    //     {title:"currentNoteInMindMap",object:this,selector:'customActionByMenu:',param:{des:{action:"showInFloatWindow",target:"currentNoteInMindMap"},button:button}}
-    //   ]
-    //   let width = 250
-    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-    //   }else{
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-    //   }
-    //   return true
-    // }
-    // if (des.action === "addImageComment" && des.target === "menu") {
-    //   this.onClick = true
-    //   var commandTable = [
-    //     {title:"photo",object:this,selector:'customActionByMenu:',param:{des:{action:"addImageComment",source:"photo"},button:button}},
-    //     {title:"camera",object:this,selector:'customActionByMenu:',param:{des:{action:"addImageComment",source:"camera"},button:button}},
-    //     {title:"file",object:this,selector:'customActionByMenu:',param:{des:{action:"addImageComment",source:"file"},button:button}},
-    //   ]
-    //   let width = 250
-    //   if (MNUtil.studyView.bounds.width - buttonX < (width+40)) {
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,0)
-    //   }else{
-    //     this.popoverController = MNUtil.getPopoverAndPresent(button, commandTable,width,4)
-    //   }
-    //   return true
-    // }
-    // MNUtil.showHUD("shouldShowMenu: false")
     return false
   } catch (error) {
     // toolbarUtils.addErrorLog(error, "customActionMenu")

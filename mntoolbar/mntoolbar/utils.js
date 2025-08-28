@@ -293,7 +293,7 @@ class toolbarUtils {
         menuItems = ["title","content","markdown","color"]
         break;
       case "addTags":
-        menuItems = ["tag","tags"]
+        menuItems = ["tag","tags","target","numberOfTags"]
         break;
       case "mergeText":
         menuItems = ["target","source","range","varName"]
@@ -413,6 +413,9 @@ class toolbarUtils {
         break;
       case "onConfirm":
         config.onConfirm = {action:""}
+        break;
+      case "tags":
+        config.tags = []
         break;
       case "markdown":
       case "compression":
@@ -5088,13 +5091,46 @@ static getButtonFrame(button){
         return undefined;
     }
   }
+  static parseTagComponents(tags){
+  try {
+
+    let componentsInfo = {}
+    let tagWithComponents = []
+    let tagWithoutComponents = []
+    tags.map(tag=>{
+      if (tag.includes("/")) {
+        let tagComponents = tag.split("/")
+        if (tagComponents[0] in componentsInfo) {
+          componentsInfo[tagComponents[0]].push(tagComponents[1])
+        }else{
+          //tagWithComponents中还没出现过这个标签
+          tagWithComponents.push(tagComponents[0])
+          componentsInfo[tagComponents[0]] = [tagComponents[1]]
+        }
+      }else{
+        tagWithoutComponents.push(tag)
+      }
+    })
+    return {componentsInfo:componentsInfo,tagWithoutComponents:tagWithoutComponents,tagWithComponents:tagWithComponents}
+    
+  } catch (error) {
+    this.addErrorLog(error, "parseTagComponents")
+    return {}
+  }
+  }
   static addTags(des){
     let focusNotes = MNNote.getFocusNotes()
+    // MNUtil.log({message:"addTags",des:des})
     if (des.tags) {
       MNUtil.undoGrouping(()=>{
         focusNotes.forEach(note=>{
           let tags = des.tags.map(t=>{
-            return this.detectAndReplace(t,undefined,note)
+            let res = this.detectAndReplace(t,undefined,note)
+            if (res.startsWith("#")) {
+              return res.slice(1)
+            }else{
+              return res
+            }
           })
           note.appendTags(tags)
         })
@@ -5103,7 +5139,8 @@ static getButtonFrame(button){
       MNUtil.undoGrouping(()=>{
         focusNotes.forEach(note=>{
           let replacedText = this.detectAndReplace(des.tag,undefined,note)
-          note.appendTags([replacedText])
+          let res = replacedText.startsWith("#")?replacedText.slice(1):replacedText
+          note.appendTags([res])
         })
       })
     }
@@ -6181,7 +6218,8 @@ class toolbarConfig {
   "ocrForNote",
   "textFirstForNote",
   "aiMenuPlaceholder",
-  "editFavorites"
+  "editFavorites",
+  "setDraft"
 ]
   static defaultPopupReplaceConfig = {
     noteHighlight:{enabled:false,target:"",name:"noteHighlight"},
@@ -6263,6 +6301,7 @@ class toolbarConfig {
     textFirstForNote:{enabled:false,target:"",name:"textFirstForNote"},
     aiMenuPlaceholder:{enabled:false,target:"",name:"aiMenuPlaceholder"},
     editFavorites:{enabled:false,target:"",name:"editFavorites"},
+    setDraft:{enabled:false,target:"",name:"setDraft"}
   }
   static defalutImageScale = {
     "color0":2.4,

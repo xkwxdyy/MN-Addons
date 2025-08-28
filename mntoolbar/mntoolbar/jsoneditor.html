@@ -496,6 +496,8 @@ function getSchemaByActionName(actionName) {
     case "addTags":
       properties.tag = stringType()
       properties.tags = arrayType(stringType())
+      properties.target = stringEnum(['menu'])
+      properties.numberOfTags = numberEnum([5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
       break;
     case "link":
       properties.type = stringEnum(['Both','To','From'])

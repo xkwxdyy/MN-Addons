@@ -129,6 +129,8 @@ var ocrController = JSB.defineClass('ocrController : UIViewController <NSURLConn
     MNButton.setColor(self.OCRTitleButton, "#457bd3",0.8)
     MNButton.setRadius(self.OCRTitleButton, 10)
 
+    
+
 
 
     self.OCRClearButton = self.createButton("clearBuffer:","ocrView")

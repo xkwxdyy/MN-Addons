@@ -112,7 +112,7 @@ JSB.newAddon = function (mainPath) {
         }
         if (self.isFirst) {
           let buttonFrame = self.addonBar.frame
-          let frame = buttonFrame.x < 100 ? {x:40,y:buttonFrame.y,width:260,height:345} : {x:buttonFrame.x-260,y:buttonFrame.y,width:260,height:345}
+          let frame = buttonFrame.x < 100 ? {x:40,y:buttonFrame.y,width:260,height: 345} : {x:buttonFrame.x-260,y:buttonFrame.y,width:260,height: 345}
           ocrUtils.setFrame(ocrUtils.ocrController, frame)
           self.isFirst = false;
         }
